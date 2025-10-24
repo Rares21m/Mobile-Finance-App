@@ -79,7 +79,7 @@ export default function Welcome() {
                         mode="contained"
                         style={{ flex: 1, borderRadius: 12, backgroundColor: theme.colors.primary }}
                         labelStyle={{color:'white',fontWeight:'bold'}}
-                        onPress={() => router.push('/sign-in')}
+                        onPress={() => router.push('/sign-up')}
                     >
                         Register
                     </Button>
