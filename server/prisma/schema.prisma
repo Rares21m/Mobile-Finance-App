@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  passwordHash    String
+  name            String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  bankConnections BankConnection[]
+}
+
+model BankConnection {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankName       String        // "BT", "ING", etc.
+  consentId      String?
+  clientId       String?
+  clientSecret   String?
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  codeVerifier   String?
+  status         String        @default("pending") // pending, active, expired, revoked
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  transactions   Transaction[]
+}
+
+model Transaction {
+  id               String         @id @default(uuid())
+  bankConnectionId String
+  bankConnection   BankConnection @relation(fields: [bankConnectionId], references: [id], onDelete: Cascade)
+  transactionId    String?
+  amount           Decimal
+  currency         String         @default("RON")
+  creditorName     String?
+  debtorName       String?
+  bookingDate      DateTime?
+  valueDate        DateTime?
+  remittanceInfo   String?
+  category         String?
+  createdAt        DateTime       @default(now())
+
+  @@index([bankConnectionId])
+  @@index([bookingDate])
+}

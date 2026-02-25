@@ -1,54 +1,55 @@
-<<<<<<< HEAD
-# Welcome to your Expo app 👋
+# Novence — Mobile Finance App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicație mobilă de management financiar personal, dezvoltată ca proiect de licență.
 
-## Get started
+## Stack
 
-1. Install dependencies
+| Layer | Tehnologie |
+|-------|-----------|
+| **Mobile** | React Native + Expo SDK 54 |
+| **Styling** | NativeWind (Tailwind CSS) |
+| **Navigare** | Expo Router (file-based) |
+| **Backend** | Node.js + Express |
+| **Database** | PostgreSQL + Prisma ORM |
+| **Banking** | BT Open Banking API (PSD2 Sandbox) |
 
-   ```bash
-   npm install
-   ```
+## Structură
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+├── client/          # React Native (Expo)
+│   ├── app/
+│   │   ├── (auth)/  # Welcome, Sign In, Sign Up
+│   │   └── (tabs)/  # Home, Accounts, Analytics, AI Advisor, Profile
+│   └── ...
+├── server/          # Express API
+│   ├── src/
+│   │   ├── routes/
+│   │   ├── controllers/
+│   │   └── services/
+│   └── prisma/
+└── README.md
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Setup
 
-## Learn more
+### Client (Frontend)
+```bash
+cd client
+npm install
+npx expo start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+### Server (Backend)
+```bash
+cd server
+npm install
+npx prisma migrate dev
+npm run dev
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-=======
-# Mobile-Finance-App
->>>>>>> 7509b1a87f9eccc06bfc375281f636cf9d8b3b2b
+## Funcționalități
+- Autentificare (Register / Login cu JWT)
+- Conectare conturi bancare prin Open Banking (BT Sandbox)
+- Dashboard cu sold total și tranzacții recente
+- Statistici pe categorii de cheltuieli
+- Consultant AI financiar (în dezvoltare)
