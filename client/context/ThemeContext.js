@@ -5,8 +5,8 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "nativewind";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const THEME_STORAGE_KEY = "app_theme";
 
@@ -15,42 +15,46 @@ export const THEMES = {
     mode: "dark",
     statusBar: "light-content",
     colors: {
-      bg: "#0C0C14",
-      surface: "#161621",
-      card: "#1C1C2A",
-      border: "#2A2A3C",
-      foreground: "#FFFFFF",
-      textMuted: "#9CA3AF",
-      textInverse: "#0F172A",
+      // Dark Dim — blue-slate, clearly not black, easy on the eyes
+      bg: "#22272E",
+      surface: "#2D333B",
+      card: "#373E47",
+      border: "#4C5566",
+      foreground: "#ADBAC7",
+      textMuted: "#768390",
+      textInverse: "#22272E",
 
       primary: "#10B981",
       primaryDark: "#059669",
-      accent: "#6366F1",
+      accent: "#818CF8",
 
-      expense: "#F43F5E",
-      success: "#22C55E",
+      expense: "#F47067",
+      success: "#57AB5A",
 
-      overlay: "rgba(0,0,0,0.65)",
-      handle: "#2A2A3C",
-      placeholder: "#4B5563",
+      overlay: "rgba(22,27,34,0.80)",
+      handle: "#4C5566",
+      placeholder: "#636E7B",
 
-      headerGradient: ["#161621", "#0C0C14"],
-      balanceCardGradient: ["#1E293B", "#0F172A"],
-      balanceCardBorder: "rgba(99,102,241,0.15)",
-      emptyCardGradient: ["#161621", "#1C1C2A"],
-      connectButtonGradient: ["rgba(16,185,129,0.08)", "rgba(99,102,241,0.06)"],
-      connectButtonBorder: "rgba(16,185,129,0.15)",
-      authBgGradient: ["#0C0C14", "#0A1A14", "#0C0C14"],
-      authDecorCircle1: "rgba(16,185,129,0.08)",
-      authDecorCircle2: "rgba(99,102,241,0.06)",
+      headerGradient: ["#2D333B", "#22272E"],
+      balanceCardGradient: ["#373E47", "#2D333B"],
+      balanceCardBorder: "rgba(129,140,248,0.22)",
+      emptyCardGradient: ["#2D333B", "#373E47"],
+      connectButtonGradient: [
+        "rgba(16,185,129,0.10)",
+        "rgba(129,140,248,0.08)",
+      ],
+      connectButtonBorder: "rgba(16,185,129,0.25)",
+      authBgGradient: ["#22272E", "#1E2D3D", "#22272E"],
+      authDecorCircle1: "rgba(16,185,129,0.10)",
+      authDecorCircle2: "rgba(129,140,248,0.08)",
 
-      chartInnerCircle: "#161621",
-      chartAxisColor: "rgba(255,255,255,0.06)",
-      chartAxisTextColor: "#4B5563",
+      chartInnerCircle: "#2D333B",
+      chartAxisColor: "rgba(173,186,199,0.08)",
+      chartAxisTextColor: "#768390",
 
-      dividerColor: "rgba(255,255,255,0.06)",
-      categoryBorder: "rgba(255,255,255,0.04)",
-      webViewIconColor: "#FFFFFF",
+      dividerColor: "rgba(173,186,199,0.08)",
+      categoryBorder: "rgba(173,186,199,0.06)",
+      webViewIconColor: "#ADBAC7",
     },
   },
 
@@ -58,43 +62,44 @@ export const THEMES = {
     mode: "light",
     statusBar: "dark-content",
     colors: {
-      bg: "#F8F5EF",
-      surface: "#F1ECE4",
+      // Clean cool-white — white cards pop off slate-tinted bg
+      bg: "#ECEEF5",
+      surface: "#F5F6FB",
       card: "#FFFFFF",
-      border: "#D8D2C8",
+      border: "#D6DAE8",
 
-      foreground: "#141E30",
-      textMuted: "#4A5C78",
+      foreground: "#0D1117",
+      textMuted: "#5A6A82",
       textInverse: "#FFFFFF",
 
-      primary: "#4A4DC4",
-      primaryDark: "#2F3192",
-      accent: "#0D9E6E",
+      primary: "#0D9E6E",
+      primaryDark: "#0A7A55",
+      accent: "#4A4DC4",
 
       expense: "#C93B58",
       success: "#15994A",
 
-      overlay: "rgba(20,30,48,0.25)",
-      handle: "#CFC7BB",
+      overlay: "rgba(13,17,23,0.28)",
+      handle: "#C5CCDB",
       placeholder: "#7A8BA8",
 
-      headerGradient: ["#F1ECE4", "#F8F5EF"],
-      balanceCardGradient: ["#1A3252", "#0F2240"],
+      headerGradient: ["#F5F6FB", "#ECEEF5"],
+      balanceCardGradient: ["#ECEEF5", "#F5F6FB"],
       balanceCardBorder: "rgba(74,77,196,0.18)",
-      emptyCardGradient: ["#EFE9DF", "#E7DFD2"],
+      emptyCardGradient: ["#EEF0F8", "#E8EBF4"],
       connectButtonGradient: ["rgba(13,158,110,0.09)", "rgba(74,77,196,0.06)"],
       connectButtonBorder: "rgba(13,158,110,0.22)",
-      authBgGradient: ["#F8F5EF", "#EFE9DF", "#F8F5EF"],
+      authBgGradient: ["#ECEEF5", "#E6EAF4", "#ECEEF5"],
       authDecorCircle1: "rgba(13,158,110,0.10)",
       authDecorCircle2: "rgba(74,77,196,0.07)",
 
-      chartInnerCircle: "#F1ECE4",
-      chartAxisColor: "rgba(20,30,48,0.07)",
+      chartInnerCircle: "#F5F6FB",
+      chartAxisColor: "rgba(13,17,23,0.07)",
       chartAxisTextColor: "#7A8BA8",
 
-      dividerColor: "#D8D2C8",
-      categoryBorder: "#D8D2C8",
-      webViewIconColor: "#141E30",
+      dividerColor: "#D6DAE8",
+      categoryBorder: "#D6DAE8",
+      webViewIconColor: "#0D1117",
     },
   },
 };
@@ -111,7 +116,6 @@ export function ThemeProvider({ children }) {
   const [themeMode, setThemeModeState] = useState("dark");
   const { setColorScheme } = useColorScheme();
 
-
   useEffect(() => {
     (async () => {
       try {
@@ -125,7 +129,6 @@ export function ThemeProvider({ children }) {
       }
     })();
   }, []);
-
 
   useEffect(() => {
     setColorScheme(themeMode);
@@ -146,7 +149,9 @@ export function ThemeProvider({ children }) {
   const isDark = themeMode === "dark";
 
   return (
-    <ThemeContext.Provider value={{ theme, isDark, themeMode, setTheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, isDark, themeMode, setTheme, toggleTheme }}
+    >
       {children}
     </ThemeContext.Provider>
   );

@@ -11,6 +11,7 @@ const cors = require("cors");
 const authRoutes = require("./routes/auth.routes");
 const btRoutes = require("./routes/bt.routes");
 const brdRoutes = require("./routes/brd.routes");
+const advisorRoutes = require("./routes/advisor.routes");
 const logger = require("./config/logger");
 
 const app = express();
@@ -25,20 +26,25 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/bt", btRoutes);
 app.use("/api/brd", brdRoutes);
+app.use("/api/advisor", advisorRoutes);
 
 // ─── Health Check ────────────────────────────────────────────
 app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", service: "Novence API", timestamp: new Date().toISOString() });
+  res.json({
+    status: "ok",
+    service: "Novence API",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ─── Global Error Handler ────────────────────────────────────
 app.use((err, req, res, next) => {
-    logger.error("Unhandled error:", err);
-    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+  logger.error("Unhandled error:", err);
+  res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
 });
 
 // ─── Start ───────────────────────────────────────────────────
 app.listen(PORT, () => {
-    logger.info(`🚀 Novence API running on http://localhost:${PORT}`);
-    logger.info(`📋 Health check: http://localhost:${PORT}/api/health`);
+  logger.info(`🚀 Novence API running on http://localhost:${PORT}`);
+  logger.info(`📋 Health check: http://localhost:${PORT}/api/health`);
 });

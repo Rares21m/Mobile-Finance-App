@@ -4,7 +4,7 @@ const crypto = require('crypto');
 // BRD Sandbox details
 const BRD_API_BASE_URL = 'https://api.devbrd.ro/brd-api-connect-prod-organization/apicatalog/brd-psd2-aisp/v1';
 const BRD_SANDBOX_PSUID = '13333330'; // Sandbox user fixed by BRD
-const BRD_SANDBOX_CONSENT_ID = '800000022'; // Represents a 'valid' consent in Sandbox
+const BRD_SANDBOX_CONSENT_ID = '500000044'; // "valid with all psd2" — most permissive consent
 
 /**
  * BRD Service handles communication with the underlying BRD Sandbox API.
@@ -22,7 +22,7 @@ class BrdService {
             'Content-Type': 'application/json',
             'X-IBM-Client-Id': clientId,
             'X-Request-ID': crypto.randomUUID(), // Standard UUID v4
-            'Consent-ID': BRD_SANDBOX_CONSENT_ID, // Hardcoded valid consent id
+            'Consent-ID': BRD_SANDBOX_CONSENT_ID, // Valid consent with full access
             'PSU-ID': BRD_SANDBOX_PSUID,          // Hardcoded fixed user id
             'PSU-IP-Address': ipAddress
         };
@@ -60,8 +60,9 @@ class BrdService {
 
     /**
      * Fetches transactions.
+     * BRD Sandbox max recordsPerPage = 10, sandbox has ~3 transactions total.
      */
-    async getTransactions(clientId, accountId, dateFrom = '2019-01-01', bookingStatus = 'booked') {
+    async getTransactions(clientId, accountId, dateFrom = '2018-01-01', bookingStatus = 'both') {
         try {
             const response = await axios.get(`${BRD_API_BASE_URL}/accounts/${accountId}/transactions`, {
                 headers: this.getCommonHeaders(clientId),
