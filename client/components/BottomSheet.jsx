@@ -6,6 +6,7 @@
 import { Modal, Pressable, Text, View } from "react-native";
 
 import { useTranslation } from "react-i18next";
+import { useTheme } from "../context/ThemeContext";
 
 /**
  * Reusable bottom sheet modal used across the profile screen.
@@ -16,6 +17,7 @@ import { useTranslation } from "react-i18next";
  */
 export default function BottomSheet({ visible, onClose, children }) {
     const { t } = useTranslation();
+    const { theme } = useTheme();
 
     return (
         <Modal
@@ -26,22 +28,43 @@ export default function BottomSheet({ visible, onClose, children }) {
         >
             <Pressable
                 className="flex-1"
-                style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+                style={{ backgroundColor: theme.colors.overlay }}
                 onPress={onClose}
             >
                 <View className="flex-1" />
             </Pressable>
             <View
-                className="bg-dark-surface rounded-t-3xl px-6 pb-10 pt-6 border-t border-dark-border"
-                style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+                style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: theme.colors.surface,
+                    borderTopWidth: 1,
+                    borderTopColor: theme.colors.border,
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                    paddingHorizontal: 24,
+                    paddingTop: 24,
+                    paddingBottom: 40,
+                }}
             >
-                <View className="w-10 h-1 rounded-full bg-gray-700 self-center mb-5" />
+                <View
+                    style={{
+                        width: 40,
+                        height: 4,
+                        borderRadius: 2,
+                        backgroundColor: theme.colors.handle,
+                        alignSelf: "center",
+                        marginBottom: 20,
+                    }}
+                />
                 {children}
                 <Pressable
                     className="mt-4 py-3 items-center active:opacity-70"
                     onPress={onClose}
                 >
-                    <Text className="text-gray-500 font-medium text-sm">
+                    <Text style={{ color: theme.colors.textMuted, fontWeight: "500", fontSize: 14 }}>
                         {t("common.cancel")}
                     </Text>
                 </Pressable>
@@ -49,3 +72,4 @@ export default function BottomSheet({ visible, onClose, children }) {
         </Modal>
     );
 }
+

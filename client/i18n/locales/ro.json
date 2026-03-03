@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "loading": "Se încarcă...",
     "error": "Eroare",
@@ -80,7 +80,8 @@
     "transaction": "Tranzacție",
     "connectionError": "Nu s-a putut iniția conexiunea cu BT",
     "connectionSuccess": "Contul BT a fost conectat cu succes!",
-    "authError": "Nu s-a putut finaliza autorizarea"
+    "authError": "Nu s-a putut finaliza autorizarea",
+    "sessionExpired": "Sesiunea bancară BT a expirat. Reconectează-ți contul folosind butonul de mai jos."
   },
   "analytics": {
     "title": "Statistici",
@@ -177,7 +178,8 @@
     "helpFAQ2A": "Da, folosim criptare end-to-end și nu stocăm datele bancare pe serverele noastre.",
     "termsTitle": "Termeni & Condiții",
     "termsContent": "Prin utilizarea Novence, acceptați termenii și condițiile noastre. Aplicația folosește API-ul BT Open Banking pentru a accesa datele financiare. Datele sunt procesate în conformitate cu GDPR. Nu ne asumăm responsabilitatea pentru deciziile financiare luate pe baza informațiilor oferite.",
-    "currencyTitle": "Selectează moneda"
+    "currencyTitle": "Selectează moneda",
+    "selectTheme": "Selectează tema"
   },
   "tabs": {
     "home": "Acasă",
@@ -207,7 +209,8 @@
     "btTokenExchangeFailed": "Autorizarea a eșuat",
     "btGetAccountsFailed": "Nu s-au putut prelua conturile",
     "btGetTransactionsFailed": "Nu s-au putut prelua tranzacțiile",
-    "btGetBalancesFailed": "Nu s-au putut prelua balanțele",
-    "internalServerError": "Eroare internă de server"
+    "btGetBalancesFailed": "Nu s-au putut prelua balan\u021bele",
+    "btSessionExpired": "Sesiunea bancara a expirat. Te rugam sa reconectezi contul.",
+    "internalServerError": "Eroare interna de server"
   }
 }

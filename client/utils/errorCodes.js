@@ -30,6 +30,7 @@ const ERROR_CODE_MAP = {
     BT_GET_ACCOUNTS_FAILED: "serverErrors.btGetAccountsFailed",
     BT_GET_TRANSACTIONS_FAILED: "serverErrors.btGetTransactionsFailed",
     BT_GET_BALANCES_FAILED: "serverErrors.btGetBalancesFailed",
+    BT_SESSION_EXPIRED: "serverErrors.btSessionExpired",
 
     // Generic
     INTERNAL_SERVER_ERROR: "serverErrors.internalServerError",

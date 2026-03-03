@@ -52,10 +52,10 @@ export default function SignIn() {
         <AuthBackground>
             <View className="flex-1 justify-center px-7">
                 {/* Header */}
-                <Text className="text-white text-3xl font-extrabold text-center mb-2">
+                <Text className="text-foreground text-3xl font-extrabold text-center mb-2">
                     {t("auth.welcomeBack")}
                 </Text>
-                <Text className="text-gray-400 text-base text-center mb-10">
+                <Text className="text-text-muted text-base text-center mb-10">
                     {t("auth.signInSubtitle")}
                 </Text>
 
@@ -90,7 +90,7 @@ export default function SignIn() {
 
                 {/* Footer */}
                 <View className="flex-row justify-center mt-8">
-                    <Text className="text-gray-500">{t("auth.noAccount")} </Text>
+                    <Text className="text-text-muted">{t("auth.noAccount")} </Text>
                     <Link href="/(auth)/sign-up" asChild>
                         <Pressable>
                             <Text className="text-primary font-semibold">

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useMemo, useState } from "react";
+import { useTheme } from "../../context/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { Dimensions, Pressable, ScrollView, Text, View } from "react-native";
 import { BarChart, PieChart } from "react-native-gifted-charts";
@@ -16,6 +17,8 @@ import TransactionItem from "../../components/TransactionItem";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function Analytics() {
+    const { isDark, theme } = useTheme();
+    const c = theme.colors;
     const { t } = useTranslation();
     const [selectedPeriod, setSelectedPeriod] = useState(0);
     const { transactions } = useBankData();
@@ -85,17 +88,17 @@ export default function Analytics() {
             frontColor: "#10B981",
             gradientColor: "#059669",
             topLabelComponent: () => (
-                <Text style={{ color: "#6B7280", fontSize: 9, marginBottom: 2 }}>
+                <Text style={{ color: c.chartAxisTextColor, fontSize: 9, marginBottom: 2 }}>
                     {d.value > 0 ? Math.round(d.value) : ""}
                 </Text>
             ),
         }));
-    }, [dailyData]);
+    }, [dailyData, isDark]);
 
     const hasData = filteredTx.length > 0;
 
     return (
-        <View className="flex-1 bg-dark-bg">
+        <View className="flex-1 bg-background">
             <ScrollView
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 24 }}
@@ -103,16 +106,16 @@ export default function Analytics() {
             >
                 {/* Header */}
                 <View className="px-6 pt-14 pb-2">
-                    <Text className="text-white text-2xl font-bold">
+                    <Text className="text-foreground text-2xl font-bold">
                         {t("analytics.title")}
                     </Text>
-                    <Text className="text-gray-500 text-sm mt-1">
+                    <Text className="text-text-muted text-sm mt-1">
                         {t("analytics.subtitle")}
                     </Text>
                 </View>
 
                 {/* Period Selector */}
-                <View className="flex-row mx-6 mt-4 bg-dark-surface rounded-2xl p-1.5 border border-dark-border">
+                <View className="flex-row mx-6 mt-4 bg-surface rounded-2xl p-1.5 border border-border">
                     {PERIODS.map((period, idx) => (
                         <Pressable
                             key={period}
@@ -134,8 +137,8 @@ export default function Analytics() {
                             )}
                             <Text
                                 className={`text-xs font-semibold ${selectedPeriod === idx
-                                    ? "text-white"
-                                    : "text-gray-500"
+                                    ? "text-foreground"
+                                    : "text-text-muted"
                                     }`}
                             >
                                 {period}
@@ -146,7 +149,7 @@ export default function Analytics() {
 
                 {/* Income & Expenses cards */}
                 <View className="flex-row mx-6 mt-5 gap-3">
-                    <View className="flex-1 bg-dark-surface rounded-2xl p-4 border border-dark-border">
+                    <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
                         <View className="flex-row items-center mb-3">
                             <View className="w-8 h-8 rounded-lg bg-success/15 items-center justify-center mr-2">
                                 <Ionicons
@@ -155,7 +158,7 @@ export default function Analytics() {
                                     color="#22C55E"
                                 />
                             </View>
-                            <Text className="text-gray-500 text-xs">
+                            <Text className="text-text-muted text-xs">
                                 {t("analytics.income")}
                             </Text>
                         </View>
@@ -165,11 +168,11 @@ export default function Analytics() {
                                 minimumFractionDigits: 2,
                             })}
                         </Text>
-                        <Text className="text-gray-600 text-xs mt-0.5">
-                            {t("common.currency")}
+                        <Text className="text-text-muted text-xs mt-0.5">
+                            RON
                         </Text>
                     </View>
-                    <View className="flex-1 bg-dark-surface rounded-2xl p-4 border border-dark-border">
+                    <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
                         <View className="flex-row items-center mb-3">
                             <View className="w-8 h-8 rounded-lg bg-expense/15 items-center justify-center mr-2">
                                 <Ionicons
@@ -178,7 +181,7 @@ export default function Analytics() {
                                     color="#F43F5E"
                                 />
                             </View>
-                            <Text className="text-gray-500 text-xs">
+                            <Text className="text-text-muted text-xs">
                                 {t("analytics.expenses")}
                             </Text>
                         </View>
@@ -188,8 +191,8 @@ export default function Analytics() {
                                 minimumFractionDigits: 2,
                             })}
                         </Text>
-                        <Text className="text-gray-600 text-xs mt-0.5">
-                            {t("common.currency")}
+                        <Text className="text-text-muted text-xs mt-0.5">
+                            RON
                         </Text>
                     </View>
                 </View>
@@ -204,10 +207,10 @@ export default function Analytics() {
                                 color="#10B981"
                             />
                         </View>
-                        <Text className="text-white font-bold text-lg text-center">
+                        <Text className="text-foreground font-bold text-lg text-center">
                             {t("analytics.noData")}
                         </Text>
-                        <Text className="text-gray-400 text-sm mt-3 text-center leading-5">
+                        <Text className="text-text-muted text-sm mt-3 text-center leading-5">
                             {t("analytics.noDataDesc")}
                         </Text>
                     </View>
@@ -219,17 +222,17 @@ export default function Analytics() {
                                 <SectionHeader
                                     title={t("analytics.byCategory")}
                                 />
-                                <View className="bg-dark-surface rounded-2xl p-5 border border-dark-border">
+                                <View className="bg-surface rounded-2xl p-5 border border-border">
                                     <View className="items-center mb-5">
                                         <PieChart
                                             data={pieData}
                                             donut
                                             radius={90}
                                             innerRadius={55}
-                                            innerCircleColor="#161621"
+                                            innerCircleColor={c.chartInnerCircle}
                                             centerLabelComponent={() => (
                                                 <View className="items-center">
-                                                    <Text className="text-white text-lg font-bold">
+                                                    <Text className="text-foreground text-lg font-bold">
                                                         {totalExpenses.toLocaleString(
                                                             "ro-RO",
                                                             {
@@ -238,7 +241,7 @@ export default function Analytics() {
                                                             }
                                                         )}
                                                     </Text>
-                                                    <Text className="text-gray-500 text-xs">
+                                                    <Text className="text-text-muted text-xs">
                                                         {t("common.currency")}
                                                     </Text>
                                                 </View>
@@ -250,7 +253,7 @@ export default function Analytics() {
                                     {categoryData.map((cat) => (
                                         <View
                                             key={cat.key}
-                                            className="flex-row items-center py-2.5 border-t border-white/[0.04]"
+                                            className="flex-row items-center py-2.5 border-t border-border"
                                         >
                                             <View
                                                 className="w-8 h-8 rounded-lg items-center justify-center mr-3"
@@ -265,12 +268,12 @@ export default function Analytics() {
                                                 />
                                             </View>
                                             <View className="flex-1">
-                                                <Text className="text-white text-sm font-medium">
+                                                <Text className="text-foreground text-sm font-medium">
                                                     {t(
                                                         `analytics.categories.${cat.key}`
                                                     )}
                                                 </Text>
-                                                <Text className="text-gray-600 text-xs mt-0.5">
+                                                <Text className="text-text-muted text-xs mt-0.5">
                                                     {cat.count}{" "}
                                                     {t(
                                                         "analytics.transactions"
@@ -278,7 +281,7 @@ export default function Analytics() {
                                                 </Text>
                                             </View>
                                             <View className="items-end">
-                                                <Text className="text-white font-semibold text-sm">
+                                                <Text className="text-foreground font-semibold text-sm">
                                                     {cat.total.toLocaleString(
                                                         "ro-RO",
                                                         {
@@ -286,7 +289,7 @@ export default function Analytics() {
                                                         }
                                                     )}
                                                 </Text>
-                                                <Text className="text-gray-500 text-xs mt-0.5">
+                                                <Text className="text-text-muted text-xs mt-0.5">
                                                     {cat.percentage}%
                                                 </Text>
                                             </View>
@@ -302,7 +305,7 @@ export default function Analytics() {
                                 <SectionHeader
                                     title={t("analytics.dailySpending")}
                                 />
-                                <View className="bg-dark-surface rounded-2xl p-5 border border-dark-border">
+                                <View className="bg-surface rounded-2xl p-5 border border-border">
                                     <BarChart
                                         data={barData}
                                         width={SCREEN_WIDTH - 100}
@@ -312,15 +315,9 @@ export default function Analytics() {
                                         noOfSections={4}
                                         barBorderRadius={6}
                                         yAxisColor="transparent"
-                                        xAxisColor="rgba(255,255,255,0.06)"
-                                        yAxisTextStyle={{
-                                            color: "#4B5563",
-                                            fontSize: 10,
-                                        }}
-                                        xAxisLabelTextStyle={{
-                                            color: "#4B5563",
-                                            fontSize: 9,
-                                        }}
+                                        xAxisColor={c.chartAxisColor}
+                                        yAxisTextStyle={{ color: c.chartAxisTextColor, fontSize: 10 }}
+                                        xAxisLabelTextStyle={{ color: c.chartAxisTextColor, fontSize: 9 }}
                                         hideRules
                                         isAnimated
                                         animationDuration={600}
@@ -334,10 +331,10 @@ export default function Analytics() {
                             <SectionHeader
                                 title={t("analytics.recentTransactions")}
                             />
-                            <View className="bg-dark-surface rounded-2xl border border-dark-border overflow-hidden">
+                            <View className="bg-surface rounded-2xl border border-border overflow-hidden">
                                 {filteredTx.slice(0, 15).map((tx, idx) => (
                                     <TransactionItem
-                                        key={tx.transactionId || idx}
+                                        key={`${tx.connectionId || ''}-${tx.transactionId || idx}`}
                                         tx={tx}
                                         isLast={
                                             idx ===

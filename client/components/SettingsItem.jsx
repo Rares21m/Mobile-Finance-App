@@ -4,8 +4,8 @@
  */
 
 import { Pressable, Text, View } from "react-native";
-
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../context/ThemeContext";
 
 /**
  * A single settings row used in profile screen settings sections.
@@ -31,9 +31,11 @@ export default function SettingsItem({
     onPress,
     isLast = false,
 }) {
+    const { theme } = useTheme();
+    const c = theme.colors;
     return (
         <Pressable
-            className={`flex-row items-center px-4 py-4 active:opacity-70 ${!isLast ? "border-b border-white/[0.04]" : ""
+            className={`flex-row items-center px-4 py-4 active:opacity-70 ${!isLast ? "border-b border-border" : ""
                 }`}
             onPress={onPress}
             disabled={!onPress && !rightComponent}
@@ -44,15 +46,15 @@ export default function SettingsItem({
             >
                 <Ionicons name={icon} size={18} color={iconColor} />
             </View>
-            <Text className="flex-1 text-white text-sm font-medium">
+            <Text className="flex-1 text-foreground text-sm font-medium">
                 {label}
             </Text>
             {rightComponent ? rightComponent : null}
             {value && !rightComponent && (
-                <Text className="text-gray-600 text-sm mr-2">{value}</Text>
+                <Text className="text-text-muted text-sm mr-2">{value}</Text>
             )}
             {chevron && (
-                <Ionicons name="chevron-forward" size={16} color="#3B3B4F" />
+                <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
             )}
         </Pressable>
     );

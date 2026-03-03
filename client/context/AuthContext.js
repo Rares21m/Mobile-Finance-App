@@ -5,7 +5,7 @@
  */
 
 import { useRouter, useSegments } from "expo-router";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../utils/secureStorage";
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../services/api";
 import CircularLoading from "../components/CircularLoading";

@@ -5,11 +5,17 @@
  * In __DEV__ mode, mock expense transactions are injected for demo purposes.
  */
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import api from "../services/api";
 import { useAuth } from "./AuthContext";
 
 const BankContext = createContext(null);
+
+/** Checks if an Axios error is a BT session expiry (HTTP 401 with BT_SESSION_EXPIRED) */
+function isBtSessionExpired(err) {
+    return err?.response?.status === 401 &&
+        err?.response?.data?.error === "BT_SESSION_EXPIRED";
+}
 
 // Generate realistic mock expense transactions
 // Target: 15,501.55 (income) - 15,016.00 (expenses) = 485.55 RON (balance)
@@ -154,6 +160,8 @@ export function BankProvider({ children }) {
     const [accounts, setAccounts] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(false);
+    const isRefreshing = useRef(false); // Guard against concurrent refresh calls
+    const [sessionExpired, setSessionExpired] = useState(false); // BT session needs reconnect
 
     // Refresh data on login/logout
     useEffect(() => {
@@ -169,133 +177,162 @@ export function BankProvider({ children }) {
 
     async function refreshAllData() {
         if (!token) return;
+        if (isRefreshing.current) return; // Prevent concurrent calls
+        isRefreshing.current = true;
+        setSessionExpired(false);
 
         setLoading(true);
         try {
-            // TODO: Implement GET /api/bt/user-connections to fetch all connections
-            // For now, data is updated manually via addConnection
-            if (__DEV__) console.log("Refreshing bank data...");
+            // Fetch all active connections saved in the DB for this user.
+            // /bt/connections queries BankConnection table for ALL banks (BT + BRD), not just BT.
+            const btRes = await api.get("/bt/connections").catch(() => ({ data: { connections: [] } }));
+
+            const savedConnections = btRes.data.connections || [];
+
+            if (__DEV__) console.log(`Refreshing bank data for ${savedConnections.length} connection(s)…`);
+
+            // Re-load accounts + transactions for each connection
+            for (const conn of savedConnections) {
+                try {
+                    await addConnection(conn.id, conn.bankName);
+                } catch (connErr) {
+                    if (isBtSessionExpired(connErr)) {
+                        // Connection expired — remove it from state, prompt reconnect
+                        setConnections(prev => prev.filter(c => c.id !== conn.id));
+                        setSessionExpired(true);
+                    } else if (connErr?.response?.status === 401) {
+                        // Fallback: server returned 401 but maybe payload is different
+                        if (__DEV__) console.warn(`Connection ${conn.id} returned 401 but didn't match BT_SESSION_EXPIRED. Payload:`, connErr.response?.data);
+                        setConnections(prev => prev.filter(c => c.id !== conn.id));
+                        setSessionExpired(true);
+                    } else {
+                        if (__DEV__) console.error("Error loading connection:", conn.id, connErr.response?.data || connErr.message);
+                    }
+                }
+            }
         } catch (err) {
             if (__DEV__) console.error("Error refreshing bank data:", err);
         } finally {
             setLoading(false);
+            isRefreshing.current = false;
         }
     }
 
-    async function addConnection(connectionId) {
+    async function addConnection(connectionId, bankName = "BT") {
         try {
-            const res = await api.get(`/bt/accounts/${connectionId}`);
-            const accountsList = res.data.accounts || [];
+            const today = new Date();
+            const dateFrom = new Date(today);
+            dateFrom.setDate(today.getDate() - 89); // Max 90 days
+            const dateFromStr = dateFrom.toISOString().slice(0, 10);
 
-            // Fetch balances for each account
-            const accountsWithBalances = await Promise.all(
-                accountsList.map(async (account) => {
-                    try {
-                        const balRes = await api.get(`/bt/balances/${connectionId}/${account.resourceId}`);
-                        return {
-                            ...account,
-                            balances: balRes.data.balances || [],
-                            connectionId
-                        };
-                    } catch (err) {
-                        if (__DEV__) console.error(`Failed to fetch balances for ${account.resourceId}:`, err);
-                        return { ...account, connectionId };
-                    }
-                })
+            // Determine correct endpoint based on bankName (lowercase)
+            const endpoint = bankName.toLowerCase() === 'brd' ? `/brd/connection-data/${connectionId}` : `/bt/connection-data/${connectionId}`;
+
+            // Single server call: accounts + balances + transactions
+            const res = await api.get(
+                `${endpoint}?dateFrom=${dateFromStr}&bookingStatus=booked`
             );
 
-            // Fetch transactions for the first account
-            if (accountsWithBalances.length > 0) {
-                const firstAccount = accountsWithBalances[0];
-                const today = new Date();
-                const dateFrom = new Date(today);
-                dateFrom.setDate(today.getDate() - 89); // BT Sandbox max = 90 days
-                const dateFromStr = dateFrom.toISOString().slice(0, 10);
+            const accountsWithBalances = (res.data.accounts || []).map(acc => ({
+                ...acc,
+                connectionId,
+            }));
+            const rawTransactions = res.data.transactions || [];
 
-                try {
-                    const txRes = await api.get(
-                        `/bt/transactions/${connectionId}/${firstAccount.resourceId}?dateFrom=${dateFromStr}&bookingStatus=booked`
-                    );
-                    const rawTransactions = txRes.data.transactions?.booked || [];
-
-                    // Debug: log transaction info (dev only)
-                    if (__DEV__ && rawTransactions.length > 0) {
-                        const allKeys = new Set();
-                        rawTransactions.forEach(tx => Object.keys(tx).forEach(k => allKeys.add(k)));
-                        console.log(`BT: ${rawTransactions.length} transactions, keys:`, [...allKeys]);
-                    }
-
-                    // Normalize: BT PSD2 (Berlin Group) returns all amounts as positive
-                    // BT Sandbox doesn't provide creditDebitIndicator, so we use account IBANs
-                    const userIban = firstAccount.iban; // User's account IBAN
-
-                    const realTransactions = rawTransactions.map(tx => {
-                        const amount = parseFloat(tx.transactionAmount?.amount || 0);
-                        const indicator = tx.creditDebitIndicator;
-
-                        // Determine if transaction is debit (expense) or credit (income)
-                        let isDebit = false;
-
-                        // Method 1: Check creditDebitIndicator (standard Berlin Group field)
-                        if (indicator === "DBIT" || indicator === "Debit" || indicator === "debit") {
-                            isDebit = true;
-                        }
-                        // Method 2: If amount is already negative, it's a debit
-                        else if (amount < 0) {
-                            isDebit = true;
-                        }
-                        // Method 3: BT Sandbox specific - compare IBANs
-                        // If user's IBAN is in debtorAccount → user pays (expense/debit)
-                        // If user's IBAN is in creditorAccount → user receives (income/credit)
-                        else if (tx.debtorAccount?.iban === userIban) {
-                            isDebit = true;
-                        }
-                        else if (tx.creditorAccount?.iban === userIban) {
-                            isDebit = false; // It's income/credit
-                        }
-                        // Method 4: Check proprietary bank codes if present
-                        else if (tx.proprietaryBankTransactionCode === "DEBIT" ||
-                            tx.bankTransactionCode === "PMNT-ICDT-ESCT") {
-                            isDebit = true;
-                        }
-
-                        const finalAmount = isDebit ? (-Math.abs(amount)).toString() : Math.abs(amount).toString();
-
-                        return {
-                            ...tx,
-                            transactionAmount: {
-                                ...tx.transactionAmount,
-                                amount: finalAmount,
-                            },
-                            accountId: firstAccount.resourceId,
-                            connectionId,
-                        };
-                    });
-
-                    // In dev mode, inject mock expenses for demo purposes
-                    let allTransactions = realTransactions;
-                    if (__DEV__) {
-                        const mockExpenses = generateMockExpenses(userIban);
-                        allTransactions = [...realTransactions, ...mockExpenses];
-                    }
-
-                    // Replace (not append) to avoid duplication on re-connect
-                    setTransactions(allTransactions);
-                } catch (txErr) {
-                    if (__DEV__) console.error("Fetch transactions error:", txErr);
-                }
+            // Debug: log transaction info (dev only)
+            if (__DEV__ && rawTransactions.length > 0) {
+                const allKeys = new Set();
+                rawTransactions.forEach(tx => Object.keys(tx).forEach(k => allKeys.add(k)));
+                console.log(`BT: ${rawTransactions.length} transactions, keys:`, [...allKeys]);
             }
 
-            // Replace (not append) to avoid duplication on re-connect
-            setAccounts(accountsWithBalances);
-            setConnections((prev) => [
-                ...prev,
-                { id: connectionId, bankName: "BT", status: "active" },
-            ]);
+            // Normalize debit/credit — BT Sandbox returns all amounts positive
+            const userIban = accountsWithBalances[0]?.iban;
+
+            const realTransactions = rawTransactions.map(tx => {
+                const amount = parseFloat(tx.transactionAmount?.amount || 0);
+                const indicator = tx.creditDebitIndicator;
+
+                let isDebit = false;
+                if (indicator === "DBIT" || indicator === "Debit" || indicator === "debit") {
+                    isDebit = true;
+                } else if (amount < 0) {
+                    isDebit = true;
+                } else if (tx.debtorAccount?.iban === userIban) {
+                    isDebit = true;
+                } else if (tx.creditorAccount?.iban === userIban) {
+                    isDebit = false;
+                } else if (tx.proprietaryBankTransactionCode === "DEBIT" ||
+                    tx.bankTransactionCode === "PMNT-ICDT-ESCT") {
+                    isDebit = true;
+                }
+
+                return {
+                    ...tx,
+                    transactionAmount: {
+                        ...tx.transactionAmount,
+                        amount: isDebit ? (-Math.abs(amount)).toString() : Math.abs(amount).toString(),
+                    },
+                    accountId: accountsWithBalances[0]?.resourceId,
+                    connectionId,
+                };
+            });
+
+            // In dev mode, inject mock expenses for demo purposes — only for BT (BRD has its own sandbox data)
+            let allTransactions = realTransactions;
+            if (__DEV__ && userIban && bankName.toLowerCase() === 'bt') {
+                const mockExpenses = generateMockExpenses(userIban);
+                allTransactions = [...realTransactions, ...mockExpenses];
+            }
+
+            if (__DEV__) {
+                const totalExpenses = allTransactions
+                    .filter(tx => parseFloat(tx.transactionAmount?.amount) < 0)
+                    .reduce((s, tx) => s + Math.abs(parseFloat(tx.transactionAmount.amount)), 0);
+                console.log(`Mock + real expenses total: ${totalExpenses.toFixed(2)} RON`);
+            }
+
+            setConnections(prev => {
+                // Dacă este o conexiune BRD nouă, eliminăm toate conexiunile BRD vechi din state
+                // (serverul le-a marcat deja ca 'replaced' în DB la initConsent)
+                const filtered = bankName.toLowerCase() === 'brd'
+                    ? prev.filter(c => c.bankName !== 'BRD')
+                    : prev.filter(c => c.id !== connectionId);
+                return [...filtered, { id: connectionId, bankName, status: "active" }];
+            });
+
+            setTransactions(prev => {
+                if (bankName.toLowerCase() === 'brd') {
+                    // Eliminăm TOATE tranzacțiile BRD vechi (indiferent de connectionId)
+                    const nonBRD = prev.filter(tx => {
+                        const conn = connections.find(c => c.id === tx.connectionId);
+                        return !conn || conn.bankName !== 'BRD';
+                    });
+                    return [...nonBRD, ...allTransactions];
+                }
+                const others = prev.filter(tx => tx.connectionId !== connectionId);
+                return [...others, ...allTransactions];
+            });
+
+            setAccounts(prev => {
+                if (bankName.toLowerCase() === 'brd') {
+                    // Eliminăm TOATE conturile BRD vechi (indiferent de connectionId)
+                    const nonBRD = prev.filter(acc => {
+                        const conn = connections.find(c => c.id === acc.connectionId);
+                        return !conn || conn.bankName !== 'BRD';
+                    });
+                    return [...nonBRD, ...accountsWithBalances];
+                }
+                const others = prev.filter(acc => acc.connectionId !== connectionId);
+                return [...others, ...accountsWithBalances];
+            });
 
             return accountsWithBalances;
         } catch (err) {
-            if (__DEV__) console.error("Error adding connection:", err);
+            // Re-throw so caller can handle session expiry separately
+            if (!isBtSessionExpired(err)) {
+                if (__DEV__) console.error("Error adding connection (details):", err.response?.data || err.message);
+            }
             throw err;
         }
     }
@@ -324,6 +361,7 @@ export function BankProvider({ children }) {
                 accounts,
                 transactions,
                 loading,
+                sessionExpired,
                 refreshAllData,
                 addConnection,
                 getTotalBalance,

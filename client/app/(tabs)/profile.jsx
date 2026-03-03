@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import { getErrorKey } from "../../utils/errorCodes";
 import BottomSheet from "../../components/BottomSheet";
 import SectionHeader from "../../components/SectionHeader";
@@ -25,12 +26,14 @@ import GradientButton from "../../components/GradientButton";
 export default function Profile() {
     const { t, i18n } = useTranslation();
     const { user, logout, updateUser } = useAuth();
+    const { themeMode, setTheme, isDark, theme } = useTheme();
+    const c = theme.colors;
 
     // Modal visibility states
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [securityModalVisible, setSecurityModalVisible] = useState(false);
     const [langModalVisible, setLangModalVisible] = useState(false);
-    const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+    const [themeModalVisible, setThemeModalVisible] = useState(false);
     const [helpModalVisible, setHelpModalVisible] = useState(false);
     const [termsModalVisible, setTermsModalVisible] = useState(false);
     const [aboutModalVisible, setAboutModalVisible] = useState(false);
@@ -48,7 +51,6 @@ export default function Profile() {
 
     // Preferences state
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-    const [selectedCurrency, setSelectedCurrency] = useState("RON");
 
     const currentLang = i18n.language?.startsWith("ro") ? "ro" : "en";
 
@@ -128,13 +130,6 @@ export default function Profile() {
             .slice(0, 2)
         : "U";
 
-    const CURRENCIES = [
-        { code: "RON", symbol: "lei", flag: "🇷🇴" },
-        { code: "EUR", symbol: "€", flag: "🇪🇺" },
-        { code: "USD", symbol: "$", flag: "🇺🇸" },
-        { code: "GBP", symbol: "£", flag: "🇬🇧" },
-    ];
-
     const SETTINGS_SECTIONS = [
         {
             title: t("profile.sectionAccount"),
@@ -168,11 +163,11 @@ export default function Profile() {
                             value={notificationsEnabled}
                             onValueChange={setNotificationsEnabled}
                             trackColor={{
-                                false: "#2A2A3C",
+                                false: c.border,
                                 true: "rgba(16,185,129,0.35)",
                             }}
                             thumbColor={
-                                notificationsEnabled ? "#10B981" : "#6B7280"
+                                notificationsEnabled ? "#10B981" : c.textMuted
                             }
                         />
                     ),
@@ -193,29 +188,14 @@ export default function Profile() {
                     onPress: () => setLangModalVisible(true),
                 },
                 {
-                    key: "currency",
-                    icon: "cash-outline",
-                    label: t("profile.currency"),
-                    value: selectedCurrency,
-                    chevron: true,
-                    iconColor: "#22C55E",
-                    iconBg: "rgba(34,197,94,0.12)",
-                    onPress: () => setCurrencyModalVisible(true),
-                },
-                {
                     key: "theme",
                     icon: "moon-outline",
                     label: t("profile.theme"),
-                    value: "Dark",
+                    value: isDark ? "Dark" : "Light",
+                    chevron: true,
                     iconColor: "#8B5CF6",
                     iconBg: "rgba(139,92,246,0.12)",
-                    rightComponent: (
-                        <View className="bg-primary/[0.12] px-3 py-1 rounded-lg">
-                            <Text className="text-primary text-xs font-semibold">
-                                Dark
-                            </Text>
-                        </View>
-                    ),
+                    onPress: () => setThemeModalVisible(true),
                 },
             ],
         },
@@ -255,7 +235,7 @@ export default function Profile() {
     ];
 
     return (
-        <View className="flex-1 bg-dark-bg">
+        <View className="flex-1 bg-background">
             <ScrollView
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 40 }}
@@ -263,13 +243,13 @@ export default function Profile() {
             >
                 {/* Header */}
                 <View className="px-6 pt-14 pb-2">
-                    <Text className="text-white text-2xl font-bold">
+                    <Text className="text-foreground text-2xl font-bold">
                         {t("profile.title")}
                     </Text>
                 </View>
 
                 {/* User Info Card */}
-                <View className="mx-6 mt-4 bg-dark-surface rounded-3xl p-5 flex-row items-center border border-dark-border">
+                <View className="mx-6 mt-4 bg-surface rounded-3xl p-5 flex-row items-center border border-border">
                     <View className="w-14 h-14 rounded-2xl overflow-hidden mr-4">
                         <LinearGradient
                             colors={["#10B981", "#6366F1"]}
@@ -282,21 +262,22 @@ export default function Profile() {
                                 justifyContent: "center",
                             }}
                         >
-                            <Text className="text-white text-lg font-bold">
+                            <Text className="text-foreground text-lg font-bold">
                                 {initials}
                             </Text>
                         </LinearGradient>
                     </View>
                     <View className="flex-1">
-                        <Text className="text-white text-lg font-bold">
+                        <Text className="text-foreground text-lg font-bold">
                             {user?.name || t("profile.defaultUser")}
                         </Text>
-                        <Text className="text-gray-500 text-sm mt-0.5">
+                        <Text className="text-text-muted text-sm mt-0.5">
                             {user?.email || ""}
                         </Text>
                     </View>
                     <Pressable
-                        className="w-9 h-9 rounded-xl bg-white/[0.04] items-center justify-center active:opacity-70"
+                        className="w-9 h-9 rounded-xl items-center justify-center active:opacity-70"
+                        style={{ backgroundColor: c.card }}
                         onPress={openEditModal}
                     >
                         <Ionicons
@@ -313,7 +294,7 @@ export default function Profile() {
                         <View className="px-6">
                             <SectionHeader title={section.title} />
                         </View>
-                        <View className="mx-6 bg-dark-surface rounded-2xl border border-dark-border overflow-hidden">
+                        <View className="mx-6 bg-surface rounded-2xl border border-border overflow-hidden">
                             {section.items.map((item, idx) => (
                                 <SettingsItem
                                     key={item.key}
@@ -337,7 +318,7 @@ export default function Profile() {
                     className="mx-6 mt-8 rounded-2xl overflow-hidden active:opacity-80"
                     onPress={handleLogout}
                 >
-                    <View className="bg-expense/[0.08] rounded-2xl py-4 items-center flex-row justify-center border border-expense/15">
+                    <View className="bg-expense/10 rounded-2xl py-4 items-center flex-row justify-center border border-expense/15">
                         <Ionicons
                             name="log-out-outline"
                             size={18}
@@ -357,37 +338,37 @@ export default function Profile() {
                 visible={editModalVisible}
                 onClose={() => setEditModalVisible(false)}
             >
-                <Text className="text-white text-xl font-bold mb-6">
+                <Text className="text-foreground text-xl font-bold mb-6">
                     {t("profile.editProfileTitle")}
                 </Text>
 
-                <View className="bg-dark-bg rounded-xl px-4 py-3.5 mb-3 border border-dark-border flex-row items-center">
+                <View className="bg-background rounded-xl px-4 py-3.5 mb-3 border border-border flex-row items-center">
                     <Ionicons
                         name="person-outline"
                         size={18}
                         color="#6B7280"
                     />
                     <TextInput
-                        className="flex-1 text-white ml-3 text-sm"
+                        className="flex-1 text-foreground ml-3 text-sm"
                         value={editName}
                         onChangeText={setEditName}
                         placeholder={t("profile.namePlaceholder")}
-                        placeholderTextColor="#4B5563"
+                        placeholderTextColor={c.placeholder}
                     />
                 </View>
 
-                <View className="bg-dark-bg rounded-xl px-4 py-3.5 mb-6 border border-dark-border flex-row items-center">
+                <View className="bg-background rounded-xl px-4 py-3.5 mb-6 border border-border flex-row items-center">
                     <Ionicons
                         name="mail-outline"
                         size={18}
                         color="#6B7280"
                     />
                     <TextInput
-                        className="flex-1 text-white ml-3 text-sm"
+                        className="flex-1 text-foreground ml-3 text-sm"
                         value={editEmail}
                         onChangeText={setEditEmail}
                         placeholder={t("profile.emailPlaceholder")}
-                        placeholderTextColor="#4B5563"
+                        placeholderTextColor={c.placeholder}
                         keyboardType="email-address"
                         autoCapitalize="none"
                     />
@@ -405,54 +386,54 @@ export default function Profile() {
                 visible={securityModalVisible}
                 onClose={() => setSecurityModalVisible(false)}
             >
-                <Text className="text-white text-xl font-bold mb-6">
+                <Text className="text-foreground text-xl font-bold mb-6">
                     {t("profile.securityTitle")}
                 </Text>
 
-                <View className="bg-dark-bg rounded-xl px-4 py-3.5 mb-3 border border-dark-border flex-row items-center">
+                <View className="bg-background rounded-xl px-4 py-3.5 mb-3 border border-border flex-row items-center">
                     <Ionicons
                         name="lock-closed-outline"
                         size={18}
                         color="#6B7280"
                     />
                     <TextInput
-                        className="flex-1 text-white ml-3 text-sm"
+                        className="flex-1 text-foreground ml-3 text-sm"
                         value={currentPassword}
                         onChangeText={setCurrentPassword}
                         placeholder={t("profile.currentPassword")}
-                        placeholderTextColor="#4B5563"
+                        placeholderTextColor={c.placeholder}
                         secureTextEntry
                     />
                 </View>
 
-                <View className="bg-dark-bg rounded-xl px-4 py-3.5 mb-3 border border-dark-border flex-row items-center">
+                <View className="bg-background rounded-xl px-4 py-3.5 mb-3 border border-border flex-row items-center">
                     <Ionicons
                         name="key-outline"
                         size={18}
                         color="#6B7280"
                     />
                     <TextInput
-                        className="flex-1 text-white ml-3 text-sm"
+                        className="flex-1 text-foreground ml-3 text-sm"
                         value={newPassword}
                         onChangeText={setNewPassword}
                         placeholder={t("profile.newPassword")}
-                        placeholderTextColor="#4B5563"
+                        placeholderTextColor={c.placeholder}
                         secureTextEntry
                     />
                 </View>
 
-                <View className="bg-dark-bg rounded-xl px-4 py-3.5 mb-6 border border-dark-border flex-row items-center">
+                <View className="bg-background rounded-xl px-4 py-3.5 mb-6 border border-border flex-row items-center">
                     <Ionicons
                         name="key-outline"
                         size={18}
                         color="#6B7280"
                     />
                     <TextInput
-                        className="flex-1 text-white ml-3 text-sm"
+                        className="flex-1 text-foreground ml-3 text-sm"
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                         placeholder={t("profile.confirmPassword")}
-                        placeholderTextColor="#4B5563"
+                        placeholderTextColor={c.placeholder}
                         secureTextEntry
                     />
                 </View>
@@ -474,19 +455,19 @@ export default function Profile() {
                 visible={langModalVisible}
                 onClose={() => setLangModalVisible(false)}
             >
-                <Text className="text-white text-xl font-bold mb-6">
+                <Text className="text-foreground text-xl font-bold mb-6">
                     {t("profile.selectLanguage")}
                 </Text>
 
                 <Pressable
                     className={`flex-row items-center p-4 rounded-xl mb-2 border ${currentLang === "ro"
                         ? "bg-primary/[0.08] border-primary/30"
-                        : "bg-dark-bg border-dark-border"
+                        : "bg-background border-border"
                         }`}
                     onPress={() => handleLanguageChange("ro")}
                 >
                     <Text className="text-2xl mr-3">🇷🇴</Text>
-                    <Text className="text-white font-medium flex-1">
+                    <Text className="text-foreground font-medium flex-1">
                         {t("profile.romanian")}
                     </Text>
                     {currentLang === "ro" && (
@@ -501,12 +482,12 @@ export default function Profile() {
                 <Pressable
                     className={`flex-row items-center p-4 rounded-xl border ${currentLang === "en"
                         ? "bg-primary/[0.08] border-primary/30"
-                        : "bg-dark-bg border-dark-border"
+                        : "bg-background border-border"
                         }`}
                     onPress={() => handleLanguageChange("en")}
                 >
                     <Text className="text-2xl mr-3">🇬🇧</Text>
-                    <Text className="text-white font-medium flex-1">
+                    <Text className="text-foreground font-medium flex-1">
                         {t("profile.english")}
                     </Text>
                     {currentLang === "en" && (
@@ -519,35 +500,45 @@ export default function Profile() {
                 </Pressable>
             </BottomSheet>
 
-            {/* ===== 4. CURRENCY PICKER ===== */}
+            {/* ===== 4. THEME PICKER ===== */}
             <BottomSheet
-                visible={currencyModalVisible}
-                onClose={() => setCurrencyModalVisible(false)}
+                visible={themeModalVisible}
+                onClose={() => setThemeModalVisible(false)}
             >
-                <Text className="text-white text-xl font-bold mb-6">
-                    {t("profile.currencyTitle")}
+                <Text className="text-foreground text-xl font-bold mb-6">
+                    {t("profile.selectTheme")}
                 </Text>
 
-                {CURRENCIES.map((cur) => (
+                {[
+                    { mode: "dark", label: "Dark", icon: "moon", desc: "Dark background, easy on the eyes" },
+                    { mode: "light", label: "Light", icon: "sunny", desc: "Bright, clean interface" },
+                ].map((opt) => (
                     <Pressable
-                        key={cur.code}
-                        className={`flex-row items-center p-4 rounded-xl mb-2 border ${selectedCurrency === cur.code
+                        key={opt.mode}
+                        className={`flex-row items-center p-4 rounded-xl mb-2 border ${themeMode === opt.mode
                             ? "bg-primary/[0.08] border-primary/30"
-                            : "bg-dark-bg border-dark-border"
+                            : "bg-background border-border"
                             }`}
                         onPress={() => {
-                            setSelectedCurrency(cur.code);
-                            setCurrencyModalVisible(false);
+                            setTheme(opt.mode);
+                            setThemeModalVisible(false);
                         }}
                     >
-                        <Text className="text-2xl mr-3">{cur.flag}</Text>
-                        <Text className="text-white font-medium flex-1">
-                            {cur.code}
-                        </Text>
-                        <Text className="text-gray-500 text-sm mr-2">
-                            {cur.symbol}
-                        </Text>
-                        {selectedCurrency === cur.code && (
+                        <View
+                            className="w-10 h-10 rounded-xl items-center justify-center mr-3"
+                            style={{ backgroundColor: themeMode === opt.mode ? "rgba(16,185,129,0.12)" : c.card }}
+                        >
+                            <Ionicons
+                                name={opt.icon}
+                                size={20}
+                                color={themeMode === opt.mode ? "#10B981" : "#6B7280"}
+                            />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="text-foreground font-medium">{opt.label}</Text>
+                            <Text className="text-text-muted text-xs mt-0.5">{opt.desc}</Text>
+                        </View>
+                        {themeMode === opt.mode && (
                             <Ionicons
                                 name="checkmark-circle"
                                 size={22}
@@ -558,22 +549,22 @@ export default function Profile() {
                 ))}
             </BottomSheet>
 
-            {/* ===== 5. HELP & SUPPORT ===== */}
+            {/* ===== 6. HELP & SUPPORT ===== */}
             <BottomSheet
                 visible={helpModalVisible}
                 onClose={() => setHelpModalVisible(false)}
             >
-                <Text className="text-white text-xl font-bold mb-4">
+                <Text className="text-foreground text-xl font-bold mb-4">
                     {t("profile.helpTitle")}
                 </Text>
 
-                <Text className="text-gray-400 text-sm mb-4">
+                <Text className="text-text-muted text-sm mb-4">
                     {t("profile.helpDesc")}
                 </Text>
 
                 {/* Email contact */}
                 <Pressable
-                    className="flex-row items-center bg-dark-bg p-4 rounded-xl mb-4 border border-dark-border active:opacity-70"
+                    className="flex-row items-center bg-background p-4 rounded-xl mb-4 border border-border active:opacity-70"
                     onPress={() =>
                         Linking.openURL(`mailto:${t("profile.helpEmail")}`)
                     }
@@ -592,24 +583,24 @@ export default function Profile() {
                 </Pressable>
 
                 {/* FAQ */}
-                <Text className="text-white font-semibold text-sm mb-3">
+                <Text className="text-foreground font-semibold text-sm mb-3">
                     {t("profile.helpFAQ")}
                 </Text>
 
-                <View className="bg-dark-bg rounded-xl border border-dark-border overflow-hidden mb-1">
-                    <View className="p-4 border-b border-white/[0.04]">
-                        <Text className="text-white text-sm font-medium mb-1">
+                <View className="bg-background rounded-xl border border-border overflow-hidden mb-1">
+                    <View className="p-4 border-b border-foreground/10">
+                        <Text className="text-foreground text-sm font-medium mb-1">
                             {t("profile.helpFAQ1Q")}
                         </Text>
-                        <Text className="text-gray-500 text-xs leading-5">
+                        <Text className="text-text-muted text-xs leading-5">
                             {t("profile.helpFAQ1A")}
                         </Text>
                     </View>
                     <View className="p-4">
-                        <Text className="text-white text-sm font-medium mb-1">
+                        <Text className="text-foreground text-sm font-medium mb-1">
                             {t("profile.helpFAQ2Q")}
                         </Text>
-                        <Text className="text-gray-500 text-xs leading-5">
+                        <Text className="text-text-muted text-xs leading-5">
                             {t("profile.helpFAQ2A")}
                         </Text>
                     </View>
@@ -621,12 +612,12 @@ export default function Profile() {
                 visible={termsModalVisible}
                 onClose={() => setTermsModalVisible(false)}
             >
-                <Text className="text-white text-xl font-bold mb-4">
+                <Text className="text-foreground text-xl font-bold mb-4">
                     {t("profile.termsTitle")}
                 </Text>
 
-                <View className="bg-dark-bg rounded-xl p-4 border border-dark-border">
-                    <Text className="text-gray-400 text-sm leading-6">
+                <View className="bg-background rounded-xl p-4 border border-border">
+                    <Text className="text-text-muted text-sm leading-6">
                         {t("profile.termsContent")}
                     </Text>
                 </View>
@@ -651,33 +642,33 @@ export default function Profile() {
                                 justifyContent: "center",
                             }}
                         >
-                            <Text className="text-white text-2xl font-bold">
+                            <Text className="text-foreground text-2xl font-bold">
                                 N
                             </Text>
                         </LinearGradient>
                     </View>
-                    <Text className="text-white text-xl font-bold">
+                    <Text className="text-foreground text-xl font-bold">
                         Novence
                     </Text>
-                    <Text className="text-gray-500 text-sm mt-1">
+                    <Text className="text-text-muted text-sm mt-1">
                         {t("profile.version")}
                     </Text>
                 </View>
 
-                <Text className="text-gray-400 text-sm leading-6 text-center mb-5">
+                <Text className="text-text-muted text-sm leading-6 text-center mb-5">
                     {t("profile.aboutDesc")}
                 </Text>
 
-                <View className="bg-dark-bg rounded-xl p-4 border border-dark-border">
+                <View className="bg-background rounded-xl p-4 border border-border">
                     <View className="flex-row items-center mb-2">
                         <Ionicons
                             name="code-slash"
                             size={16}
                             color="#6366F1"
                         />
-                        <Text className="text-gray-400 text-sm ml-2">
+                        <Text className="text-text-muted text-sm ml-2">
                             {t("profile.aboutDeveloper")}:{" "}
-                            <Text className="text-white font-medium">
+                            <Text className="text-foreground font-medium">
                                 {t("profile.aboutDeveloperName")}
                             </Text>
                         </Text>
@@ -688,7 +679,7 @@ export default function Profile() {
                             size={16}
                             color="#10B981"
                         />
-                        <Text className="text-gray-400 text-sm ml-2">
+                        <Text className="text-text-muted text-sm ml-2">
                             {t("profile.aboutTech")}
                         </Text>
                     </View>

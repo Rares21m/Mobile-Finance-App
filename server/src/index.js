@@ -10,6 +10,7 @@ const cors = require("cors");
 
 const authRoutes = require("./routes/auth.routes");
 const btRoutes = require("./routes/bt.routes");
+const brdRoutes = require("./routes/brd.routes");
 const logger = require("./config/logger");
 
 const app = express();
@@ -18,10 +19,12 @@ const PORT = process.env.PORT || 3000;
 // ─── Middleware ───────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ─── Routes ──────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/bt", btRoutes);
+app.use("/api/brd", brdRoutes);
 
 // ─── Health Check ────────────────────────────────────────────
 app.get("/api/health", (req, res) => {

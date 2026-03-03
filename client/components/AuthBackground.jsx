@@ -8,6 +8,7 @@ import { Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { useTheme } from "../context/ThemeContext";
 
 /**
  * Shared background layout for all auth screens (sign-in, sign-up, welcome).
@@ -17,9 +18,11 @@ import { router } from "expo-router";
  * @param {boolean}   [showBack]     - Show back button (default: true)
  */
 export default function AuthBackground({ children, showBack = true }) {
+    const { theme } = useTheme();
+    const c = theme.colors;
     return (
         <LinearGradient
-            colors={["#0C0C14", "#0A1A14", "#0C0C14"]}
+            colors={c.authBgGradient}
             style={{ flex: 1 }}
         >
             {/* Decorative shapes */}
@@ -31,7 +34,7 @@ export default function AuthBackground({ children, showBack = true }) {
                     width: 260,
                     height: 260,
                     borderRadius: 130,
-                    backgroundColor: "rgba(16,185,129,0.08)",
+                    backgroundColor: c.authDecorCircle1,
                 }}
             />
             <View
@@ -42,20 +45,20 @@ export default function AuthBackground({ children, showBack = true }) {
                     width: 220,
                     height: 220,
                     borderRadius: 110,
-                    backgroundColor: "rgba(99,102,241,0.06)",
+                    backgroundColor: c.authDecorCircle2,
                 }}
             />
 
             {/* Back button */}
             {showBack && (
                 <Pressable
-                    className="absolute top-14 left-5 z-10 w-10 h-10 rounded-full bg-white/5 items-center justify-center active:opacity-70"
+                    className="absolute top-14 left-5 z-10 w-10 h-10 rounded-full bg-foreground/5 items-center justify-center active:opacity-70"
                     onPress={() => router.back()}
                 >
                     <Ionicons
                         name="chevron-back"
                         size={22}
-                        color="#9CA3AF"
+                        color={c.textMuted}
                     />
                 </Pressable>
             )}

@@ -33,15 +33,15 @@ export default function GlassInput({
 
     return (
         <>
-            <Text className="text-gray-300 text-sm font-medium mb-2">
+            <Text className="text-text-muted text-sm font-medium mb-2">
                 {label}
             </Text>
-            <View className="flex-row items-center bg-white/[0.06] rounded-2xl border border-white/[0.08] mb-1 px-4">
+            <View className="flex-row items-center bg-card rounded-2xl border border-border mb-1 px-4">
                 <Ionicons name={icon} size={18} color="#6B7280" />
                 <TextInput
-                    className="flex-1 text-white py-4 ml-3 text-sm"
+                    className="flex-1 text-foreground py-4 ml-3 text-sm"
                     placeholder={placeholder}
-                    placeholderTextColor="#4B5563"
+                    placeholderTextColor="#94A3B8"
                     value={value}
                     onChangeText={onChangeText}
                     {...inputProps}

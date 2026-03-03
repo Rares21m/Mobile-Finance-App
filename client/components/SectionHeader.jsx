@@ -16,7 +16,7 @@ export default function SectionHeader({ title, rightText, onPress }) {
     return (
         <View className="flex-row items-center justify-between mb-3">
             <Text
-                className="text-gray-500 text-xs font-semibold uppercase"
+                className="text-text-muted text-xs font-semibold uppercase"
                 style={{ letterSpacing: 1.5 }}
             >
                 {title}
@@ -29,7 +29,7 @@ export default function SectionHeader({ title, rightText, onPress }) {
                         </Text>
                     </Pressable>
                 ) : (
-                    <Text className="text-gray-600 text-xs">{rightText}</Text>
+                    <Text className="text-text-muted text-xs">{rightText}</Text>
                 ))}
         </View>
     );

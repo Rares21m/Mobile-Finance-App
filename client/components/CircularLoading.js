@@ -8,6 +8,7 @@ import { View, Animated, StyleSheet, Text } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "../context/ThemeContext";
 
 const ICONS = [
   { name: "wallet", color: "#10B981" },
@@ -19,6 +20,8 @@ const ICONS = [
 
 export default function CircularLoading() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const c = theme.colors;
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -35,7 +38,7 @@ export default function CircularLoading() {
   const radius = 60;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
       <Animated.View
         style={{
           width: 160,
@@ -78,7 +81,7 @@ export default function CircularLoading() {
           );
         })}
       </Animated.View>
-      <Text style={styles.text}>{t("auth.syncingData")}</Text>
+      <Text style={[styles.text, { color: c.textMuted }]}>{t("auth.syncingData")}</Text>
     </View>
   );
 }
@@ -86,12 +89,10 @@ export default function CircularLoading() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0C0C14",
     justifyContent: "center",
     alignItems: "center",
   },
   text: {
-    color: "#6B7280",
     marginTop: 32,
     fontSize: 14,
     fontWeight: "500",

@@ -6,7 +6,7 @@
 
 import axios from "axios";
 import Constants from "expo-constants";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../utils/secureStorage";
 
 // Backend URL — configured via app.config.js > extra.apiUrl
 // Falls back to localhost for development
@@ -30,11 +30,12 @@ api.interceptors.request.use(async (config) => {
     return config;
 });
 
-// Interceptor: delete token on 401 (session expired)
+// Interceptor: delete token only when JWT is truly expired/invalid (not on every 401)
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response?.status === 401) {
+        const errCode = error.response?.data?.error;
+        if (error.response?.status === 401 && errCode === "TOKEN_EXPIRED_OR_INVALID") {
             await SecureStore.deleteItemAsync("jwt_token");
         }
         return Promise.reject(error);

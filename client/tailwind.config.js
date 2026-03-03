@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+    darkMode: "class",
     content: [
         "./app/**/*.{js,jsx,ts,tsx}",
         "./components/**/*.{js,jsx,ts,tsx}",
@@ -8,21 +9,22 @@ module.exports = {
     theme: {
         extend: {
             colors: {
-                primary: "#10B981",
-                "primary-light": "#34D399",
-                "primary-dark": "#059669",
-                accent: "#6366F1",
-                "accent-light": "#818CF8",
+                background: "var(--color-bg)",
+                surface: "var(--color-surface)",
+                card: "var(--color-card)",
+                border: "var(--color-border)",
+                foreground: "var(--color-foreground)",
+                "text-muted": "var(--color-text-muted)",
+                "text-inverse": "var(--color-text-inverse)",
+                primary: "var(--color-primary)",
+                "primary-light": "var(--color-primary-light)",
+                "primary-dark": "var(--color-primary-dark)",
+                accent: "var(--color-accent)",
+                "accent-light": "var(--color-accent-light)",
+                expense: "var(--color-expense)",
+                success: "var(--color-success)",
+                // Păstrez niște fallback-uri mici dacă sunt folosite explicit
                 secondary: "#F8729C",
-                dark: {
-                    bg: "#0C0C14",
-                    surface: "#161621",
-                    card: "#1C1C2A",
-                    border: "#2A2A3C",
-                },
-                muted: "#6B7280",
-                success: "#22C55E",
-                expense: "#F43F5E",
                 warning: "#F59E0B",
             },
         },

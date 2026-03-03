@@ -61,10 +61,10 @@ export default function SignUp() {
                 keyboardShouldPersistTaps="handled"
             >
                 {/* Header */}
-                <Text className="text-white text-3xl font-extrabold text-center mb-2 mt-20">
+                <Text className="text-foreground text-3xl font-extrabold text-center mb-2 mt-20">
                     {t("auth.createAccount")}
                 </Text>
-                <Text className="text-gray-400 text-base text-center mb-10">
+                <Text className="text-text-muted text-base text-center mb-10">
                     {t("auth.signUpSubtitle")}
                 </Text>
 
@@ -116,7 +116,7 @@ export default function SignUp() {
 
                 {/* Footer */}
                 <View className="flex-row justify-center mt-8 mb-10">
-                    <Text className="text-gray-500">{t("auth.hasAccount")} </Text>
+                    <Text className="text-text-muted">{t("auth.hasAccount")} </Text>
                     <Link href="/(auth)/sign-in" asChild>
                         <Pressable>
                             <Text className="text-primary font-semibold">

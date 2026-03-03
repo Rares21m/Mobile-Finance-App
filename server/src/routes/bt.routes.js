@@ -7,12 +7,17 @@ const {
     getAccounts,
     getTransactions,
     getBalances,
+    getUserConnections,
+    getConnectionData,
 } = require("../controllers/bt.controller");
 
 const router = Router();
 
 // All BT routes require authentication
 router.use(authMiddleware);
+
+// GET /api/bt/connections — list active connections for the logged-in user
+router.get("/connections", getUserConnections);
 
 // POST /api/bt/register-client
 router.post("/register-client", registerClient);
@@ -22,6 +27,9 @@ router.post("/init-consent", initConsent);
 
 // POST /api/bt/exchange-token
 router.post("/exchange-token", exchangeToken);
+
+// GET /api/bt/connection-data/:connectionId — combined: accounts + balances + transactions (single token refresh)
+router.get("/connection-data/:connectionId", getConnectionData);
 
 // GET /api/bt/accounts/:connectionId
 router.get("/accounts/:connectionId", getAccounts);

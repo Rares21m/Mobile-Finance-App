@@ -5,12 +5,15 @@ import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import i18n from "../../i18n/i18n";
-import { useBankData } from "../../context/BankContext";
-import { getCategoryBreakdown } from "../../utils/categoryUtils";
+import { useBankData } from "../../context/BankContext"; import { getCategoryBreakdown } from "../../utils/categoryUtils";
 import SectionHeader from "../../components/SectionHeader";
 import TransactionItem from "../../components/TransactionItem";
 
+import { useTheme } from "../../context/ThemeContext";
+
 export default function Dashboard() {
+    const { isDark, theme } = useTheme();
+    const c = theme.colors;
     const { t } = useTranslation();
     const { user } = useAuth();
     const router = useRouter();
@@ -39,11 +42,11 @@ export default function Dashboard() {
             (sum, tx) => sum + parseFloat(tx.transactionAmount?.amount || 0),
             0
         );
+
     const totalExpenses = monthlyTx
         .filter((tx) => parseFloat(tx.transactionAmount?.amount || 0) < 0)
         .reduce(
-            (sum, tx) =>
-                sum + Math.abs(parseFloat(tx.transactionAmount?.amount || 0)),
+            (sum, tx) => sum + Math.abs(parseFloat(tx.transactionAmount?.amount || 0)),
             0
         );
 
@@ -66,7 +69,7 @@ export default function Dashboard() {
     const firstName = user?.name?.split(" ")[0] || t("profile.defaultUser");
 
     return (
-        <View className="flex-1 bg-dark-bg">
+        <View className="flex-1 bg-background">
             <ScrollView
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 30 }}
@@ -75,15 +78,15 @@ export default function Dashboard() {
                 {/* ===== HEADER ===== */}
                 <View className="px-6 pt-14 pb-1 flex-row items-center justify-between">
                     <View>
-                        <Text className="text-gray-500 text-sm capitalize">
+                        <Text className="text-text-muted text-sm capitalize">
                             {dateStr}
                         </Text>
                     </View>
                     <Pressable
-                        className="flex-row items-center bg-dark-surface border border-dark-border rounded-2xl px-3 py-2 active:opacity-70"
+                        className="flex-row items-center bg-surface border border-border rounded-2xl px-3 py-2 active:opacity-70"
                         onPress={() => router.push("/(tabs)/profile")}
                     >
-                        <Text className="text-white text-sm font-semibold mr-2">
+                        <Text className="text-foreground text-sm font-semibold mr-2">
                             {firstName}
                         </Text>
                         <View className="w-8 h-8 rounded-xl bg-primary/[0.12] items-center justify-center">
@@ -102,19 +105,19 @@ export default function Dashboard() {
                         {/* Balance placeholder */}
                         <View className="rounded-3xl overflow-hidden mb-5">
                             <LinearGradient
-                                colors={["#161621", "#1C1C2A"]}
+                                colors={c.emptyCardGradient}
                                 style={{
                                     padding: 28,
                                     borderRadius: 24,
                                     borderWidth: 1,
-                                    borderColor: "rgba(255,255,255,0.04)",
+                                    borderColor: c.border,
                                 }}
                             >
-                                <Text className="text-gray-500 text-sm">
+                                <Text className="text-text-muted text-sm">
                                     {t("dashboard.totalBalance")}
                                 </Text>
-                                <Text className="text-white text-4xl font-extrabold mt-2">
-                                    — {t("common.currency")}
+                                <Text className="text-foreground text-4xl font-extrabold mt-2">
+                                    — RON
                                 </Text>
                             </LinearGradient>
                         </View>
@@ -138,10 +141,10 @@ export default function Dashboard() {
                                     />
                                 </LinearGradient>
                             </View>
-                            <Text className="text-white font-bold text-lg text-center">
+                            <Text className="text-foreground font-bold text-lg text-center">
                                 {t("dashboard.connectFirst")}
                             </Text>
-                            <Text className="text-gray-400 text-sm mt-3 text-center leading-5">
+                            <Text className="text-text-muted text-sm mt-3 text-center leading-5">
                                 {t("dashboard.connectFirstDesc")}
                             </Text>
                         </View>
@@ -184,15 +187,15 @@ export default function Dashboard() {
                                     }}
                                 />
 
-                                <Text className="text-white/70 text-sm font-medium">
+                                <Text className="text-foreground/70 text-sm font-medium">
                                     {t("dashboard.totalBalance")}
                                 </Text>
-                                <Text className="text-white text-4xl font-extrabold mt-2">
+                                <Text className="text-foreground text-4xl font-extrabold mt-2">
                                     {totalBalance.toLocaleString("ro-RO", {
                                         minimumFractionDigits: 2,
                                     })}{" "}
-                                    <Text className="text-white/50 text-lg font-normal">
-                                        {t("common.currency")}
+                                    <Text className="text-foreground/50 text-lg font-normal">
+                                        RON
                                     </Text>
                                 </Text>
 
@@ -204,7 +207,7 @@ export default function Dashboard() {
                                             size={14}
                                             color="rgba(255,255,255,0.7)"
                                         />
-                                        <Text className="text-white/70 text-xs ml-2 font-medium">
+                                        <Text className="text-foreground/70 text-xs ml-2 font-medium">
                                             {accounts[0].name ||
                                                 "Banca Transilvania"}
                                         </Text>
@@ -212,7 +215,7 @@ export default function Dashboard() {
                                 )}
 
                                 {/* Income / Expenses row */}
-                                <View className="flex-row mt-5 pt-4 border-t border-white/[0.15]">
+                                <View className="flex-row mt-5 pt-4 border-t border-border">
                                     <View className="flex-1 flex-row items-center">
                                         <View className="w-8 h-8 rounded-lg bg-white/[0.15] items-center justify-center mr-2">
                                             <Ionicons
@@ -222,10 +225,10 @@ export default function Dashboard() {
                                             />
                                         </View>
                                         <View>
-                                            <Text className="text-white/60 text-xs">
+                                            <Text className="text-foreground/60 text-xs">
                                                 {t("dashboard.income")}
                                             </Text>
-                                            <Text className="text-white font-bold text-sm">
+                                            <Text className="text-foreground font-bold text-sm">
                                                 +
                                                 {totalIncome.toLocaleString(
                                                     "ro-RO",
@@ -245,10 +248,10 @@ export default function Dashboard() {
                                             />
                                         </View>
                                         <View>
-                                            <Text className="text-white/60 text-xs">
+                                            <Text className="text-foreground/60 text-xs">
                                                 {t("dashboard.expenses")}
                                             </Text>
-                                            <Text className="text-white font-bold text-sm">
+                                            <Text className="text-foreground font-bold text-sm">
                                                 -
                                                 {totalExpenses.toLocaleString(
                                                     "ro-RO",
@@ -270,9 +273,9 @@ export default function Dashboard() {
                                     title={t("dashboard.spendingInsights")}
                                     rightText={t("dashboard.thisMonth")}
                                 />
-                                <View className="bg-dark-surface rounded-2xl border border-dark-border p-4">
+                                <View className="bg-surface rounded-2xl border border-border p-4">
                                     {/* Total bar background */}
-                                    <View className="h-3 rounded-full bg-dark-bg overflow-hidden flex-row mb-4">
+                                    <View className="h-3 rounded-full bg-background overflow-hidden flex-row mb-4">
                                         {categoryBreakdown.map((cat) => (
                                             <View
                                                 key={cat.key}
@@ -291,7 +294,7 @@ export default function Dashboard() {
                                             key={cat.key}
                                             className={`flex-row items-center py-2.5 ${idx <
                                                 categoryBreakdown.length - 1
-                                                ? "border-b border-white/[0.04]"
+                                                ? "border-b border-border"
                                                 : ""
                                                 }`}
                                         >
@@ -307,22 +310,22 @@ export default function Dashboard() {
                                                     color={cat.color}
                                                 />
                                             </View>
-                                            <Text className="text-white text-sm font-medium flex-1">
+                                            <Text className="text-foreground text-sm font-medium flex-1">
                                                 {t(
                                                     `analytics.categories.${cat.key}`
                                                 )}
                                             </Text>
-                                            <Text className="text-gray-500 text-xs mr-3">
+                                            <Text className="text-text-muted text-xs mr-3">
                                                 {cat.percentage}%
                                             </Text>
-                                            <Text className="text-white font-semibold text-sm">
+                                            <Text className="text-foreground font-semibold text-sm">
                                                 {cat.total.toLocaleString(
                                                     "ro-RO",
                                                     {
                                                         minimumFractionDigits: 2,
                                                     }
                                                 )}{" "}
-                                                <Text className="text-gray-600 text-xs font-normal">
+                                                <Text className="text-text-muted text-xs font-normal">
                                                     {t("common.currency")}
                                                 </Text>
                                             </Text>
@@ -342,15 +345,15 @@ export default function Dashboard() {
                         />
 
                         {recentTransactions.length === 0 && (
-                            <Text className="text-gray-600 text-sm">
+                            <Text className="text-text-muted text-sm">
                                 {t("dashboard.noTransactions")}
                             </Text>
                         )}
 
-                        <View className="bg-dark-surface rounded-2xl border border-dark-border overflow-hidden">
+                        <View className="bg-surface rounded-2xl border border-border overflow-hidden">
                             {recentTransactions.map((tx, index) => (
                                 <TransactionItem
-                                    key={tx.transactionId || index}
+                                    key={`${tx.connectionId || ''}-${tx.transactionId || index}`}
                                     tx={tx}
                                     isLast={
                                         index ===

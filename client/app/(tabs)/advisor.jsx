@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useMemo, useRef, useState } from "react";
+import { useTheme } from "../../context/ThemeContext";
 import { useTranslation } from "react-i18next";
 import {
     KeyboardAvoidingView,
@@ -13,6 +14,8 @@ import {
 } from "react-native";
 
 export default function Advisor() {
+    const { isDark, theme } = useTheme();
+    const c = theme.colors;
     const { t } = useTranslation();
 
     // Initial messages and suggestions
@@ -66,19 +69,19 @@ export default function Advisor() {
 
     return (
         <KeyboardAvoidingView
-            className="flex-1 bg-dark-bg"
+            className="flex-1 bg-background"
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={90}
         >
             {/* ===== HEADER ===== */}
             <LinearGradient
-                colors={["#161621", "#0C0C14"]}
+                colors={c.headerGradient}
                 style={{
                     paddingTop: 56,
                     paddingBottom: 16,
                     paddingHorizontal: 20,
                     borderBottomWidth: 0.5,
-                    borderBottomColor: "rgba(255,255,255,0.06)",
+                    borderBottomColor: c.border,
                 }}
             >
                 <View className="flex-row items-center">
@@ -86,7 +89,7 @@ export default function Advisor() {
                         <Ionicons name="sparkles" size={22} color="#10B981" />
                     </View>
                     <View>
-                        <Text className="text-white text-lg font-bold">
+                        <Text className="text-foreground text-lg font-bold">
                             {t("advisor.title")}
                         </Text>
                         <Text className="text-primary text-xs font-medium">
@@ -120,14 +123,14 @@ export default function Advisor() {
                                         paddingVertical: 12,
                                     }}
                                 >
-                                    <Text className="text-white text-sm leading-5">
+                                    <Text className="text-foreground text-sm leading-5">
                                         {msg.text}
                                     </Text>
                                 </LinearGradient>
                             </View>
                         ) : (
-                            <View className="bg-dark-surface rounded-2xl rounded-bl-sm px-4 py-3 border border-dark-border">
-                                <Text className="text-gray-300 text-sm leading-5">
+                            <View className="bg-surface rounded-2xl rounded-bl-sm px-4 py-3 border border-border">
+                                <Text className="text-text-muted text-sm leading-5">
                                     {msg.text}
                                 </Text>
                             </View>
@@ -138,7 +141,7 @@ export default function Advisor() {
                 {/* Quick suggestions */}
                 {messages.length <= 2 && (
                     <View className="mt-4 gap-2.5">
-                        <Text className="text-gray-600 text-xs mb-1">
+                        <Text className="text-text-muted text-xs mb-1">
                             {t("advisor.suggestions")}
                         </Text>
                         {SUGGESTIONS.map((sug) => (
@@ -149,7 +152,7 @@ export default function Advisor() {
                                     setInput(sug);
                                 }}
                             >
-                                <Text className="text-gray-300 text-sm">
+                                <Text className="text-text-muted text-sm">
                                     {sug}
                                 </Text>
                             </Pressable>
@@ -159,12 +162,12 @@ export default function Advisor() {
             </ScrollView>
 
             {/* ===== INPUT BAR ===== */}
-            <View className="px-4 py-3 border-t border-white/[0.06] bg-dark-bg">
-                <View className="flex-row items-center bg-dark-surface rounded-2xl px-4 py-2 border border-dark-border">
+            <View className="px-4 py-3 border-t border-border bg-background">
+                <View className="flex-row items-center bg-surface rounded-2xl px-4 py-2 border border-border">
                     <TextInput
-                        className="flex-1 text-white text-sm py-2"
+                        className="flex-1 text-foreground text-sm py-2"
                         placeholder={t("advisor.inputPlaceholder")}
-                        placeholderTextColor="#4B5563"
+                        placeholderTextColor="#94A3B8"
                         value={input}
                         onChangeText={setInput}
                         onSubmitEditing={sendMessage}

@@ -80,7 +80,8 @@
         "transaction": "Transaction",
         "connectionError": "Could not initiate BT connection",
         "connectionSuccess": "BT account connected successfully!",
-        "authError": "Could not complete authorization"
+        "authError": "Could not complete authorization",
+        "sessionExpired": "BT bank session expired. Please reconnect your account using the button below."
     },
     "analytics": {
         "title": "Analytics",
@@ -177,7 +178,8 @@
         "helpFAQ2A": "Yes, we use end-to-end encryption and don't store banking data on our servers.",
         "termsTitle": "Terms & Conditions",
         "termsContent": "By using Novence, you agree to our terms and conditions. The app uses the BT Open Banking API to access financial data. Data is processed in compliance with GDPR. We do not take responsibility for financial decisions made based on the information provided.",
-        "currencyTitle": "Select currency"
+        "currencyTitle": "Select currency",
+        "selectTheme": "Select theme"
     },
     "tabs": {
         "home": "Home",
@@ -208,6 +210,7 @@
         "btGetAccountsFailed": "Could not fetch accounts",
         "btGetTransactionsFailed": "Could not fetch transactions",
         "btGetBalancesFailed": "Could not fetch balances",
+        "btSessionExpired": "Bank session expired. Please reconnect your account.",
         "internalServerError": "Internal server error"
     }
 }

@@ -16,10 +16,10 @@ export default function GlassCard({ children }) {
     return (
         <BlurView
             intensity={20}
-            tint="dark"
+            tint="default"
             className="rounded-3xl overflow-hidden"
         >
-            <View className="bg-white/[0.04] p-7 rounded-3xl border border-white/[0.08]">
+            <View className="bg-foreground/5 p-7 rounded-3xl border border-foreground/10">
                 {children}
             </View>
         </BlurView>
