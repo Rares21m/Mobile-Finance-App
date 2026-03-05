@@ -242,7 +242,7 @@ function buildFinancialSummary(financialData) {
 /**
  * Builds the system instruction prompt with financial context.
  */
-function buildSystemPrompt(summary, language) {
+function buildSystemPrompt(summary, language, userProfile) {
   const lang = language === "ro" ? "Romanian" : "English";
 
   const categoryLines = (byCategory) =>
@@ -251,10 +251,53 @@ function buildSystemPrompt(summary, language) {
       .map(([cat, amt]) => `    - ${cat}: ${parseFloat(amt).toFixed(2)} RON`)
       .join("\n") || "    - No data";
 
+  // ── Personalised profile block ───────────────────────────────────────────
+  const GOAL_DESCRIPTIONS = {
+    savings: "Build savings and grow an emergency fund",
+    expense_control: "Get control over daily spending and reduce waste",
+    investment: "Start or grow investments and passive income",
+    debt_freedom: "Pay off debts as fast as possible",
+  };
+  const INCOME_LABELS = {
+    under_1500: "under 1,500 RON / month",
+    "1500_3000": "1,500 – 3,000 RON / month",
+    "3000_6000": "3,000 – 6,000 RON / month",
+    over_6000: "over 6,000 RON / month",
+  };
+
+  let profileBlock = "";
+  if (userProfile) {
+    const goalDesc =
+      GOAL_DESCRIPTIONS[userProfile.goal] ||
+      userProfile.goal ||
+      "Not specified";
+    const incomeDesc =
+      INCOME_LABELS[userProfile.incomeRange] ||
+      userProfile.incomeRange ||
+      "Not specified";
+    const priorities =
+      (userProfile.priorityCategories || []).join(", ") || "Not specified";
+    profileBlock = `
+=== USER FINANCIAL PROFILE (from onboarding) ===
+Primary goal:          ${goalDesc}
+Monthly income range:  ${incomeDesc}
+Priority categories:   ${priorities}
+
+IMPORTANT: Tailor ALL your advice to the user's primary goal above.
+- If goal is "savings": focus on saving tips, suggest a savings target from their income.
+- If goal is "expense_control": highlight overspending categories, track progress vs budget.
+- If goal is "investment": after covering basics, suggest allocation towards investment.
+- If goal is "debt_freedom": prioritise debt reduction strategies, reduce discretionary spend.
+Always give extra attention to the user's priority categories.
+=== END OF PROFILE ===
+`;
+  }
+
   return `You are Novence AI, an expert personal financial advisor embedded in the Novence finance app.
 You have full access to the user's real banking data (transactions from BT Open Banking / BRD or demo data in dev mode).
 Always respond in ${lang}. Be concise, helpful, warm, and professional.
 Use RON as currency unless asked otherwise. Format numbers with 2 decimal places.
+${profileBlock}
 
 === USER FINANCIAL SNAPSHOT ===
 
@@ -297,6 +340,7 @@ Guidelines:
 async function chat(req, res) {
   try {
     const { messages = [], financialData = {}, language = "en" } = req.body;
+    const userProfile = req.body.userProfile ?? null;
 
     if (
       !process.env.GEMINI_API_KEY ||
@@ -310,7 +354,7 @@ async function chat(req, res) {
     }
 
     const summary = buildFinancialSummary(financialData);
-    const systemInstruction = buildSystemPrompt(summary, language);
+    const systemInstruction = buildSystemPrompt(summary, language, userProfile);
 
     const model = genAI.getGenerativeModel({
       model: "gemini-flash-lite-latest",

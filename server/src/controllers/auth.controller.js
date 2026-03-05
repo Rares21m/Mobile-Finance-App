@@ -49,7 +49,16 @@ async function register(req, res) {
 
         res.status(201).json({
             token,
-            user: { id: user.id, email: user.email, name: user.name },
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                profileGoal: user.profileGoal,
+                profileIncomeRange: user.profileIncomeRange,
+                profileCategories: user.profileCategories
+                    ? JSON.parse(user.profileCategories)
+                    : null,
+            },
         });
     } catch (err) {
         logger.error("Register error:", err);
@@ -94,7 +103,16 @@ async function login(req, res) {
 
         res.json({
             token,
-            user: { id: user.id, email: user.email, name: user.name },
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                profileGoal: user.profileGoal,
+                profileIncomeRange: user.profileIncomeRange,
+                profileCategories: user.profileCategories
+                    ? JSON.parse(user.profileCategories)
+                    : null,
+            },
         });
     } catch (err) {
         logger.error("Login error:", err);
@@ -185,4 +203,71 @@ async function changePassword(req, res) {
     }
 }
 
-module.exports = { register, login, updateProfile, changePassword };
+// ─── Allowed values for validation ────────────────────────────────────────────
+const VALID_GOALS = ["savings", "expense_control", "investment", "debt_freedom"];
+const VALID_INCOME_RANGES = ["under_1500", "1500_3000", "3000_6000", "over_6000"];
+const VALID_CATEGORIES = [
+    "food", "transport", "shopping", "utilities",
+    "housing", "entertainment", "health", "other",
+];
+
+/**
+ * PUT /api/auth/onboarding-profile
+ * Body: { goal, incomeRange, priorityCategories }
+ * Requires JWT.
+ *
+ * Saves the user's financial profile from the onboarding wizard.
+ */
+async function saveOnboardingProfile(req, res) {
+    try {
+        const { goal, incomeRange, priorityCategories } = req.body;
+        const userId = req.userId;
+
+        // Validate goal
+        if (goal && !VALID_GOALS.includes(goal)) {
+            return res.status(400).json({ error: "INVALID_GOAL" });
+        }
+
+        // Validate income range
+        if (incomeRange && !VALID_INCOME_RANGES.includes(incomeRange)) {
+            return res.status(400).json({ error: "INVALID_INCOME_RANGE" });
+        }
+
+        // Validate categories
+        if (priorityCategories) {
+            if (!Array.isArray(priorityCategories)) {
+                return res.status(400).json({ error: "CATEGORIES_MUST_BE_ARRAY" });
+            }
+            const invalid = priorityCategories.filter((c) => !VALID_CATEGORIES.includes(c));
+            if (invalid.length > 0) {
+                return res.status(400).json({ error: "INVALID_CATEGORIES", invalid });
+            }
+        }
+
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                profileGoal: goal || null,
+                profileIncomeRange: incomeRange || null,
+                profileCategories: priorityCategories
+                    ? JSON.stringify(priorityCategories)
+                    : null,
+            },
+        });
+
+        res.json({
+            profile: {
+                goal: user.profileGoal,
+                incomeRange: user.profileIncomeRange,
+                priorityCategories: user.profileCategories
+                    ? JSON.parse(user.profileCategories)
+                    : [],
+            },
+        });
+    } catch (err) {
+        logger.error("Save onboarding profile error:", err);
+        res.status(500).json({ error: "PROFILE_SAVE_FAILED" });
+    }
+}
+
+module.exports = { register, login, updateProfile, changePassword, saveOnboardingProfile };

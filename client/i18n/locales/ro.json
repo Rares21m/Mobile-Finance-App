@@ -64,7 +64,34 @@
     "topUp": "Top-up",
     "spendingInsights": "Cheltuieli pe categorii",
     "topCategories": "Top categorii",
-    "noExpenses": "Fără cheltuieli"
+    "noExpenses": "Fără cheltuieli",
+    "goalInsight": {
+      "savings": {
+        "title": "Rata de Economisire",
+        "desc": "Economisești {{rate}}% din venit luna aceasta.",
+        "tip": "Încearcă să menții rata de economisire peste 20%."
+      },
+      "expense_control": {
+        "title": "Trend Cheltuieli",
+        "desc": "Cea mai mare categorie: {{category}} ({{amount}} RON).",
+        "up": "↑ {{pct}}% mai mult decât luna trecută",
+        "down": "↓ {{pct}}% mai puțin decât luna trecută",
+        "same": "La fel ca luna trecută"
+      },
+      "investment": {
+        "title": "Surplus Investibil",
+        "desc": "Ai {{amount}} RON liberi după cheltuieli și bugete."
+      },
+      "debt_freedom": {
+        "title": "Reduce și Economisește",
+        "desc": "Cheltuieli discreționare: {{amount}} RON. Reducerea lor eliberează bani pentru datorii."
+      }
+    },
+    "budgetAlert": {
+      "warning": "{{category}} este la {{pct}}% din buget",
+      "over": "{{category}} a depășit bugetul!",
+      "tapToManage": "Apasă pentru a gestiona bugetele"
+    }
   },
   "accounts": {
     "title": "Conturi Bancare",
@@ -257,7 +284,30 @@
     "monthlyLimit": "Limită lunară",
     "removeBudget": "Șterge bugetul",
     "addBudget": "Adaugă buget",
-    "editBudget": "Editează buget"
+    "editBudget": "Editează buget",
+    "suggestedTitle": "Bugete Sugerate Inteligent",
+    "suggestedDesc": "Pe baza profilului tău, iată un plan de buget 50/30/20.",
+    "acceptSuggestions": "Acceptă sugestiile",
+    "customizeBudgets": "Personalizează",
+    "needsLabel": "Necesități (50%)",
+    "wantsLabel": "Dorințe (30%)",
+    "savingsLabel": "Economii (20%)",
+    "eventBudgets": "Bugete Speciale",
+    "addEvent": "Adaugă buget special",
+    "eventName": "Nume buget",
+    "eventNamePlaceholder": "ex. Vacanță Grecia",
+    "startDate": "Dată început",
+    "endDate": "Dată sfârșit",
+    "totalLimit": "Buget total",
+    "activeNow": "Activ",
+    "upcoming": "Viitor",
+    "expired": "Încheiat",
+    "noEventBudgets": "Niciun buget special încă",
+    "filterCategories": "Filtrează pe categorii",
+    "daysLeft": "{{count}} zile rămase",
+    "removeEvent": "Șterge bugetul special",
+    "editEvent": "Editează bugetul special",
+    "allCategories": "Toate categoriile"
   },
   "tabs": {
     "home": "Acasă",
@@ -291,5 +341,43 @@
     "btGetBalancesFailed": "Nu s-au putut prelua balan\u021bele",
     "btSessionExpired": "Sesiunea bancara a expirat. Te rugam sa reconectezi contul.",
     "internalServerError": "Eroare interna de server"
+  },
+  "onboarding": {
+    "badge": "Pasul {{step}} din {{total}}",
+    "skip": "Sari",
+    "next": "Continuă",
+    "back": "Înapoi",
+    "finish": "Hai să începem",
+    "step1": {
+      "title": "Care e scopul tău principal?",
+      "subtitle": "Vom personaliza aplicația și consilierul AI în jurul acestuia."
+    },
+    "step2": {
+      "title": "Venitul lunar aproximativ",
+      "subtitle": "O estimare e suficientă — ne ajută să sugerăm bugete realiste."
+    },
+    "step3": {
+      "title": "Ce contează cel mai mult?",
+      "subtitle": "Alege categoriile de cheltuieli pe care vrei să le urmărești.",
+      "hint": "Selectează cel puțin o categorie pentru a continua."
+    },
+    "goals": {
+      "savings": {
+        "label": "Economisire",
+        "sublabel": "Construiește un fond de urgență și economisește regulat"
+      },
+      "expense_control": {
+        "label": "Control cheltuieli",
+        "sublabel": "Urmărește cheltuielile zilnice și elimină costurile inutile"
+      },
+      "investment": {
+        "label": "Investiții",
+        "sublabel": "Crește-ți averea prin investiții și venituri pasive"
+      },
+      "debt_freedom": {
+        "label": "Libertate de datorii",
+        "sublabel": "Achită împrumuturile și datoriile cât mai repede posibil"
+      }
+    }
   }
 }

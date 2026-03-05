@@ -1,16 +1,248 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import SectionHeader from "../../components/SectionHeader";
 import TransactionItem from "../../components/TransactionItem";
 import { useAuth } from "../../context/AuthContext";
 import { useBankData } from "../../context/BankContext";
-import i18n from "../../i18n/i18n";
-import { getCategoryBreakdown } from "../../utils/categoryUtils";
-
+import { useBudget } from "../../context/BudgetContext";
+import { useOnboarding } from "../../context/OnboardingContext";
 import { useTheme } from "../../context/ThemeContext";
+import i18n from "../../i18n/i18n";
+import { checkAndNotifyBudgets } from "../../services/NotificationService";
+import {
+    filterByPeriod,
+    getCategoryBreakdown,
+} from "../../utils/categoryUtils";
+
+// ─── GoalInsightCard ──────────────────────────────────────────────────────────
+// Shows a personalised insight widget under the balance card based on the
+// financial goal the user chose during onboarding.
+function GoalInsightCard({
+  goal,
+  totalIncome,
+  totalExpenses,
+  totalBudgeted,
+  categoryBreakdown,
+  lastMonthBreakdown,
+  c,
+  t,
+}) {
+  let icon = "bulb-outline";
+  let accentColor = c.primary;
+  let title = "";
+  let body = null;
+
+  if (goal === "savings") {
+    const rate =
+      totalIncome > 0
+        ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100)
+        : 0;
+    const barPct = Math.min(Math.max(rate, 0), 100);
+    const isGood = rate >= 20;
+    icon = "wallet-outline";
+    accentColor = isGood ? c.success : "#F59E0B";
+    title = t("dashboard.goalInsight.savings.title");
+    body = (
+      <View>
+        <Text style={{ color: c.textMuted, fontSize: 13, marginBottom: 8 }}>
+          {t("dashboard.goalInsight.savings.desc", { rate: Math.max(rate, 0) })}
+        </Text>
+        {/* Progress bar */}
+        <View
+          style={{
+            height: 6,
+            borderRadius: 4,
+            backgroundColor: c.border,
+            overflow: "hidden",
+            marginBottom: 6,
+          }}
+        >
+          <View
+            style={{
+              height: 6,
+              width: `${barPct}%`,
+              borderRadius: 4,
+              backgroundColor: accentColor,
+            }}
+          />
+        </View>
+        <Text style={{ color: c.textMuted, fontSize: 11 }}>
+          {t("dashboard.goalInsight.savings.tip")}
+        </Text>
+      </View>
+    );
+  } else if (goal === "expense_control") {
+    const top = categoryBreakdown[0];
+    if (!top) return null;
+    const lastMonthTop = lastMonthBreakdown.find((c) => c.key === top.key);
+    const lastAmt = lastMonthTop?.total || 0;
+    let trendKey = "same";
+    let trendPct = 0;
+    if (lastAmt > 0) {
+      trendPct = Math.round(((top.total - lastAmt) / lastAmt) * 100);
+      if (trendPct > 5) trendKey = "up";
+      else if (trendPct < -5) trendKey = "down";
+    }
+    icon = "trending-up-outline";
+    accentColor = trendKey === "up" ? c.expense : c.success;
+    title = t("dashboard.goalInsight.expense_control.title");
+    body = (
+      <View>
+        <Text style={{ color: c.textMuted, fontSize: 13, marginBottom: 4 }}>
+          {t("dashboard.goalInsight.expense_control.desc", {
+            category: t(`analytics.categories.${top.key}`),
+            amount: top.total.toLocaleString("ro-RO", {
+              minimumFractionDigits: 2,
+            }),
+          })}
+        </Text>
+        <Text style={{ color: accentColor, fontSize: 12, fontWeight: "600" }}>
+          {trendKey === "up"
+            ? t("dashboard.goalInsight.expense_control.up", {
+                pct: Math.abs(trendPct),
+              })
+            : trendKey === "down"
+              ? t("dashboard.goalInsight.expense_control.down", {
+                  pct: Math.abs(trendPct),
+                })
+              : t("dashboard.goalInsight.expense_control.same")}
+        </Text>
+      </View>
+    );
+  } else if (goal === "investment") {
+    const surplus = Math.max(totalIncome - totalExpenses - totalBudgeted, 0);
+    icon = "podium-outline";
+    accentColor = c.primary;
+    title = t("dashboard.goalInsight.investment.title");
+    body = (
+      <Text style={{ color: c.textMuted, fontSize: 13 }}>
+        {t("dashboard.goalInsight.investment.desc", {
+          amount: surplus.toLocaleString("ro-RO", { minimumFractionDigits: 2 }),
+        })}
+      </Text>
+    );
+  } else if (goal === "debt_freedom") {
+    const DISCRETIONARY = ["shopping", "entertainment", "other"];
+    const discretionary = categoryBreakdown
+      .filter((cat) => DISCRETIONARY.includes(cat.key))
+      .reduce((s, cat) => s + cat.total, 0);
+    icon = "cut-outline";
+    accentColor = "#F59E0B";
+    title = t("dashboard.goalInsight.debt_freedom.title");
+    body = (
+      <Text style={{ color: c.textMuted, fontSize: 13 }}>
+        {t("dashboard.goalInsight.debt_freedom.desc", {
+          amount: discretionary.toLocaleString("ro-RO", {
+            minimumFractionDigits: 2,
+          }),
+        })}
+      </Text>
+    );
+  }
+
+  if (!body) return null;
+
+  return (
+    <View
+      style={{
+        backgroundColor: c.surface,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: c.border,
+        padding: 16,
+        marginBottom: 20,
+        borderLeftWidth: 3,
+        borderLeftColor: accentColor,
+      }}
+    >
+      <View
+        style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}
+      >
+        <View
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            backgroundColor: accentColor + "22",
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 10,
+          }}
+        >
+          <Ionicons name={icon} size={17} color={accentColor} />
+        </View>
+        <Text style={{ color: c.foreground, fontWeight: "700", fontSize: 14 }}>
+          {title}
+        </Text>
+      </View>
+      {body}
+    </View>
+  );
+}
+
+// ─── BudgetAlerts ─────────────────────────────────────────────────────────────
+// Shows inline alert cards for budget categories that are at ≥75% or ≥100%.
+function BudgetAlerts({ alerts, router, c, t }) {
+  if (alerts.length === 0) return null;
+  return (
+    <View style={{ marginBottom: 20 }}>
+      {alerts.map((alert) => {
+        const isOver = alert.status === "over";
+        const color = isOver ? c.expense : "#F59E0B";
+        const icon = isOver ? "alert-circle" : "warning";
+        return (
+          <Pressable
+            key={alert.key}
+            onPress={() => router.push("/(tabs)/budget")}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: color + "18",
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: color + "55",
+              padding: 12,
+              marginBottom: 8,
+            }}
+          >
+            <Ionicons
+              name={icon}
+              size={20}
+              color={color}
+              style={{ marginRight: 10 }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ color: c.foreground, fontWeight: "600", fontSize: 13 }}
+              >
+                {isOver
+                  ? t("dashboard.budgetAlert.over", {
+                      category: t(`analytics.categories.${alert.key}`),
+                    })
+                  : t("dashboard.budgetAlert.warning", {
+                      category: t(`analytics.categories.${alert.key}`),
+                      pct: alert.percentage,
+                    })}
+              </Text>
+              <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 2 }}>
+                {t("dashboard.budgetAlert.tapToManage")}
+              </Text>
+            </View>
+            <Text
+              style={{ color, fontWeight: "700", fontSize: 14, marginLeft: 8 }}
+            >
+              {alert.percentage}%
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
 export default function Dashboard() {
   const { isDark, theme } = useTheme();
@@ -18,6 +250,8 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const router = useRouter();
+  const { profile } = useOnboarding();
+  const { getBudgetSummary, totalBudgeted } = useBudget();
   const {
     accounts,
     transactions,
@@ -56,6 +290,23 @@ export default function Dashboard() {
 
   // Top spending categories
   const categoryBreakdown = getCategoryBreakdown(monthlyTx).slice(0, 3);
+
+  // Last-month spending breakdown (for expense_control goal)
+  const lastMonthTx = filterByPeriod(transactions, 1);
+  const lastMonthBreakdown = getCategoryBreakdown(lastMonthTx);
+
+  // Budget alerts: categories at warning or over limit
+  const budgetAlerts = getBudgetSummary().filter(
+    (b) => b.status === "warning" || b.status === "over",
+  );
+
+  // Fire local notifications when budget data changes
+  useEffect(() => {
+    const summary = getBudgetSummary();
+    if (summary.length > 0) {
+      checkAndNotifyBudgets(summary, t).catch(() => {});
+    }
+  }, [transactions]); // re-run whenever transactions sync
 
   const hasData = accounts.length > 0 || transactions.length > 0;
 
@@ -241,6 +492,25 @@ export default function Dashboard() {
                 </View>
               </View>
             </View>
+
+            {/* ===== GOAL INSIGHT CARD ===== */}
+            {profile?.goal && totalIncome > 0 && (
+              <GoalInsightCard
+                goal={profile.goal}
+                totalIncome={totalIncome}
+                totalExpenses={totalExpenses}
+                totalBudgeted={totalBudgeted}
+                categoryBreakdown={categoryBreakdown}
+                lastMonthBreakdown={lastMonthBreakdown}
+                c={c}
+                t={t}
+              />
+            )}
+
+            {/* ===== BUDGET ALERTS ===== */}
+            {budgetAlerts.length > 0 && (
+              <BudgetAlerts alerts={budgetAlerts} router={router} c={c} t={t} />
+            )}
 
             {/* ===== SPENDING INSIGHTS ===== */}
             {categoryBreakdown.length > 0 && (

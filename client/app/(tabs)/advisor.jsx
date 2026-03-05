@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useBankData } from "../../context/BankContext";
 import { useBudget } from "../../context/BudgetContext";
+import { useOnboarding } from "../../context/OnboardingContext";
 import { useTheme } from "../../context/ThemeContext";
 import i18n from "../../i18n/i18n";
 import api from "../../services/api";
@@ -39,6 +40,7 @@ export default function Advisor() {
   const { t } = useTranslation();
   const { transactions, accounts, getTotalBalance } = useBankData();
   const { getBudgetSummary } = useBudget();
+  const { profile } = useOnboarding();
 
   // ── Initial state ────────────────────────────────────────────────────────
   const INITIAL_MESSAGES = useMemo(
@@ -90,8 +92,9 @@ export default function Advisor() {
         debtorName: tx.debtorName,
       })),
       budgets: getBudgetSummary(),
+      userProfile: profile ?? null,
     };
-  }, [transactions, accounts, getTotalBalance, getBudgetSummary]);
+  }, [transactions, accounts, getTotalBalance, getBudgetSummary, profile]);
 
   // ── Send message ─────────────────────────────────────────────────────────
   const sendMessage = useCallback(async () => {

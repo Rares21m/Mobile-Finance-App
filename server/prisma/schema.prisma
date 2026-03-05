@@ -8,13 +8,16 @@ datasource db {
 }
 
 model User {
-  id              String           @id @default(uuid())
-  email           String           @unique
-  passwordHash    String
-  name            String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  bankConnections BankConnection[]
+  id                    String           @id @default(uuid())
+  email                 String           @unique
+  passwordHash          String
+  name                  String?
+  profileGoal           String?          // savings | expense_control | investment | debt_freedom
+  profileIncomeRange    String?          // under_1500 | 1500_3000 | 3000_6000 | over_6000
+  profileCategories     String?          // JSON array, e.g. '["food","transport"]'
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  bankConnections       BankConnection[]
 }
 
 model BankConnection {

@@ -64,7 +64,34 @@
     "topUp": "Top-up",
     "spendingInsights": "Spending by category",
     "topCategories": "Top categories",
-    "noExpenses": "No expenses"
+    "noExpenses": "No expenses",
+    "goalInsight": {
+      "savings": {
+        "title": "Savings Rate",
+        "desc": "You're saving {{rate}}% of your income this month.",
+        "tip": "Try to keep your savings rate above 20%."
+      },
+      "expense_control": {
+        "title": "Spending Trend",
+        "desc": "Your biggest category is {{category}} ({{amount}} RON).",
+        "up": "↑ {{pct}}% more than last month",
+        "down": "↓ {{pct}}% less than last month",
+        "same": "Same as last month"
+      },
+      "investment": {
+        "title": "Investable Surplus",
+        "desc": "You have {{amount}} RON free after expenses and budgets."
+      },
+      "debt_freedom": {
+        "title": "Cut & Save",
+        "desc": "Discretionary spending: {{amount}} RON. Reducing it frees up cash for debt."
+      }
+    },
+    "budgetAlert": {
+      "warning": "{{category}} is at {{pct}}% of budget",
+      "over": "{{category}} exceeded the budget!",
+      "tapToManage": "Tap to manage budgets"
+    }
   },
   "accounts": {
     "title": "Bank Accounts",
@@ -257,7 +284,30 @@
     "monthlyLimit": "Monthly limit",
     "removeBudget": "Remove budget",
     "addBudget": "Add budget",
-    "editBudget": "Edit budget"
+    "editBudget": "Edit budget",
+    "suggestedTitle": "Smart Budget Suggestions",
+    "suggestedDesc": "Based on your profile, here's a 50/30/20 budget plan.",
+    "acceptSuggestions": "Accept suggestions",
+    "customizeBudgets": "Customize",
+    "needsLabel": "Needs (50%)",
+    "wantsLabel": "Wants (30%)",
+    "savingsLabel": "Savings (20%)",
+    "eventBudgets": "Special Budgets",
+    "addEvent": "Add special budget",
+    "eventName": "Budget name",
+    "eventNamePlaceholder": "e.g. Greece Vacation",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "totalLimit": "Total budget",
+    "activeNow": "Active",
+    "upcoming": "Upcoming",
+    "expired": "Ended",
+    "noEventBudgets": "No special budgets yet",
+    "filterCategories": "Filter by categories",
+    "daysLeft": "{{count}} days left",
+    "removeEvent": "Remove special budget",
+    "editEvent": "Edit special budget",
+    "allCategories": "All categories"
   },
   "tabs": {
     "home": "Home",
@@ -291,5 +341,43 @@
     "btGetBalancesFailed": "Could not fetch balances",
     "btSessionExpired": "Bank session expired. Please reconnect your account.",
     "internalServerError": "Internal server error"
+  },
+  "onboarding": {
+    "badge": "Step {{step}} of {{total}}",
+    "skip": "Skip",
+    "next": "Continue",
+    "back": "Back",
+    "finish": "Get started",
+    "step1": {
+      "title": "What's your main goal?",
+      "subtitle": "We'll personalise the app and your AI advisor around this."
+    },
+    "step2": {
+      "title": "Monthly income range",
+      "subtitle": "Approximate is fine — this helps us suggest realistic budgets."
+    },
+    "step3": {
+      "title": "What matters most?",
+      "subtitle": "Pick the spending areas you want to keep an eye on.",
+      "hint": "Select at least one category to continue."
+    },
+    "goals": {
+      "savings": {
+        "label": "Build savings",
+        "sublabel": "Grow an emergency fund and put money aside regularly"
+      },
+      "expense_control": {
+        "label": "Control spending",
+        "sublabel": "Track daily expenses and cut unnecessary costs"
+      },
+      "investment": {
+        "label": "Start investing",
+        "sublabel": "Grow wealth through investments and passive income"
+      },
+      "debt_freedom": {
+        "label": "Become debt-free",
+        "sublabel": "Pay off loans and debts as fast as possible"
+      }
+    }
   }
 }

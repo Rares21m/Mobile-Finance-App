@@ -3,10 +3,12 @@ import {
   DefaultTheme,
   ThemeProvider as NavigationThemeProvider,
 } from "@react-navigation/native";
-import { Stack } from "expo-router";
+import Constants from "expo-constants";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { vars } from "nativewind";
+import { useEffect } from "react";
 import { View } from "react-native";
 import { Provider as PaperProvider } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -16,6 +18,10 @@ import { paperTheme } from "../constants/theme";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { BankProvider } from "../context/BankContext";
 import { BudgetProvider } from "../context/BudgetContext";
+import {
+  OnboardingProvider,
+  useOnboarding,
+} from "../context/OnboardingContext";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { ToastProvider } from "../context/ToastContext";
 import "../global.css";
@@ -23,6 +29,55 @@ import "../i18n/i18n";
 
 // Prevent the native splash from auto-hiding — we control it manually in AuthContext
 SplashScreen.preventAutoHideAsync();
+
+// Show notifications even when the app is in the foreground.
+// expo-notifications push features do not work in Expo Go (SDK 53+),
+// so we guard the setup to avoid the push-token auto-registration error.
+if (Constants.appOwnership !== "expo") {
+  const { setNotificationHandler } = require("expo-notifications");
+  setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
+
+// ─── Navigation guard: centralised routing logic ──────────────────────────────
+function NavigationGuard() {
+  const { token, isLoading } = useAuth();
+  const { isOnboardingDone, profileLoaded } = useOnboarding();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (isLoading || !profileLoaded) return;
+
+    const inAuthGroup = segments[0] === "(auth)";
+    const inOnboarding = segments[0] === "onboarding";
+
+    if (!token) {
+      // Not logged in — go to welcome (unless already there)
+      if (!inAuthGroup) router.replace("/(auth)/welcome");
+      return;
+    }
+
+    // Logged in
+    if (!isOnboardingDone && !inOnboarding) {
+      // First-time user — show wizard
+      router.replace("/onboarding");
+      return;
+    }
+
+    if (isOnboardingDone && (inAuthGroup || inOnboarding)) {
+      // Onboarding done and still on auth / onboarding screens — go to app
+      router.replace("/(tabs)");
+    }
+  }, [token, isLoading, isOnboardingDone, profileLoaded, segments]);
+
+  return null;
+}
 
 function SplashOverlay() {
   const { showSplash } = useAuth();
@@ -73,21 +128,25 @@ function RootLayoutContent() {
       >
         <ToastProvider>
           <AuthProvider>
-            <BankProvider>
-              <BudgetProvider>
-                <StatusBar style={isDark ? "light" : "dark"} />
-                <NavigationThemeProvider
-                  value={isDark ? DarkTheme : DefaultTheme}
-                >
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(auth)" />
-                    <Stack.Screen name="(tabs)" />
-                  </Stack>
-                </NavigationThemeProvider>
-                <Toast />
-                <SplashOverlay />
-              </BudgetProvider>
-            </BankProvider>
+            <OnboardingProvider>
+              <BankProvider>
+                <BudgetProvider>
+                  <StatusBar style={isDark ? "light" : "dark"} />
+                  <NavigationThemeProvider
+                    value={isDark ? DarkTheme : DefaultTheme}
+                  >
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="(auth)" />
+                      <Stack.Screen name="onboarding" />
+                      <Stack.Screen name="(tabs)" />
+                    </Stack>
+                  </NavigationThemeProvider>
+                  <NavigationGuard />
+                  <Toast />
+                  <SplashOverlay />
+                </BudgetProvider>
+              </BankProvider>
+            </OnboardingProvider>
           </AuthProvider>
         </ToastProvider>
       </View>

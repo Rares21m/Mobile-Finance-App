@@ -4,7 +4,6 @@
  * and automatic route protection (redirect logic).
  */
 
-import { useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../services/api";
@@ -23,8 +22,6 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
-  const router = useRouter();
-  const segments = useSegments();
 
   // On startup, check whether we have a saved token
   useEffect(() => {
@@ -50,21 +47,6 @@ export function AuthProvider({ children }) {
     }
     loadToken();
   }, []);
-
-  // Auto-redirect based on authentication state
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inAuthGroup = segments[0] === "(auth)";
-
-    if (!token && !inAuthGroup) {
-      // Not logged in → redirect to welcome
-      router.replace("/(auth)/welcome");
-    } else if (token && inAuthGroup) {
-      // Logged in → redirect to tabs
-      router.replace("/(tabs)");
-    }
-  }, [token, segments, isLoading]);
 
   async function login(email, password) {
     const response = await api.post("/auth/login", { email, password });
