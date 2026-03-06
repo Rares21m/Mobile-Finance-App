@@ -465,6 +465,24 @@ export function BankProvider({ children }) {
     }
   }
 
+  async function removeConnection(bankName) {
+    await api.delete(`/bt/connections/${bankName}`);
+    // Capture the IDs before removing from state
+    const removedIds = connections
+      .filter((c) => c.bankName === bankName.toUpperCase())
+      .map((c) => c.id);
+
+    setConnections((prev) =>
+      prev.filter((c) => c.bankName !== bankName.toUpperCase()),
+    );
+    setAccounts((prev) =>
+      prev.filter((acc) => !removedIds.includes(acc.connectionId)),
+    );
+    setTransactions((prev) =>
+      prev.filter((tx) => !removedIds.includes(tx.connectionId)),
+    );
+  }
+
   function getTotalBalance() {
     // In DEV mode, calculate balance from transactions (mock data isn't reflected in sandbox balances)
     if (__DEV__ && transactions.length > 0) {
@@ -500,6 +518,7 @@ export function BankProvider({ children }) {
         sessionExpired,
         refreshAllData,
         addConnection,
+        removeConnection,
         getTotalBalance,
         getRecentTransactions,
       }}

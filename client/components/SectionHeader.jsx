@@ -4,6 +4,7 @@
  */
 
 import { Pressable, Text, View } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 
 /**
  * Section header used across dashboard, accounts, analytics, and profile.
@@ -13,34 +14,49 @@ import { Pressable, Text, View } from "react-native";
  * @param {Function} [onPress]    - Optional onPress for the right text
  */
 export default function SectionHeader({ title, rightText, onPress }) {
+  const { theme } = useTheme();
+  const c = theme.colors;
   return (
-    <View className="flex-row items-center justify-between mb-3">
-      <View className="flex-row items-center" style={{ gap: 8 }}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 12,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <View
           style={{
             width: 3,
             height: 16,
             borderRadius: 2,
-            backgroundColor: "#10B981",
-            opacity: 0.9,
+            backgroundColor: c.primary,
           }}
         />
         <Text
-          className="text-foreground/80 text-sm font-semibold"
-          style={{ letterSpacing: 0.2 }}
+          style={{
+            color: c.foreground,
+            fontSize: 13,
+            fontWeight: "600",
+            letterSpacing: 0.2,
+          }}
         >
           {title}
         </Text>
       </View>
       {rightText &&
         (onPress ? (
-          <Pressable className="active:opacity-70" onPress={onPress}>
-            <Text className="text-primary text-xs font-semibold">
+          <Pressable
+            onPress={onPress}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <Text style={{ color: c.primary, fontSize: 12, fontWeight: "600" }}>
               {rightText}
             </Text>
           </Pressable>
         ) : (
-          <Text className="text-text-muted text-xs">{rightText}</Text>
+          <Text style={{ color: c.textMuted, fontSize: 12 }}>{rightText}</Text>
         ))}
     </View>
   );

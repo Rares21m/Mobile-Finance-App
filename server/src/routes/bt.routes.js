@@ -1,14 +1,15 @@
 const { Router } = require("express");
 const authMiddleware = require("../middleware/auth");
 const {
-    registerClient,
-    initConsent,
-    exchangeToken,
-    getAccounts,
-    getTransactions,
-    getBalances,
-    getUserConnections,
-    getConnectionData,
+  registerClient,
+  initConsent,
+  exchangeToken,
+  getAccounts,
+  getTransactions,
+  getBalances,
+  getUserConnections,
+  getConnectionData,
+  disconnectBank,
 } = require("../controllers/bt.controller");
 
 const router = Router();
@@ -18,6 +19,9 @@ router.use(authMiddleware);
 
 // GET /api/bt/connections — list active connections for the logged-in user
 router.get("/connections", getUserConnections);
+
+// DELETE /api/bt/connections/:bankName — disconnect a bank (BT or BRD)
+router.delete("/connections/:bankName", disconnectBank);
 
 // POST /api/bt/register-client
 router.post("/register-client", registerClient);
