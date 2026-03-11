@@ -41,7 +41,14 @@
       "nameRequired": "Name is required",
       "loginError": "Login failed. Check your connection.",
       "registerError": "Registration failed. Check your connection."
-    }
+    },
+    "biometricLogin": "Login with biometrics",
+    "biometricEnable": "Enable biometric login?",
+    "biometricEnableDesc": "Use Face ID or fingerprint to log in faster next time.",
+    "biometricEnableYes": "Enable",
+    "biometricEnableLater": "Not now",
+    "biometricError": "Biometric authentication failed. Please try again.",
+    "biometricCancelled": "Biometric login cancelled."
   },
   "dashboard": {
     "greeting": "Hey,",
@@ -68,6 +75,7 @@
     "goalInsight": {
       "savings": {
         "title": "Savings Rate",
+        "goalsTitle": "Savings Goals",
         "desc": "You're saving {{rate}}% of your income this month.",
         "tip": "Try to keep your savings rate above 20%."
       },
@@ -91,6 +99,47 @@
       "warning": "{{category}} is at {{pct}}% of budget",
       "over": "{{category}} exceeded the budget!",
       "tapToManage": "Tap to manage budgets"
+    },
+    "nudge": {
+      "dismiss": "Dismiss",
+      "noBank": {
+        "title": "Connect your bank",
+        "body": "Connect BT or BRD to see your real balance and transactions.",
+        "action": "Connect now"
+      },
+      "noBudget": {
+        "title": "Set your first budget",
+        "body": "A budget helps you control spending and save more each month.",
+        "action": "Set budget"
+      },
+      "budgetWarning": {
+        "title": "Watch your {{category}} budget",
+        "body": "You've spent {{pct}}% of your monthly limit. {{days}} days left.",
+        "action": "View budgets"
+      },
+      "savingsLow": {
+        "title": "Your savings rate can be higher",
+        "body": "You're saving {{rate}}% of income. Your target is 20%.",
+        "action": "AI tips"
+      },
+      "unbudgetedSpending": {
+        "title": "{{category}} has no budget",
+        "body": "You spent {{amount}} RON on {{category}} this month without a budget.",
+        "action": "Set limit"
+      }
+    },
+    "checkin": {
+      "title": "{{month}} summary",
+      "subtitle": "Here's how you did last month.",
+      "spent": "Total spent",
+      "income": "Total income",
+      "saved": "Saved",
+      "topCategories": "Top spending",
+      "adjustTitle": "Adjust your budgets?",
+      "adjustSubtitle": "Based on last month, here are a few tweaks to consider.",
+      "accept": "Accept adjustments",
+      "remindLater": "Remind me in 3 days",
+      "dismiss": "No thanks"
     }
   },
   "accounts": {
@@ -155,7 +204,33 @@
     "fab": {
       "categorii": "Categories",
       "recurente": "Recurring",
-      "tranzactii": "Transactions"
+      "tranzactii": "Transactions",
+      "comparatie": "Monthly Comparison",
+      "cashflow": "Cash Flow Forecast",
+      "venituri": "Income Details",
+      "cheltuieli": "Expense Details",
+      "buget": "Budget vs. Actual"
+    },
+    "comparison": {
+      "current": "This month",
+      "previous": "Last month",
+      "emptyTitle": "No comparison data",
+      "emptyDesc": "Connect a bank account and make sure you have transactions from at least two months."
+    },
+    "cashflow": {
+      "projectedNet": "Projected end-of-month net",
+      "daysLeft": "{{count}} days remaining this month",
+      "incomeToDate": "Income so far",
+      "expensesToDate": "Expenses so far",
+      "savingsRate": "Savings rate (month to date)",
+      "savingsGood": "Great! You're on track with savings.",
+      "savingsOk": "Not bad — try to push above 20%.",
+      "savingsLow": "Your savings rate is low this month.",
+      "projection": "Projection for remaining days",
+      "expectedIncome": "Expected income",
+      "expectedExpenses": "Expected expenses",
+      "recurringDue": "Recurring payments due",
+      "upcomingRecurring": "Upcoming recurring payments"
     },
     "recurring": {
       "title": "Recurring Payments",
@@ -171,6 +246,25 @@
         "biweekly": "Bi-weekly",
         "monthly": "Monthly"
       }
+    },
+    "incomeDetails": {
+      "monthlyTrend": "Monthly income trend",
+      "incomeTransactions": "Income transactions",
+      "noIncome": "No income recorded for this period",
+      "avgMonthly": "Avg. monthly"
+    },
+    "expenseDetails": {
+      "perDay": "day"
+    },
+    "budgetVsActual": {
+      "title": "Planned vs. Actual",
+      "planned": "Planned",
+      "spent": "Spent",
+      "overBudget": "Over!",
+      "totalPlanned": "Total planned",
+      "totalSpent": "Total spent",
+      "emptyTitle": "No budgets set",
+      "emptyDesc": "Set budget limits in the Budget tab to see the planned vs. actual comparison here."
     },
     "categories": {
       "count": "categories",
@@ -221,6 +315,8 @@
     "sectionAccount": "Account",
     "sectionPreferences": "Preferences",
     "sectionOther": "Other",
+    "achievements": "Your Achievements",
+    "badgesUnlocked": "badges unlocked",
     "editProfileTitle": "Edit profile",
     "namePlaceholder": "Your name",
     "emailPlaceholder": "Email address",
@@ -257,7 +353,16 @@
     "termsTitle": "Terms & Conditions",
     "termsContent": "By using Novence, you agree to our terms and conditions. The app uses the BT Open Banking API to access financial data. Data is processed in compliance with GDPR. We do not take responsibility for financial decisions made based on the information provided.",
     "currencyTitle": "Select currency",
-    "selectTheme": "Select theme"
+    "selectTheme": "Select theme",
+    "biometric": "Biometric Login",
+    "biometricEnabled": "Enabled",
+    "biometricDisabled": "Disabled",
+    "biometricDisableConfirm": "Disable biometric login?",
+    "biometricDisableMsg": "You will need to use your password to log in.",
+    "biometricDisableYes": "Disable",
+    "avatarUpdated": "Profile photo updated!",
+    "avatarError": "Error updating profile photo",
+    "avatarPermissionDenied": "Photo library access denied"
   },
   "export": {
     "reportTitle": "Monthly Financial Report",
@@ -310,6 +415,8 @@
     "needsLabel": "Needs (50%)",
     "wantsLabel": "Wants (30%)",
     "savingsLabel": "Savings (20%)",
+    "smartWeights": "From spending",
+    "smartWeightsDesc": "Based on your average spending over the last 3 months",
     "eventBudgets": "Special Budgets",
     "addEvent": "Add special budget",
     "eventName": "Budget name",
@@ -326,6 +433,55 @@
     "removeEvent": "Remove special budget",
     "editEvent": "Edit special budget",
     "allCategories": "All categories"
+  },
+  "transactions": {
+    "title": "Transactions",
+    "count": "results",
+    "searchPlaceholder": "Search by merchant, description...",
+    "allCategories": "All",
+    "empty": "No transactions yet",
+    "noResults": "No transactions match your search",
+    "addTx": "Add transaction",
+    "editTx": "Edit transaction",
+    "deleteTitle": "Delete transaction",
+    "deleteDesc": "This transaction will be permanently deleted.",
+    "manualTx": "Manual transaction",
+    "editCategory": "Change category",
+    "description": "Description",
+    "descriptionPlaceholder": "e.g. Rent, electricity...",
+    "amount": "Amount",
+    "category": "Category",
+    "manual": "MANUAL",
+    "type": {
+      "all": "All",
+      "expense": "Expenses",
+      "income": "Income"
+    },
+    "filters": "Filters",
+    "dateRange": "Date range",
+    "amountRange": "Amount range (RON)",
+    "from": "From",
+    "to": "To",
+    "minAmount": "Min",
+    "maxAmount": "Max",
+    "applyFilters": "Apply filters",
+    "resetFilters": "Reset",
+    "activeFilters": "{{count}} active",
+    "sortBy": "Sort by",
+    "sortOptions": {
+      "date_desc": "Newest first",
+      "date_asc": "Oldest first",
+      "amount_desc": "Highest amount",
+      "amount_asc": "Lowest amount"
+    },
+    "datePresets": {
+      "all": "All time",
+      "today": "Today",
+      "week": "This week",
+      "month": "This month",
+      "lastMonth": "Last month",
+      "custom": "Custom"
+    }
   },
   "tabs": {
     "home": "Home",
@@ -358,7 +514,8 @@
     "btGetTransactionsFailed": "Could not fetch transactions",
     "btGetBalancesFailed": "Could not fetch balances",
     "btSessionExpired": "Bank session expired. Please reconnect your account.",
-    "internalServerError": "Internal server error"
+    "internalServerError": "Internal server error",
+    "tooManyRequests": "Too many attempts. Please wait a few minutes and try again."
   },
   "onboarding": {
     "badge": "Step {{step}} of {{total}}",
@@ -372,12 +529,27 @@
     },
     "step2": {
       "title": "Monthly income range",
-      "subtitle": "Approximate is fine — this helps us suggest realistic budgets."
+      "subtitle": "Approximate is fine — this helps us suggest realistic budgets.",
+      "preview": {
+        "label": "Your estimated plan (50/30/20)",
+        "needs": "Necessities (50%)",
+        "wants": "Wants (30%)",
+        "savings": "Savings (20%)"
+      }
     },
     "step3": {
       "title": "What matters most?",
       "subtitle": "Pick the spending areas you want to keep an eye on.",
       "hint": "Select at least one category to continue."
+    },
+    "step4": {
+      "title": "Your financial plan",
+      "subtitle": "Based on your answers, here's your personalised budget plan.",
+      "savingsNote": "Recommended savings (20%)",
+      "savingsDesc": "This is the amount you could set aside each month.",
+      "accept": "Accept plan",
+      "skip": "Customise later",
+      "noSuggestions": "Select categories in the previous step to see your plan."
     },
     "goals": {
       "savings": {
@@ -397,5 +569,25 @@
         "sublabel": "Pay off loans and debts as fast as possible"
       }
     }
+  },
+  "goals": {
+    "title": "Savings Goals",
+    "addGoal": "Add goal",
+    "editGoal": "Edit goal",
+    "empty": "No savings goals yet. Create your first goal!",
+    "goalName": "Goal name",
+    "goalNamePlaceholder": "e.g. Vacation fund",
+    "target": "Target",
+    "saved": "Saved",
+    "deadline": "Target date",
+    "optional": "optional",
+    "icon": "Icon",
+    "color": "Color",
+    "deleteGoal": "Delete goal"
+  },
+  "inbox": {
+    "title": "Notifications",
+    "emptyTitle": "No notifications yet",
+    "emptyDesc": "Budget alerts, earned badges and monthly check-ins will appear here."
   }
 }

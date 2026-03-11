@@ -1,5 +1,8 @@
 import { useState } from "react";
 import {
+    ActivityIndicator,
+    Alert,
+    Image,
     Linking,
     Pressable,
     ScrollView,
@@ -11,6 +14,7 @@ import {
 import { useToast } from "../../context/ToastContext";
 
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 
@@ -19,16 +23,28 @@ import GradientButton from "../../components/GradientButton";
 import SectionHeader from "../../components/SectionHeader";
 import SettingsItem from "../../components/SettingsItem";
 import { useAuth } from "../../context/AuthContext";
+import { useBadges } from "../../context/BadgesContext";
 import { useTheme } from "../../context/ThemeContext";
 import api from "../../services/api";
 import { getErrorKey } from "../../utils/errorCodes";
 
 export default function Profile() {
   const { t, i18n } = useTranslation();
-  const { user, logout, updateUser } = useAuth();
+  const {
+    user,
+    logout,
+    updateUser,
+    biometricEnabled,
+    biometricAvailable,
+    disableBiometric,
+  } = useAuth();
   const { themeMode, setTheme, isDark, theme } = useTheme();
   const c = theme.colors;
   const { showToast } = useToast();
+  const { badges, totalPoints } = useBadges();
+  const lang = i18n.language?.startsWith("ro") ? "Ro" : "En";
+
+  const earnedCount = badges.filter((b) => b.earned).length;
 
   // Modal visibility states
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -52,6 +68,7 @@ export default function Profile() {
 
   // Preferences state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [pickingAvatar, setPickingAvatar] = useState(false);
 
   const currentLang = i18n.language?.startsWith("ro") ? "ro" : "en";
 
@@ -121,6 +138,36 @@ export default function Profile() {
     setLangModalVisible(false);
   };
 
+  // ========== AVATAR ==========
+  const handlePickAvatar = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        showToast(t("profile.avatarPermissionDenied"), "error");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
+      if (result.canceled || !result.assets?.[0]?.base64) return;
+      setPickingAvatar(true);
+      const asset = result.assets[0];
+      const mimeType = asset.mimeType || "image/jpeg";
+      const base64Uri = `data:${mimeType};base64,${asset.base64}`;
+      await updateUser({ avatar: base64Uri });
+      showToast(t("profile.avatarUpdated"), "success");
+    } catch (err) {
+      showToast(t("profile.avatarError"), "error");
+    } finally {
+      setPickingAvatar(false);
+    }
+  };
+
   // Get user initials for avatar
   const initials = user?.name
     ? user.name
@@ -153,6 +200,46 @@ export default function Profile() {
           iconBg: "rgba(99,102,241,0.12)",
           onPress: openSecurityModal,
         },
+        ...(biometricAvailable
+          ? [
+              {
+                key: "biometric",
+                icon: "finger-print-outline",
+                label: t("profile.biometric"),
+                iconColor: "#EC4899",
+                iconBg: "rgba(236,72,153,0.12)",
+                value: biometricEnabled
+                  ? t("profile.biometricEnabled")
+                  : t("profile.biometricDisabled"),
+                rightComponent: (
+                  <Switch
+                    value={biometricEnabled}
+                    onValueChange={(val) => {
+                      if (!val) {
+                        Alert.alert(
+                          t("profile.biometricDisableConfirm"),
+                          t("profile.biometricDisableMsg"),
+                          [
+                            { text: t("common.cancel"), style: "cancel" },
+                            {
+                              text: t("profile.biometricDisableYes"),
+                              style: "destructive",
+                              onPress: disableBiometric,
+                            },
+                          ],
+                        );
+                      }
+                    }}
+                    trackColor={{
+                      false: c.border,
+                      true: "rgba(236,72,153,0.35)",
+                    }}
+                    thumbColor={biometricEnabled ? "#EC4899" : c.textMuted}
+                  />
+                ),
+              },
+            ]
+          : []),
         {
           key: "notifications",
           icon: "notifications-outline",
@@ -242,23 +329,60 @@ export default function Profile() {
       >
         {/* User Info Card */}
         <View className="mx-6 mt-14 bg-surface rounded-3xl p-5 flex-row items-center border border-border">
-          <View className="w-14 h-14 rounded-2xl overflow-hidden mr-4">
-            <LinearGradient
-              colors={["#10B981", "#6366F1"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+          <Pressable
+            className="mr-4"
+            onPress={handlePickAvatar}
+            disabled={pickingAvatar}
+            style={{ position: "relative" }}
+          >
+            <View className="w-14 h-14 rounded-2xl overflow-hidden">
+              {user?.avatar ? (
+                <Image
+                  source={{ uri: user.avatar }}
+                  style={{ width: 56, height: 56 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <LinearGradient
+                  colors={["#10B981", "#6366F1"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text className="text-foreground text-lg font-bold">
+                    {initials}
+                  </Text>
+                </LinearGradient>
+              )}
+            </View>
+            {/* Camera badge */}
+            <View
               style={{
-                width: 56,
-                height: 56,
+                position: "absolute",
+                bottom: -4,
+                right: -4,
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                backgroundColor: "#10B981",
+                borderWidth: 2,
+                borderColor: c.surface,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Text className="text-foreground text-lg font-bold">
-                {initials}
-              </Text>
-            </LinearGradient>
-          </View>
+              {pickingAvatar ? (
+                <ActivityIndicator size={10} color="white" />
+              ) : (
+                <Ionicons name="camera" size={10} color="white" />
+              )}
+            </View>
+          </Pressable>
           <View className="flex-1">
             <Text className="text-foreground text-lg font-bold">
               {user?.name || t("profile.defaultUser")}
@@ -300,6 +424,102 @@ export default function Profile() {
             </View>
           </View>
         ))}
+
+        {/* Achievements / Badges */}
+        <View className="mt-7 mb-2">
+          <View className="px-6">
+            <SectionHeader title={t("profile.achievements")} />
+          </View>
+
+          {/* XP summary bar */}
+          <View
+            className="mx-6 mt-3 rounded-2xl p-4 flex-row items-center border border-border"
+            style={{ backgroundColor: c.surface }}
+          >
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: "rgba(245,158,11,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
+              }}
+            >
+              <Text style={{ fontSize: 22 }}>⚡</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: c.text, fontWeight: "700", fontSize: 16 }}>
+                {totalPoints} XP
+              </Text>
+              <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 1 }}>
+                {earnedCount} / {badges.length} {t("profile.badgesUnlocked")}
+              </Text>
+            </View>
+          </View>
+
+          {/* Badge grid */}
+          <View
+            style={{
+              marginHorizontal: 24,
+              marginTop: 12,
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 10,
+            }}
+          >
+            {badges.map((badge) => {
+              const name = badge[`name${lang}`] || badge.nameEn;
+              const desc = badge[`desc${lang}`] || badge.descEn;
+              return (
+                <View
+                  key={badge.id}
+                  style={{
+                    width: "30%",
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: badge.earned ? badge.color + "40" : c.border,
+                    backgroundColor: badge.earned
+                      ? badge.color + "12"
+                      : c.surface,
+                    padding: 10,
+                    alignItems: "center",
+                    opacity: badge.earned ? 1 : 0.45,
+                  }}
+                >
+                  <Text style={{ fontSize: 28, marginBottom: 4 }}>
+                    {badge.earned ? badge.emoji : "🔒"}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "700",
+                      color: badge.earned ? badge.color : c.textMuted,
+                      textAlign: "center",
+                      numberOfLines: 2,
+                    }}
+                    numberOfLines={2}
+                  >
+                    {name}
+                  </Text>
+                  {badge.earned && (
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        color: badge.color,
+                        fontWeight: "600",
+                        marginTop: 2,
+                      }}
+                    >
+                      +{badge.points} XP
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </View>
 
         {/* Logout */}
         <Pressable

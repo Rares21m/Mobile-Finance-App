@@ -6,6 +6,7 @@
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const logger = require("../config/logger");
+const { awardBadge } = require("../services/badgeService");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -379,6 +380,9 @@ async function chat(req, res) {
     const chat = model.startChat({ history });
     const result = await chat.sendMessage(lastMessage.text);
     const text = result.response.text();
+
+    // Award the advisor badge if not already earned (fire-and-forget)
+    if (req.userId) awardBadge(req.userId, "advisor_used").catch(() => {});
 
     res.json({ reply: text });
   } catch (err) {

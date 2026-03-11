@@ -3,7 +3,7 @@
  * description, date, and amount. Used in dashboard and analytics.
  */
 
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -12,11 +12,17 @@ import { categorizeTransaction } from "../utils/categoryUtils";
 /**
  * A single transaction row used in dashboard, accounts, and analytics.
  *
- * @param {object}  tx             - Transaction object from BankContext
- * @param {boolean} isLast         - Whether this is the last item (hides bottom border)
- * @param {boolean} [showCategory] - Show category label below the description
+ * @param {object}   tx             - Transaction object from BankContext
+ * @param {boolean}  isLast         - Whether this is the last item (hides bottom border)
+ * @param {boolean}  [showCategory] - Show category label below the description
+ * @param {Function} [onLongPress]  - Called when the row is long-pressed (for category override / edit)
  */
-export default function TransactionItem({ tx, isLast, showCategory = false }) {
+export default function TransactionItem({
+  tx,
+  isLast,
+  showCategory = false,
+  onLongPress,
+}) {
   const { t } = useTranslation();
 
   const rawAmount = parseFloat(tx.transactionAmount?.amount || 0);
@@ -42,7 +48,9 @@ export default function TransactionItem({ tx, isLast, showCategory = false }) {
     : "";
 
   return (
-    <View
+    <Pressable
+      onLongPress={onLongPress}
+      delayLongPress={400}
       className={`flex-row items-center p-4 ${!isLast ? "border-b border-border" : ""}`}
     >
       {/* Category icon */}
@@ -55,9 +63,31 @@ export default function TransactionItem({ tx, isLast, showCategory = false }) {
 
       {/* Description + date */}
       <View className="flex-1">
-        <Text className="text-foreground font-medium text-sm" numberOfLines={1}>
-          {description}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text
+            className="text-foreground font-medium text-sm"
+            numberOfLines={1}
+            style={{ flex: 1 }}
+          >
+            {description}
+          </Text>
+          {tx.isManual && (
+            <View
+              style={{
+                backgroundColor: "#6366F118",
+                borderRadius: 6,
+                paddingHorizontal: 5,
+                paddingVertical: 2,
+              }}
+            >
+              <Text
+                style={{ color: "#6366F1", fontSize: 9, fontWeight: "700" }}
+              >
+                {t("transactions.manual")}
+              </Text>
+            </View>
+          )}
+        </View>
         <Text className="text-text-muted text-xs mt-0.5">
           {showCategory
             ? `${t(`analytics.categories.${cat.key}`)} • ${dateStr}`
@@ -75,6 +105,6 @@ export default function TransactionItem({ tx, isLast, showCategory = false }) {
         })}{" "}
         <Text className="font-normal text-xs">RON</Text>
       </Text>
-    </View>
+    </Pressable>
   );
 }

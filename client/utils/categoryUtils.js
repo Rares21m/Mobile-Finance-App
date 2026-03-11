@@ -219,9 +219,18 @@ const DEFAULT_CATEGORY = {
 
 /**
  * Categorize a single transaction based on its description fields.
+ * If the transaction has an explicit `category` field (manual tx or override),
+ * that is used directly.
  * Returns { key, icon, color }
  */
 export function categorizeTransaction(tx) {
+  // Respect explicit category (manual transactions or user overrides)
+  if (tx.category) {
+    const explicit = CATEGORIES.find((c) => c.key === tx.category);
+    if (explicit)
+      return { key: explicit.key, icon: explicit.icon, color: explicit.color };
+  }
+
   const description = [
     tx.remittanceInformationUnstructured || "",
     tx.creditorName || "",
@@ -488,5 +497,192 @@ export function detectRecurringTransactions(transactions) {
   return recurring.sort((a, b) => b.monthlyEstimate - a.monthlyEstimate);
 }
 
-export { CATEGORIES };
+/**
+ * Build a category-level monthly comparison between current and previous month.
+ * Returns an array sorted by current-month spending (desc):
+ * [{ key, icon, color, label, current, previous, diff, diffPct }]
+ *
+ * @param {Array} transactions – full, unfiltered transaction list
+ */
+export function getMonthlyComparison(transactions) {
+  const now = new Date();
+  const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
+  const currentTx = transactions.filter((tx) => {
+    const d = new Date(tx.bookingDate || tx.valueDate);
+    return d >= currentStart && d <= now;
+  });
+  const prevTx = transactions.filter((tx) => {
+    const d = new Date(tx.bookingDate || tx.valueDate);
+    return d >= prevStart && d <= prevEnd;
+  });
+
+  const sumByCategory = (txList) => {
+    const map = {};
+    for (const tx of txList) {
+      const amt = parseFloat(tx.transactionAmount?.amount || 0);
+      if (amt >= 0) continue; // expenses only
+      const cat = categorizeTransaction(tx);
+      if (!map[cat.key])
+        map[cat.key] = {
+          key: cat.key,
+          icon: cat.icon,
+          color: cat.color,
+          total: 0,
+        };
+      map[cat.key].total += Math.abs(amt);
+    }
+    return map;
+  };
+
+  const curr = sumByCategory(currentTx);
+  const prev = sumByCategory(prevTx);
+
+  const allKeys = new Set([...Object.keys(curr), ...Object.keys(prev)]);
+  const result = [];
+
+  for (const key of allKeys) {
+    const currentTotal = Math.round((curr[key]?.total || 0) * 100) / 100;
+    const previousTotal = Math.round((prev[key]?.total || 0) * 100) / 100;
+    const meta = curr[key] || prev[key];
+    const diff = currentTotal - previousTotal;
+    const diffPct =
+      previousTotal > 0 ? Math.round((diff / previousTotal) * 100) : null;
+
+    result.push({
+      key,
+      icon: meta.icon,
+      color: meta.color,
+      current: currentTotal,
+      previous: previousTotal,
+      diff: Math.round(diff * 100) / 100,
+      diffPct,
+    });
+  }
+
+  return result.sort((a, b) => b.current - a.current);
+}
+
+/**
+ * Predict end-of-month balance (cash flow forecast).
+ *
+ * Logic:
+ *  1. Start from current income − current expenses so far this month.
+ *  2. Extrapolate remaining income proportionally (days left / days elapsed).
+ *  3. Subtract estimated cost of recurring payments still to come this month.
+ *
+ * @param {Array} transactions – full, unfiltered transaction list
+ * @param {number} currentBalance – live account balance (can be 0 if unavailable)
+ * @returns {{ projectedNet, incomeToDate, expensesToDate, remainingRecurring,
+ *             extrapolatedIncome, extrapolatedExpenses, daysLeft, daysElapsed,
+ *             savingsRateToDate, recurringItems }}
+ */
+export function getCashFlowForecast(transactions, currentBalance = 0) {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const totalDays = monthEnd.getDate();
+  const daysElapsed = now.getDate();
+  const daysLeft = totalDays - daysElapsed;
+
+  const currentMonthTx = transactions.filter((tx) => {
+    const d = new Date(tx.bookingDate || tx.valueDate);
+    return d >= monthStart && d <= now;
+  });
+
+  let incomeToDate = 0;
+  let expensesToDate = 0;
+  for (const tx of currentMonthTx) {
+    const amt = parseFloat(tx.transactionAmount?.amount || 0);
+    if (amt > 0) incomeToDate += amt;
+    else expensesToDate += Math.abs(amt);
+  }
+  incomeToDate = Math.round(incomeToDate * 100) / 100;
+  expensesToDate = Math.round(expensesToDate * 100) / 100;
+
+  // Extrapolated income/expenses for remaining days (linear)
+  const dailyIncome = daysElapsed > 0 ? incomeToDate / daysElapsed : 0;
+  const dailyExpenses = daysElapsed > 0 ? expensesToDate / daysElapsed : 0;
+  const extrapolatedIncome = Math.round(dailyIncome * daysLeft * 100) / 100;
+  const extrapolatedExpenses = Math.round(dailyExpenses * daysLeft * 100) / 100;
+
+  // Recurring payments still to come this month
+  const recurring = detectRecurringTransactions(transactions);
+  const recurringItems = recurring.filter((r) => {
+    const next = new Date(r.nextDate);
+    return (
+      next > now &&
+      next.getMonth() === now.getMonth() &&
+      next.getFullYear() === now.getFullYear()
+    );
+  });
+  const remainingRecurring =
+    Math.round(recurringItems.reduce((s, r) => s + r.amount, 0) * 100) / 100;
+
+  const projectedNet =
+    Math.round(
+      (incomeToDate +
+        extrapolatedIncome -
+        expensesToDate -
+        extrapolatedExpenses -
+        remainingRecurring) *
+        100,
+    ) / 100;
+
+  const savingsRateToDate =
+    incomeToDate > 0
+      ? Math.round(((incomeToDate - expensesToDate) / incomeToDate) * 100)
+      : 0;
+
+  return {
+    projectedNet,
+    incomeToDate,
+    expensesToDate,
+    extrapolatedIncome,
+    extrapolatedExpenses,
+    remainingRecurring,
+    recurringItems,
+    daysLeft,
+    daysElapsed,
+    totalDays,
+    savingsRateToDate,
+  };
+}
+
+/**
+ * Get monthly income (and expenses) for the last N months.
+ * Returns array (oldest first) of { label, income, expenses }.
+ */
+export function getMonthlyIncomeTrend(transactions, months = 6) {
+  const now = new Date();
+  const result = [];
+
+  for (let i = months - 1; i >= 0; i--) {
+    const baseMonth = now.getMonth() - i;
+    const start = new Date(now.getFullYear(), baseMonth, 1);
+    const end = new Date(now.getFullYear(), baseMonth + 1, 0);
+
+    let income = 0;
+    let expenses = 0;
+    for (const tx of transactions) {
+      const d = new Date(tx.bookingDate || tx.valueDate);
+      if (d < start || d > end) continue;
+      const amt = parseFloat(tx.transactionAmount?.amount || 0);
+      if (amt > 0) income += amt;
+      else expenses += Math.abs(amt);
+    }
+
+    const label = start.toLocaleDateString("default", { month: "short" });
+    result.push({
+      label,
+      income: Math.round(income * 100) / 100,
+      expenses: Math.round(expenses * 100) / 100,
+    });
+  }
+
+  return result;
+}
+
+export { CATEGORIES };

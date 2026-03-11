@@ -3,14 +3,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Pressable,
+    ScrollView,
+    Text,
+    View,
 } from "react-native";
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import BottomSheet from "../../components/BottomSheet";
@@ -20,11 +20,15 @@ import { useBankData } from "../../context/BankContext";
 import { useBudget } from "../../context/BudgetContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
-  categorizeTransaction,
-  detectRecurringTransactions,
-  filterByPeriod,
-  getCategoryBreakdown,
-  getDailyExpenses,
+    CATEGORIES,
+    categorizeTransaction,
+    detectRecurringTransactions,
+    filterByPeriod,
+    getCashFlowForecast,
+    getCategoryBreakdown,
+    getDailyExpenses,
+    getMonthlyComparison,
+    getMonthlyIncomeTrend,
 } from "../../utils/categoryUtils";
 import { exportFinancialReport } from "../../utils/exportPdf";
 
@@ -134,6 +138,16 @@ export default function Analytics() {
     [recurringTransactions],
   );
 
+  const monthlyComparison = useMemo(
+    () => getMonthlyComparison(transactions),
+    [transactions],
+  );
+
+  const cashFlowForecast = useMemo(
+    () => getCashFlowForecast(transactions),
+    [transactions],
+  );
+
   const categoryTransactions = useMemo(() => {
     if (!selectedCategory) return [];
     return filteredTx
@@ -176,6 +190,44 @@ export default function Analytics() {
       })),
     [dailyData, isDark],
   );
+
+  const monthlyIncomeTrend = useMemo(
+    () => getMonthlyIncomeTrend(transactions, 6),
+    [transactions],
+  );
+
+  const incomeTrendBarData = useMemo(
+    () =>
+      monthlyIncomeTrend.map((d) => ({
+        value: d.income,
+        label: d.label,
+        frontColor: "#22C55E",
+        gradientColor: "#16A34A",
+        topLabelComponent: () => (
+          <Text
+            style={{
+              color: c.chartAxisTextColor,
+              fontSize: 8,
+              marginBottom: 2,
+            }}
+          >
+            {d.income > 0 ? Math.round(d.income) : ""}
+          </Text>
+        ),
+      })),
+    [monthlyIncomeTrend, isDark],
+  );
+
+  const budgetVsActualData = useMemo(() => {
+    return getBudgetSummary().map((b) => {
+      const cat = CATEGORIES.find((c) => c.key === b.key);
+      return {
+        ...b,
+        color: cat?.color ?? "#6B7280",
+        icon: cat?.icon ?? "ellipsis-horizontal",
+      };
+    });
+  }, [getBudgetSummary]);
 
   const hasData = filteredTx.length > 0;
 
@@ -243,6 +295,11 @@ export default function Analytics() {
     categorii: t("analytics.fab.categorii"),
     recurente: t("analytics.fab.recurente"),
     tranzactii: t("analytics.fab.tranzactii"),
+    comparatie: t("analytics.fab.comparatie"),
+    cashflow: t("analytics.fab.cashflow"),
+    venituri: t("analytics.fab.venituri"),
+    cheltuieli: t("analytics.fab.cheltuieli"),
+    buget: t("analytics.fab.buget"),
   };
 
   return (
@@ -342,8 +399,9 @@ export default function Analytics() {
 
         {/* ── Income & Expenses cards ── */}
         <View className="flex-row mx-6 mt-5 gap-3">
-          <View
-            className="flex-1 rounded-2xl p-4"
+          <Pressable
+            className="flex-1 rounded-2xl p-4 active:opacity-80"
+            onPress={() => openSubView("venituri")}
             style={{
               backgroundColor: c.card,
               borderLeftWidth: 3,
@@ -357,9 +415,10 @@ export default function Analytics() {
                 color="#22C55E"
                 style={{ marginRight: 6 }}
               />
-              <Text className="text-text-muted text-xs">
+              <Text className="text-text-muted text-xs flex-1">
                 {t("analytics.income")}
               </Text>
+              <Ionicons name="chevron-forward" size={12} color="#22C55E" />
             </View>
             <Text className="text-success font-bold text-lg">
               +
@@ -368,10 +427,11 @@ export default function Analytics() {
               })}
             </Text>
             <Text className="text-text-muted text-xs mt-0.5">RON</Text>
-          </View>
+          </Pressable>
 
-          <View
-            className="flex-1 rounded-2xl p-4"
+          <Pressable
+            className="flex-1 rounded-2xl p-4 active:opacity-80"
+            onPress={() => openSubView("cheltuieli")}
             style={{
               backgroundColor: c.card,
               borderLeftWidth: 3,
@@ -385,9 +445,10 @@ export default function Analytics() {
                 color="#F43F5E"
                 style={{ marginRight: 6 }}
               />
-              <Text className="text-text-muted text-xs">
+              <Text className="text-text-muted text-xs flex-1">
                 {t("analytics.expenses")}
               </Text>
+              <Ionicons name="chevron-forward" size={12} color="#F43F5E" />
             </View>
             <Text className="text-expense font-bold text-lg">
               -
@@ -396,7 +457,7 @@ export default function Analytics() {
               })}
             </Text>
             <Text className="text-text-muted text-xs mt-0.5">RON</Text>
-          </View>
+          </Pressable>
         </View>
 
         {/* ── No data ── */}
@@ -434,8 +495,9 @@ export default function Analytics() {
               <View className="mx-6 mt-5">
                 <SectionHeader title={t("analytics.spendingInsights")} />
                 <View className="flex-row gap-3">
-                  <View
-                    className="flex-1 rounded-2xl p-4"
+                  <Pressable
+                    className="flex-1 rounded-2xl p-4 active:opacity-80"
+                    onPress={() => openSubView("cheltuieli")}
                     style={{
                       backgroundColor: c.card,
                       borderLeftWidth: 3,
@@ -460,11 +522,12 @@ export default function Analytics() {
                         RON
                       </Text>
                     </Text>
-                  </View>
+                  </Pressable>
 
                   {selectedPeriod !== 1 && (
-                    <View
-                      className="flex-1 rounded-2xl p-4"
+                    <Pressable
+                      className="flex-1 rounded-2xl p-4 active:opacity-80"
+                      onPress={() => openSubView("comparatie")}
                       style={{
                         backgroundColor: c.card,
                         borderLeftWidth: 3,
@@ -501,14 +564,15 @@ export default function Analytics() {
                         {spendingInsights.percentChange > 0 ? "+" : ""}
                         {spendingInsights.percentChange.toFixed(0)}%
                       </Text>
-                    </View>
+                    </Pressable>
                   )}
                 </View>
 
                 {spendingInsights.topMerchant &&
                   spendingInsights.topMerchantCount > 1 && (
-                    <View
-                      className="rounded-2xl p-4 mt-3 flex-row items-center"
+                    <Pressable
+                      className="rounded-2xl p-4 mt-3 flex-row items-center active:opacity-80"
+                      onPress={() => openSubView("tranzactii")}
                       style={{
                         backgroundColor: c.card,
                         borderLeftWidth: 3,
@@ -537,7 +601,7 @@ export default function Analytics() {
                           {spendingInsights.topMerchantCount}x
                         </Text>
                       </View>
-                    </View>
+                    </Pressable>
                   )}
               </View>
             )}
@@ -648,6 +712,132 @@ export default function Analytics() {
                     </View>
                   </LinearGradient>
                 </Pressable>
+
+                {/* Comparatie lunara */}
+                <Pressable
+                  className="active:opacity-70"
+                  style={{ width: (SCREEN_WIDTH - 60) / 2 }}
+                  onPress={() => openSubView("comparatie")}
+                >
+                  <LinearGradient
+                    colors={["#06B6D420", "#06B6D408"]}
+                    style={{
+                      borderRadius: 20,
+                      padding: 16,
+                      borderWidth: 1,
+                      borderColor: "#06B6D430",
+                    }}
+                  >
+                    <View className="w-10 h-10 rounded-xl bg-[#06B6D4]/20 items-center justify-center mb-3">
+                      <Ionicons name="bar-chart" size={20} color="#06B6D4" />
+                    </View>
+                    <Text className="text-foreground font-bold text-sm mb-0.5">
+                      {t("analytics.fab.comparatie")}
+                    </Text>
+                    <Text className="text-text-muted text-xs" numberOfLines={1}>
+                      {monthlyComparison.length}{" "}
+                      {t("analytics.categories.count")}
+                    </Text>
+                    <View style={{ position: "absolute", top: 12, right: 12 }}>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={14}
+                        color="#06B6D4"
+                      />
+                    </View>
+                  </LinearGradient>
+                </Pressable>
+
+                {/* Cash Flow Forecast */}
+                <Pressable
+                  className="active:opacity-70"
+                  style={{ width: (SCREEN_WIDTH - 60) / 2 }}
+                  onPress={() => openSubView("cashflow")}
+                >
+                  <LinearGradient
+                    colors={["#10B98120", "#10B98108"]}
+                    style={{
+                      borderRadius: 20,
+                      padding: 16,
+                      borderWidth: 1,
+                      borderColor: "#10B98130",
+                    }}
+                  >
+                    <View className="w-10 h-10 rounded-xl bg-[#10B981]/20 items-center justify-center mb-3">
+                      <Ionicons name="trending-up" size={20} color="#10B981" />
+                    </View>
+                    <Text className="text-foreground font-bold text-sm mb-0.5">
+                      {t("analytics.fab.cashflow")}
+                    </Text>
+                    <Text
+                      className={`text-xs font-semibold ${
+                        cashFlowForecast.projectedNet >= 0
+                          ? "text-success"
+                          : "text-expense"
+                      }`}
+                      numberOfLines={1}
+                    >
+                      {cashFlowForecast.projectedNet >= 0 ? "+" : ""}
+                      {cashFlowForecast.projectedNet.toLocaleString("ro-RO", {
+                        maximumFractionDigits: 0,
+                      })}{" "}
+                      RON
+                    </Text>
+                    <View style={{ position: "absolute", top: 12, right: 12 }}>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={14}
+                        color="#10B981"
+                      />
+                    </View>
+                  </LinearGradient>
+                </Pressable>
+
+                {/* Budget vs. Actual */}
+                {budgetVsActualData.length > 0 && (
+                  <Pressable
+                    className="active:opacity-70"
+                    style={{ width: (SCREEN_WIDTH - 60) / 2 }}
+                    onPress={() => openSubView("buget")}
+                  >
+                    <LinearGradient
+                      colors={["#6366F120", "#6366F108"]}
+                      style={{
+                        borderRadius: 20,
+                        padding: 16,
+                        borderWidth: 1,
+                        borderColor: "#6366F130",
+                      }}
+                    >
+                      <View className="w-10 h-10 rounded-xl bg-[#6366F1]/20 items-center justify-center mb-3">
+                        <Ionicons
+                          name="git-compare-outline"
+                          size={20}
+                          color="#6366F1"
+                        />
+                      </View>
+                      <Text className="text-foreground font-bold text-sm mb-0.5">
+                        {t("analytics.fab.buget")}
+                      </Text>
+                      <Text
+                        className="text-text-muted text-xs"
+                        numberOfLines={1}
+                      >
+                        {budgetVsActualData.length}{" "}
+                        {t("analytics.categories.count")}
+                      </Text>
+                      <View
+                        style={{ position: "absolute", top: 12, right: 12 }}
+                      >
+                        <Ionicons
+                          name="chevron-forward"
+                          size={14}
+                          color="#6366F1"
+                        />
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+                )}
               </View>
             </View>
           </>
@@ -845,6 +1035,390 @@ export default function Analytics() {
           </View>
         )}
 
+        {/* ══════════ SUB-VIEW: COMPARATIE LUNARA ══════════ */}
+        {activeView === "comparatie" && (
+          <View className="mx-6 mt-5">
+            {monthlyComparison.length > 0 ? (
+              <View className="bg-surface rounded-2xl border border-border overflow-hidden">
+                {/* Legend */}
+                <View className="flex-row items-center justify-end px-4 pt-4 pb-2 gap-4">
+                  <View className="flex-row items-center gap-1.5">
+                    <View
+                      className="w-3 h-3 rounded-sm"
+                      style={{ backgroundColor: "#06B6D4" }}
+                    />
+                    <Text className="text-text-muted text-xs">
+                      {t("analytics.comparison.current")}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-1.5">
+                    <View
+                      className="w-3 h-3 rounded-sm"
+                      style={{ backgroundColor: "#94A3B8" }}
+                    />
+                    <Text className="text-text-muted text-xs">
+                      {t("analytics.comparison.previous")}
+                    </Text>
+                  </View>
+                </View>
+
+                {monthlyComparison.map((item, idx) => {
+                  const maxVal = Math.max(item.current, item.previous, 1);
+                  const barWidth = SCREEN_WIDTH - 48 - 32 - 48; // screen - mx - padding - label col
+                  return (
+                    <View
+                      key={item.key}
+                      className={`px-4 py-3 ${
+                        idx < monthlyComparison.length - 1
+                          ? "border-b border-border"
+                          : ""
+                      }`}
+                    >
+                      <View className="flex-row items-center mb-2">
+                        <View
+                          className="w-7 h-7 rounded-full items-center justify-center mr-2"
+                          style={{ backgroundColor: `${item.color}18` }}
+                        >
+                          <Ionicons
+                            name={item.icon}
+                            size={13}
+                            color={item.color}
+                          />
+                        </View>
+                        <Text className="text-foreground text-xs font-semibold flex-1">
+                          {t(`analytics.categories.${item.key}`)}
+                        </Text>
+                        {item.diffPct !== null && (
+                          <View
+                            className="px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor:
+                                item.diff <= 0 ? "#22C55E18" : "#F43F5E18",
+                            }}
+                          >
+                            <Text
+                              className="text-[10px] font-bold"
+                              style={{
+                                color: item.diff <= 0 ? "#22C55E" : "#F43F5E",
+                              }}
+                            >
+                              {item.diff <= 0 ? "▼" : "▲"}
+                              {Math.abs(item.diffPct)}%
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Current month bar */}
+                      <View className="flex-row items-center mb-1 gap-2">
+                        <View
+                          style={{
+                            width: barWidth * (item.current / maxVal),
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: "#06B6D4",
+                            minWidth: item.current > 0 ? 4 : 0,
+                          }}
+                        />
+                        <Text className="text-foreground text-[10px] font-semibold">
+                          {item.current.toLocaleString("ro-RO", {
+                            maximumFractionDigits: 0,
+                          })}{" "}
+                          RON
+                        </Text>
+                      </View>
+
+                      {/* Previous month bar */}
+                      <View className="flex-row items-center gap-2">
+                        <View
+                          style={{
+                            width: barWidth * (item.previous / maxVal),
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: "#94A3B8",
+                            minWidth: item.previous > 0 ? 4 : 0,
+                          }}
+                        />
+                        <Text className="text-text-muted text-[10px]">
+                          {item.previous.toLocaleString("ro-RO", {
+                            maximumFractionDigits: 0,
+                          })}{" "}
+                          RON
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <View
+                className="rounded-2xl p-5"
+                style={{
+                  borderWidth: 1,
+                  borderStyle: "dashed",
+                  borderColor: c.border,
+                }}
+              >
+                <View className="flex-row items-center">
+                  <View className="flex-1 pr-4">
+                    <Text className="text-foreground font-semibold text-sm mb-1">
+                      {t("analytics.comparison.emptyTitle")}
+                    </Text>
+                    <Text className="text-text-muted text-xs leading-4">
+                      {t("analytics.comparison.emptyDesc")}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="bar-chart-outline"
+                    size={36}
+                    color={c.textMuted}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ══════════ SUB-VIEW: CASH FLOW FORECAST ══════════ */}
+        {activeView === "cashflow" && (
+          <View className="mx-6 mt-5">
+            {/* Projected net card */}
+            <View
+              className="rounded-2xl p-5 mb-4"
+              style={{
+                backgroundColor: c.card,
+                borderLeftWidth: 4,
+                borderLeftColor:
+                  cashFlowForecast.projectedNet >= 0 ? "#10B981" : "#F43F5E",
+              }}
+            >
+              <Text className="text-text-muted text-xs mb-1">
+                {t("analytics.cashflow.projectedNet")}
+              </Text>
+              <Text
+                className="font-bold text-2xl mb-0.5"
+                style={{
+                  color:
+                    cashFlowForecast.projectedNet >= 0 ? "#10B981" : "#F43F5E",
+                }}
+              >
+                {cashFlowForecast.projectedNet >= 0 ? "+" : ""}
+                {cashFlowForecast.projectedNet.toLocaleString("ro-RO", {
+                  minimumFractionDigits: 2,
+                })}{" "}
+                RON
+              </Text>
+              <Text className="text-text-muted text-xs">
+                {t("analytics.cashflow.daysLeft", {
+                  count: cashFlowForecast.daysLeft,
+                })}
+              </Text>
+            </View>
+
+            {/* Stats grid */}
+            <View className="flex-row gap-3 mb-4">
+              <View
+                className="flex-1 rounded-2xl p-4"
+                style={{
+                  backgroundColor: c.card,
+                  borderLeftWidth: 3,
+                  borderLeftColor: "#22C55E",
+                }}
+              >
+                <Ionicons
+                  name="trending-up"
+                  size={15}
+                  color="#22C55E"
+                  style={{ marginBottom: 6 }}
+                />
+                <Text className="text-text-muted text-[10px] mb-0.5">
+                  {t("analytics.cashflow.incomeToDate")}
+                </Text>
+                <Text className="text-success font-bold text-sm">
+                  +
+                  {cashFlowForecast.incomeToDate.toLocaleString("ro-RO", {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}{" "}
+                  RON
+                </Text>
+              </View>
+              <View
+                className="flex-1 rounded-2xl p-4"
+                style={{
+                  backgroundColor: c.card,
+                  borderLeftWidth: 3,
+                  borderLeftColor: "#F43F5E",
+                }}
+              >
+                <Ionicons
+                  name="trending-down"
+                  size={15}
+                  color="#F43F5E"
+                  style={{ marginBottom: 6 }}
+                />
+                <Text className="text-text-muted text-[10px] mb-0.5">
+                  {t("analytics.cashflow.expensesToDate")}
+                </Text>
+                <Text className="text-expense font-bold text-sm">
+                  -
+                  {cashFlowForecast.expensesToDate.toLocaleString("ro-RO", {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}{" "}
+                  RON
+                </Text>
+              </View>
+            </View>
+
+            {/* Savings rate bar */}
+            <View className="bg-surface rounded-2xl p-4 border border-border mb-4">
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-foreground font-semibold text-sm">
+                  {t("analytics.cashflow.savingsRate")}
+                </Text>
+                <Text
+                  className="font-bold text-sm"
+                  style={{
+                    color:
+                      cashFlowForecast.savingsRateToDate >= 20
+                        ? "#10B981"
+                        : cashFlowForecast.savingsRateToDate >= 10
+                          ? "#F59E0B"
+                          : "#F43F5E",
+                  }}
+                >
+                  {cashFlowForecast.savingsRateToDate}%
+                </Text>
+              </View>
+              <View
+                className="h-3 rounded-full overflow-hidden"
+                style={{ backgroundColor: c.border }}
+              >
+                <View
+                  className="h-3 rounded-full"
+                  style={{
+                    width: `${Math.min(Math.max(cashFlowForecast.savingsRateToDate, 0), 100)}%`,
+                    backgroundColor:
+                      cashFlowForecast.savingsRateToDate >= 20
+                        ? "#10B981"
+                        : cashFlowForecast.savingsRateToDate >= 10
+                          ? "#F59E0B"
+                          : "#F43F5E",
+                  }}
+                />
+              </View>
+              <Text className="text-text-muted text-xs mt-2">
+                {cashFlowForecast.savingsRateToDate >= 20
+                  ? t("analytics.cashflow.savingsGood")
+                  : cashFlowForecast.savingsRateToDate >= 10
+                    ? t("analytics.cashflow.savingsOk")
+                    : t("analytics.cashflow.savingsLow")}
+              </Text>
+            </View>
+
+            {/* Extrapolation info */}
+            <View className="bg-surface rounded-2xl p-4 border border-border mb-4">
+              <Text className="text-foreground font-semibold text-sm mb-3">
+                {t("analytics.cashflow.projection")}
+              </Text>
+              <View className="flex-row justify-between mb-2">
+                <Text className="text-text-muted text-xs">
+                  {t("analytics.cashflow.expectedIncome")}
+                </Text>
+                <Text className="text-success text-xs font-semibold">
+                  +
+                  {cashFlowForecast.extrapolatedIncome.toLocaleString("ro-RO", {
+                    maximumFractionDigits: 0,
+                  })}{" "}
+                  RON
+                </Text>
+              </View>
+              <View className="flex-row justify-between mb-2">
+                <Text className="text-text-muted text-xs">
+                  {t("analytics.cashflow.expectedExpenses")}
+                </Text>
+                <Text className="text-expense text-xs font-semibold">
+                  -
+                  {cashFlowForecast.extrapolatedExpenses.toLocaleString(
+                    "ro-RO",
+                    { maximumFractionDigits: 0 },
+                  )}{" "}
+                  RON
+                </Text>
+              </View>
+              {cashFlowForecast.remainingRecurring > 0 && (
+                <View className="flex-row justify-between">
+                  <Text className="text-text-muted text-xs">
+                    {t("analytics.cashflow.recurringDue")}
+                  </Text>
+                  <Text className="text-[#F59E0B] text-xs font-semibold">
+                    -
+                    {cashFlowForecast.remainingRecurring.toLocaleString(
+                      "ro-RO",
+                      { maximumFractionDigits: 0 },
+                    )}{" "}
+                    RON
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Upcoming recurring payments */}
+            {cashFlowForecast.recurringItems.length > 0 && (
+              <View className="bg-surface rounded-2xl border border-border overflow-hidden">
+                <View className="px-4 pt-4 pb-2">
+                  <Text className="text-foreground font-semibold text-sm">
+                    {t("analytics.cashflow.upcomingRecurring")}
+                  </Text>
+                </View>
+                {cashFlowForecast.recurringItems.map((item, idx) => (
+                  <View
+                    key={`${item.name}-${idx}`}
+                    className={`flex-row items-center px-4 py-3 ${
+                      idx < cashFlowForecast.recurringItems.length - 1
+                        ? "border-t border-border"
+                        : ""
+                    }`}
+                  >
+                    <View
+                      className="w-8 h-8 rounded-full items-center justify-center mr-3"
+                      style={{ backgroundColor: `${item.category.color}18` }}
+                    >
+                      <Ionicons
+                        name={item.category.icon}
+                        size={15}
+                        color={item.category.color}
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text
+                        className="text-foreground text-sm font-medium"
+                        numberOfLines={1}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text className="text-text-muted text-[10px] mt-0.5">
+                        {t("analytics.recurring.next")}{" "}
+                        {new Date(item.nextDate).toLocaleDateString("ro-RO", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </Text>
+                    </View>
+                    <Text className="text-expense font-bold text-sm">
+                      -
+                      {item.amount.toLocaleString("ro-RO", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* ══════════ SUB-VIEW: TRANZACȚII ══════════ */}
         {activeView === "tranzactii" && hasData && (
           <View className="mx-6 mt-5">
@@ -893,6 +1467,535 @@ export default function Analytics() {
                   />
                 ))}
             </View>
+          </View>
+        )}
+
+        {/* ══════════ SUB-VIEW: VENITURI ══════════ */}
+        {activeView === "venituri" && (
+          <View className="mx-6 mt-5">
+            {/* Summary card */}
+            <View
+              className="rounded-2xl p-5 mb-4"
+              style={{
+                backgroundColor: c.card,
+                borderLeftWidth: 4,
+                borderLeftColor: "#22C55E",
+              }}
+            >
+              <Text className="text-text-muted text-xs mb-1">
+                {t("analytics.income")} · {PERIODS[selectedPeriod]}
+              </Text>
+              <Text className="text-success font-bold text-2xl mb-1">
+                +
+                {totalIncome.toLocaleString("ro-RO", {
+                  minimumFractionDigits: 2,
+                })}{" "}
+                RON
+              </Text>
+              {monthlyIncomeTrend.filter((m) => m.income > 0).length > 0 && (
+                <Text className="text-text-muted text-xs">
+                  {t("analytics.incomeDetails.avgMonthly")}:{" "}
+                  {Math.round(
+                    monthlyIncomeTrend.reduce((s, m) => s + m.income, 0) /
+                      Math.max(
+                        monthlyIncomeTrend.filter((m) => m.income > 0).length,
+                        1,
+                      ),
+                  ).toLocaleString("ro-RO")}{" "}
+                  RON
+                </Text>
+              )}
+            </View>
+
+            {/* Monthly income trend bar chart */}
+            {monthlyIncomeTrend.some((m) => m.income > 0) && (
+              <View className="bg-surface rounded-2xl p-5 border border-border mb-4">
+                <Text className="text-foreground font-semibold text-sm mb-4">
+                  {t("analytics.incomeDetails.monthlyTrend")}
+                </Text>
+                <BarChart
+                  data={incomeTrendBarData}
+                  width={SCREEN_WIDTH - 100}
+                  height={160}
+                  barWidth={28}
+                  spacing={14}
+                  noOfSections={4}
+                  barBorderRadius={6}
+                  yAxisColor="transparent"
+                  xAxisColor={c.chartAxisColor}
+                  yAxisTextStyle={{
+                    color: c.chartAxisTextColor,
+                    fontSize: 10,
+                  }}
+                  xAxisLabelTextStyle={{
+                    color: c.chartAxisTextColor,
+                    fontSize: 9,
+                  }}
+                  hideRules
+                  isAnimated
+                  animationDuration={600}
+                />
+              </View>
+            )}
+
+            {/* Income transactions */}
+            <SectionHeader
+              title={t("analytics.incomeDetails.incomeTransactions")}
+            />
+            {filteredTx.filter(
+              (tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0,
+            ).length > 0 ? (
+              <View className="bg-surface rounded-2xl border border-border overflow-hidden">
+                {filteredTx
+                  .filter(
+                    (tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0,
+                  )
+                  .sort(
+                    (a, b) =>
+                      new Date(b.bookingDate) - new Date(a.bookingDate),
+                  )
+                  .map((tx, idx, arr) => (
+                    <TransactionItem
+                      key={`income-${tx.connectionId || ""}-${tx.transactionId || idx}`}
+                      tx={tx}
+                      isLast={idx === arr.length - 1}
+                      showCategory
+                    />
+                  ))}
+              </View>
+            ) : (
+              <View
+                className="rounded-2xl p-5"
+                style={{
+                  borderWidth: 1,
+                  borderStyle: "dashed",
+                  borderColor: c.border,
+                }}
+              >
+                <View className="items-center">
+                  <Ionicons
+                    name="wallet-outline"
+                    size={32}
+                    color={c.textMuted}
+                    style={{ marginBottom: 8 }}
+                  />
+                  <Text className="text-text-muted text-sm">
+                    {t("analytics.incomeDetails.noIncome")}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ══════════ SUB-VIEW: CHELTUIELI ══════════ */}
+        {activeView === "cheltuieli" && hasData && (
+          <View className="mx-6 mt-5">
+            {/* Summary card */}
+            <View
+              className="rounded-2xl p-5 mb-4"
+              style={{
+                backgroundColor: c.card,
+                borderLeftWidth: 4,
+                borderLeftColor: "#F43F5E",
+              }}
+            >
+              <Text className="text-text-muted text-xs mb-1">
+                {t("analytics.expenses")} · {PERIODS[selectedPeriod]}
+              </Text>
+              <Text className="text-expense font-bold text-2xl mb-1">
+                -
+                {totalExpenses.toLocaleString("ro-RO", {
+                  minimumFractionDigits: 2,
+                })}{" "}
+                RON
+              </Text>
+              {spendingInsights && (
+                <Text className="text-text-muted text-xs">
+                  {t("analytics.avgDaily")}:{" "}
+                  {spendingInsights.avgDaily.toLocaleString("ro-RO", {
+                    maximumFractionDigits: 0,
+                  })}{" "}
+                  RON/{t("analytics.expenseDetails.perDay")}
+                </Text>
+              )}
+            </View>
+
+            {/* Daily bar chart */}
+            {barData.length > 0 && (
+              <View className="bg-surface rounded-2xl p-5 border border-border mb-4">
+                <Text className="text-foreground font-semibold text-sm mb-4">
+                  {t("analytics.dailySpending")}
+                </Text>
+                <BarChart
+                  data={barData}
+                  width={SCREEN_WIDTH - 100}
+                  height={160}
+                  barWidth={barData.length > 15 ? 12 : 20}
+                  spacing={barData.length > 15 ? 6 : 12}
+                  noOfSections={4}
+                  barBorderRadius={6}
+                  yAxisColor="transparent"
+                  xAxisColor={c.chartAxisColor}
+                  yAxisTextStyle={{
+                    color: c.chartAxisTextColor,
+                    fontSize: 10,
+                  }}
+                  xAxisLabelTextStyle={{
+                    color: c.chartAxisTextColor,
+                    fontSize: 9,
+                  }}
+                  hideRules
+                  isAnimated
+                  animationDuration={600}
+                />
+              </View>
+            )}
+
+            {/* Category breakdown with pie + bars */}
+            {categoryData.length > 0 && (
+              <View className="bg-surface rounded-2xl p-5 border border-border mb-4">
+                <Text className="text-foreground font-semibold text-sm mb-4">
+                  {t("analytics.byCategory")}
+                </Text>
+                <View className="items-center mb-5">
+                  <PieChart
+                    data={pieData}
+                    donut
+                    radius={80}
+                    innerRadius={50}
+                    innerCircleColor={c.chartInnerCircle}
+                    centerLabelComponent={() => (
+                      <View className="items-center">
+                        <Text className="text-foreground text-sm font-bold">
+                          {totalExpenses.toLocaleString("ro-RO", {
+                            maximumFractionDigits: 0,
+                          })}
+                        </Text>
+                        <Text className="text-text-muted text-[10px]">
+                          RON
+                        </Text>
+                      </View>
+                    )}
+                  />
+                </View>
+                {categoryData.map((cat) => (
+                  <View
+                    key={cat.key}
+                    className="flex-row items-center py-2.5 border-t border-border"
+                  >
+                    <View
+                      className="w-7 h-7 rounded-full items-center justify-center mr-2"
+                      style={{ backgroundColor: `${cat.color}18` }}
+                    >
+                      <Ionicons name={cat.icon} size={13} color={cat.color} />
+                    </View>
+                    <View className="flex-1 mr-2">
+                      <View className="flex-row items-center justify-between mb-1">
+                        <Text className="text-foreground text-xs font-medium">
+                          {t(`analytics.categories.${cat.key}`)}
+                        </Text>
+                        <Text className="text-foreground text-xs font-semibold">
+                          {cat.total.toLocaleString("ro-RO", {
+                            maximumFractionDigits: 0,
+                          })}{" "}
+                          RON
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          height: 6,
+                          borderRadius: 3,
+                          backgroundColor: c.border,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <View
+                          style={{
+                            height: "100%",
+                            width: `${cat.percentage}%`,
+                            borderRadius: 3,
+                            backgroundColor: cat.color,
+                          }}
+                        />
+                      </View>
+                    </View>
+                    <Text className="text-text-muted text-xs w-9 text-right">
+                      {cat.percentage}%
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ══════════ SUB-VIEW: BUGET VS. ACTUAL ══════════ */}
+        {activeView === "buget" && (
+          <View className="mx-6 mt-5">
+            {budgetVsActualData.length > 0 ? (
+              <>
+                {/* Overall summary card */}
+                {(() => {
+                  const totalLimit = budgetVsActualData.reduce(
+                    (s, b) => s + (b.limit || 0),
+                    0,
+                  );
+                  const totalSpent = budgetVsActualData.reduce(
+                    (s, b) => s + b.spent,
+                    0,
+                  );
+                  const overallPct =
+                    totalLimit > 0
+                      ? Math.min((totalSpent / totalLimit) * 100, 100)
+                      : 0;
+                  const overallStatus =
+                    overallPct >= 100
+                      ? "over"
+                      : overallPct >= 75
+                        ? "warning"
+                        : "ok";
+                  const overallColor =
+                    overallStatus === "over"
+                      ? "#F43F5E"
+                      : overallStatus === "warning"
+                        ? "#F59E0B"
+                        : "#22C55E";
+                  return (
+                    <View
+                      className="rounded-2xl p-5 mb-4"
+                      style={{
+                        backgroundColor: c.card,
+                        borderLeftWidth: 4,
+                        borderLeftColor: "#6366F1",
+                      }}
+                    >
+                      <Text className="text-text-muted text-xs mb-3">
+                        {t("analytics.budgetVsActual.title")}
+                      </Text>
+                      <View className="flex-row justify-between items-end mb-3">
+                        <View>
+                          <Text className="text-text-muted text-[10px] mb-0.5">
+                            {t("analytics.budgetVsActual.totalPlanned")}
+                          </Text>
+                          <Text className="text-foreground font-bold text-xl">
+                            {totalLimit.toLocaleString("ro-RO", {
+                              maximumFractionDigits: 0,
+                            })}{" "}
+                            RON
+                          </Text>
+                        </View>
+                        <View className="items-end">
+                          <Text className="text-text-muted text-[10px] mb-0.5">
+                            {t("analytics.budgetVsActual.totalSpent")}
+                          </Text>
+                          <Text
+                            className="font-bold text-xl"
+                            style={{ color: overallColor }}
+                          >
+                            {totalSpent.toLocaleString("ro-RO", {
+                              maximumFractionDigits: 0,
+                            })}{" "}
+                            RON
+                          </Text>
+                        </View>
+                      </View>
+                      <View
+                        style={{
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: c.border,
+                          overflow: "hidden",
+                          marginBottom: 4,
+                        }}
+                      >
+                        <View
+                          style={{
+                            height: "100%",
+                            width: `${overallPct}%`,
+                            borderRadius: 4,
+                            backgroundColor: overallColor,
+                          }}
+                        />
+                      </View>
+                      <Text style={{ color: c.textMuted, fontSize: 11 }}>
+                        {Math.round(overallPct)}%{" "}
+                        {t("budget.ofTotalBudget")}
+                      </Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Per-category comparison */}
+                <View className="bg-surface rounded-2xl border border-border overflow-hidden">
+                  {/* Legend */}
+                  <View className="flex-row items-center justify-end px-4 pt-4 pb-2 gap-4">
+                    <View className="flex-row items-center gap-1.5">
+                      <View
+                        className="w-3 h-3 rounded-sm"
+                        style={{ backgroundColor: "#94A3B860" }}
+                      />
+                      <Text className="text-text-muted text-xs">
+                        {t("analytics.budgetVsActual.planned")}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center gap-1.5">
+                      <View
+                        className="w-3 h-3 rounded-sm"
+                        style={{ backgroundColor: "#6366F1" }}
+                      />
+                      <Text className="text-text-muted text-xs">
+                        {t("analytics.budgetVsActual.spent")}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {budgetVsActualData.map((item, idx) => {
+                    const limit = item.limit || 0;
+                    const spent = item.spent;
+                    const pct =
+                      limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+                    const statusColor =
+                      item.status === "over"
+                        ? "#F43F5E"
+                        : item.status === "warning"
+                          ? "#F59E0B"
+                          : "#22C55E";
+                    const barWidth = SCREEN_WIDTH - 48 - 32 - 56;
+                    return (
+                      <View
+                        key={item.key}
+                        className={`px-4 py-3 ${
+                          idx < budgetVsActualData.length - 1
+                            ? "border-b border-border"
+                            : ""
+                        }`}
+                      >
+                        {/* Category row */}
+                        <View className="flex-row items-center mb-2">
+                          <View
+                            className="w-7 h-7 rounded-full items-center justify-center mr-2"
+                            style={{ backgroundColor: `${item.color}18` }}
+                          >
+                            <Ionicons
+                              name={item.icon}
+                              size={13}
+                              color={item.color}
+                            />
+                          </View>
+                          <Text className="text-foreground text-xs font-semibold flex-1">
+                            {t(`analytics.categories.${item.key}`)}
+                          </Text>
+                          <View
+                            className="px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor:
+                                item.status === "over"
+                                  ? "#F43F5E18"
+                                  : item.status === "warning"
+                                    ? "#F59E0B18"
+                                    : "#22C55E18",
+                            }}
+                          >
+                            <Text
+                              className="text-[10px] font-bold"
+                              style={{ color: statusColor }}
+                            >
+                              {item.status === "over"
+                                ? t("analytics.budgetVsActual.overBudget")
+                                : `${item.percentage}%`}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Planned bar (full width = limit) */}
+                        <View className="flex-row items-center mb-1.5 gap-2">
+                          <View
+                            style={{
+                              width: barWidth,
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: "#94A3B830",
+                            }}
+                          >
+                            <View
+                              style={{
+                                height: "100%",
+                                width: "100%",
+                                borderRadius: 4,
+                                backgroundColor: "#94A3B850",
+                              }}
+                            />
+                          </View>
+                          <Text className="text-text-muted text-[10px]">
+                            {limit.toLocaleString("ro-RO", {
+                              maximumFractionDigits: 0,
+                            })}{" "}
+                            RON
+                          </Text>
+                        </View>
+
+                        {/* Actual bar (proportional to limit) */}
+                        <View className="flex-row items-center gap-2">
+                          <View
+                            style={{
+                              width: barWidth,
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: `${statusColor}20`,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <View
+                              style={{
+                                height: "100%",
+                                width: `${pct}%`,
+                                borderRadius: 4,
+                                backgroundColor: statusColor,
+                              }}
+                            />
+                          </View>
+                          <Text
+                            className="text-[10px] font-semibold"
+                            style={{ color: statusColor }}
+                          >
+                            {spent.toLocaleString("ro-RO", {
+                              maximumFractionDigits: 0,
+                            })}{" "}
+                            RON
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            ) : (
+              <View
+                className="rounded-2xl p-5"
+                style={{
+                  borderWidth: 1,
+                  borderStyle: "dashed",
+                  borderColor: c.border,
+                }}
+              >
+                <View className="flex-row items-center">
+                  <View className="flex-1 pr-4">
+                    <Text className="text-foreground font-semibold text-sm mb-1">
+                      {t("analytics.budgetVsActual.emptyTitle")}
+                    </Text>
+                    <Text className="text-text-muted text-xs leading-4">
+                      {t("analytics.budgetVsActual.emptyDesc")}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="git-compare-outline"
+                    size={36}
+                    color={c.textMuted}
+                  />
+                </View>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>

@@ -5,7 +5,14 @@
  * In __DEV__ mode, mock expense transactions are injected for demo purposes.
  */
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from "react";
 import api from "../services/api";
 import { useAuth } from "./AuthContext";
 
@@ -239,20 +246,34 @@ export function BankProvider({ children }) {
   const { token } = useAuth();
   const [connections, setConnections] = useState([]);
   const [accounts, setAccounts] = useState([]);
-  const [transactions, setTransactions] = useState([]);
+  const [bankTxs, setBankTxs] = useState([]);
+  const [manualTxsRaw, setManualTxsRaw] = useState([]);
+  const [categoryOverrides, setCategoryOverrides] = useState({});
   const [loading, setLoading] = useState(false);
   const isRefreshing = useRef(false); // Guard against concurrent refresh calls
   const [sessionExpired, setSessionExpired] = useState(false); // BT session needs reconnect
+
+  // Merged transactions: bank txs (with overrides applied) + manual txs
+  const transactions = useMemo(() => {
+    const withOverrides = bankTxs.map((tx) => {
+      const override = categoryOverrides[tx.transactionId];
+      return override ? { ...tx, category: override } : tx;
+    });
+    return [...withOverrides, ...manualTxsRaw];
+  }, [bankTxs, manualTxsRaw, categoryOverrides]);
 
   // Refresh data on login/logout
   useEffect(() => {
     if (token) {
       refreshAllData();
+      refreshManualData();
     } else {
       // Clear data on logout
       setConnections([]);
       setAccounts([]);
-      setTransactions([]);
+      setBankTxs([]);
+      setManualTxsRaw([]);
+      setCategoryOverrides({});
     }
   }, [token]);
 
@@ -425,7 +446,7 @@ export function BankProvider({ children }) {
       // Conexiunea a reușit — resetăm flag-ul de sesiune expirată
       setSessionExpired(false);
 
-      setTransactions((prev) => {
+      setBankTxs((prev) => {
         if (bankName.toLowerCase() === "brd") {
           // Eliminăm TOATE tranzacțiile BRD vechi (indiferent de connectionId)
           const nonBRD = prev.filter((tx) => {
@@ -478,15 +499,62 @@ export function BankProvider({ children }) {
     setAccounts((prev) =>
       prev.filter((acc) => !removedIds.includes(acc.connectionId)),
     );
-    setTransactions((prev) =>
+    setBankTxs((prev) =>
       prev.filter((tx) => !removedIds.includes(tx.connectionId)),
     );
   }
 
+  async function refreshManualData() {
+    if (!token) return;
+    try {
+      const res = await api.get("/manual");
+      setManualTxsRaw(res.data.transactions || []);
+      setCategoryOverrides(res.data.categoryOverrides || {});
+    } catch (err) {
+      if (__DEV__)
+        console.warn("Could not load manual transactions:", err.message);
+    }
+  }
+
+  async function addManualTransaction(data) {
+    const res = await api.post("/manual", data);
+    const newTx = res.data.transaction;
+    setManualTxsRaw((prev) => [newTx, ...prev]);
+    return newTx;
+  }
+
+  async function updateManualTransaction(id, data) {
+    const res = await api.patch(`/manual/${id}`, data);
+    const updated = res.data.transaction;
+    setManualTxsRaw((prev) =>
+      prev.map((tx) => (tx.manualId === id ? updated : tx)),
+    );
+    return updated;
+  }
+
+  async function deleteManualTransaction(id) {
+    await api.delete(`/manual/${id}`);
+    setManualTxsRaw((prev) => prev.filter((tx) => tx.manualId !== id));
+  }
+
+  async function overrideBankTxCategory(transactionId, category) {
+    await api.put("/manual/category-override", { transactionId, category });
+    setCategoryOverrides((prev) => ({ ...prev, [transactionId]: category }));
+  }
+
+  async function removeCategoryOverride(transactionId) {
+    await api.delete(`/manual/category-override/${transactionId}`);
+    setCategoryOverrides((prev) => {
+      const next = { ...prev };
+      delete next[transactionId];
+      return next;
+    });
+  }
+
   function getTotalBalance() {
-    // In DEV mode, calculate balance from transactions (mock data isn't reflected in sandbox balances)
-    if (__DEV__ && transactions.length > 0) {
-      return transactions.reduce((total, tx) => {
+    // In DEV mode, calculate balance from bank transactions only (mock data isn't reflected in sandbox balances)
+    if (__DEV__ && bankTxs.length > 0) {
+      return bankTxs.reduce((total, tx) => {
         return total + parseFloat(tx.transactionAmount?.amount || 0);
       }, 0);
     }
@@ -516,11 +584,18 @@ export function BankProvider({ children }) {
         transactions,
         loading,
         sessionExpired,
+        categoryOverrides,
         refreshAllData,
+        refreshManualData,
         addConnection,
         removeConnection,
         getTotalBalance,
         getRecentTransactions,
+        addManualTransaction,
+        updateManualTransaction,
+        deleteManualTransaction,
+        overrideBankTxCategory,
+        removeCategoryOverride,
       }}
     >
       {children}

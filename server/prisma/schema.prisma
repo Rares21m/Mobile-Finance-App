@@ -15,9 +15,60 @@ model User {
   profileGoal           String?          // savings | expense_control | investment | debt_freedom
   profileIncomeRange    String?          // under_1500 | 1500_3000 | 3000_6000 | over_6000
   profileCategories     String?          // JSON array, e.g. '["food","transport"]'
+  avatar                String?          // base64 data URI, e.g. 'data:image/jpeg;base64,...'
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
-  bankConnections       BankConnection[]
+  bankConnections              BankConnection[]
+  budgetLimits                 BudgetLimit[]
+  eventBudgets                 EventBudget[]
+  savingsGoals                 SavingsGoal[]
+  manualTransactions           ManualTransaction[]
+  transactionCategoryOverrides TransactionCategoryOverride[]
+  userBadges                   UserBadge[]
+}
+
+model BudgetLimit {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String
+  amount    Decimal
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, category])
+  @@index([userId])
+}
+
+model EventBudget {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  totalLimit Decimal
+  startDate  DateTime
+  endDate    DateTime
+  categories String   @default("[]")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model SavingsGoal {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  targetAmount Decimal
+  savedAmount  Decimal   @default(0)
+  deadline     DateTime?
+  icon         String    @default("star-outline")
+  color        String    @default("#10B981")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model BankConnection {
@@ -55,4 +106,45 @@ model Transaction {
 
   @@index([bankConnectionId])
   @@index([bookingDate])
+}
+
+model UserBadge {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId  String
+  earnedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+}
+
+model ManualTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Decimal
+  currency    String   @default("RON")
+  description String
+  category    String   @default("other")
+  date        DateTime
+  isExpense   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+}
+
+model TransactionCategoryOverride {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String
+  category      String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, transactionId])
+  @@index([userId])
 }

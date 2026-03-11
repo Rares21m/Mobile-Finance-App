@@ -1,7 +1,7 @@
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavigationThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider as NavigationThemeProvider,
 } from "@react-navigation/native";
 import Constants from "expo-constants";
 import { Stack, useRouter, useSegments } from "expo-router";
@@ -12,15 +12,19 @@ import { useEffect } from "react";
 import { View } from "react-native";
 import { Provider as PaperProvider } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import BadgeEarnedModal from "../components/BadgeEarnedModal";
 import CircularLoading from "../components/CircularLoading";
 import Toast from "../components/Toast";
 import { paperTheme } from "../constants/theme";
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { BadgesProvider } from "../context/BadgesContext";
 import { BankProvider } from "../context/BankContext";
 import { BudgetProvider } from "../context/BudgetContext";
+import { GoalsProvider } from "../context/GoalsContext";
+import { NotificationsProvider } from "../context/NotificationsContext";
 import {
-  OnboardingProvider,
-  useOnboarding,
+    OnboardingProvider,
+    useOnboarding,
 } from "../context/OnboardingContext";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { ToastProvider } from "../context/ToastContext";
@@ -129,23 +133,31 @@ function RootLayoutContent() {
         <ToastProvider>
           <AuthProvider>
             <OnboardingProvider>
-              <BankProvider>
-                <BudgetProvider>
-                  <StatusBar style={isDark ? "light" : "dark"} />
-                  <NavigationThemeProvider
-                    value={isDark ? DarkTheme : DefaultTheme}
-                  >
-                    <Stack screenOptions={{ headerShown: false }}>
-                      <Stack.Screen name="(auth)" />
-                      <Stack.Screen name="onboarding" />
-                      <Stack.Screen name="(tabs)" />
-                    </Stack>
-                  </NavigationThemeProvider>
-                  <NavigationGuard />
-                  <Toast />
-                  <SplashOverlay />
-                </BudgetProvider>
-              </BankProvider>
+              <NotificationsProvider>
+                <BankProvider>
+                  <BudgetProvider>
+                    <GoalsProvider>
+                      <BadgesProvider>
+                        <StatusBar style={isDark ? "light" : "dark"} />
+                        <NavigationThemeProvider
+                          value={isDark ? DarkTheme : DefaultTheme}
+                        >
+                          <Stack screenOptions={{ headerShown: false }}>
+                            <Stack.Screen name="(auth)" />
+                            <Stack.Screen name="onboarding" />
+                            <Stack.Screen name="(tabs)" />
+                            <Stack.Screen name="transactions" />
+                          </Stack>
+                        </NavigationThemeProvider>
+                        <NavigationGuard />
+                        <Toast />
+                        <BadgeEarnedModal />
+                        <SplashOverlay />
+                      </BadgesProvider>
+                    </GoalsProvider>
+                  </BudgetProvider>
+                </BankProvider>
+              </NotificationsProvider>
             </OnboardingProvider>
           </AuthProvider>
         </ToastProvider>

@@ -41,7 +41,14 @@
       "nameRequired": "Numele este obligatoriu",
       "loginError": "Eroare la conectare. Verifică conexiunea.",
       "registerError": "Eroare la înregistrare. Verifică conexiunea."
-    }
+    },
+    "biometricLogin": "Autentificare biometrică",
+    "biometricEnable": "Activezi autentificarea biometrică?",
+    "biometricEnableDesc": "Folosește Face ID sau amprenta pentru a te autentifica mai rapid data viitoare.",
+    "biometricEnableYes": "Activează",
+    "biometricEnableLater": "Nu acum",
+    "biometricError": "Autentificarea biometrică a eșuat. Încearcă din nou.",
+    "biometricCancelled": "Autentificare biometrică anulată."
   },
   "dashboard": {
     "greeting": "Salut,",
@@ -68,6 +75,7 @@
     "goalInsight": {
       "savings": {
         "title": "Rata de Economisire",
+        "goalsTitle": "Obiective de economisire",
         "desc": "Economisești {{rate}}% din venit luna aceasta.",
         "tip": "Încearcă să menții rata de economisire peste 20%."
       },
@@ -91,6 +99,47 @@
       "warning": "{{category}} este la {{pct}}% din buget",
       "over": "{{category}} a depășit bugetul!",
       "tapToManage": "Apasă pentru a gestiona bugetele"
+    },
+    "nudge": {
+      "dismiss": "Închide",
+      "noBank": {
+        "title": "Conectează-ți banca",
+        "body": "Conectează BT sau BRD pentru a vedea soldul și tranzacțiile reale.",
+        "action": "Conectează acum"
+      },
+      "noBudget": {
+        "title": "Setează-ți primul buget",
+        "body": "Un buget te ajută să-ți controlezi cheltuielile și să economisești mai mult.",
+        "action": "Setează buget"
+      },
+      "budgetWarning": {
+        "title": "Atenție la bugetul de {{category}}",
+        "body": "Ai cheltuit {{pct}}% din limita lunară. Mai ai {{days}} zile.",
+        "action": "Vezi bugetele"
+      },
+      "savingsLow": {
+        "title": "Rata economisirii poate fi mai mare",
+        "body": "Economisești {{rate}}% din venit. Obiectivul tău este 20%.",
+        "action": "Sfaturi AI"
+      },
+      "unbudgetedSpending": {
+        "title": "{{category}} fără buget setat",
+        "body": "Ai cheltuit {{amount}} RON pe {{category}} luna aceasta fără un buget.",
+        "action": "Setează limită"
+      }
+    },
+    "checkin": {
+      "title": "Rezumatul lunii {{month}}",
+      "subtitle": "Iată cum te-ai descurcat luna trecută.",
+      "spent": "Total cheltuit",
+      "income": "Total venituri",
+      "saved": "Economisit",
+      "topCategories": "Top cheltuieli",
+      "adjustTitle": "Ajustează bugetele?",
+      "adjustSubtitle": "Pe baza cheltuielilor din luna trecută, ți-am pregătit câteva sugestii.",
+      "accept": "Acceptă ajustările",
+      "remindLater": "Amintește-mi în 3 zile",
+      "dismiss": "Nu, mulțumesc"
     }
   },
   "accounts": {
@@ -155,7 +204,33 @@
     "fab": {
       "categorii": "Categorii",
       "recurente": "Recurente",
-      "tranzactii": "Tranzacții"
+      "tranzactii": "Tranzacții",
+      "comparatie": "Comparație lunară",
+      "cashflow": "Cash Flow Forecast",
+      "venituri": "Detalii Venituri",
+      "cheltuieli": "Detalii Cheltuieli",
+      "buget": "Buget vs. Real"
+    },
+    "comparison": {
+      "current": "Luna curentă",
+      "previous": "Luna trecută",
+      "emptyTitle": "Nu există date de comparație",
+      "emptyDesc": "Conectează un cont bancar și asigură-te că ai tranzacții din cel puțin două luni."
+    },
+    "cashflow": {
+      "projectedNet": "Net estimat la final de lună",
+      "daysLeft": "{{count}} zile rămase în lună",
+      "incomeToDate": "Venituri până acum",
+      "expensesToDate": "Cheltuieli până acum",
+      "savingsRate": "Rată de economisire (luna curentă)",
+      "savingsGood": "Super! Ești pe drumul cel bun cu economiile.",
+      "savingsOk": "Nu e rău — încearcă să depășești 20%.",
+      "savingsLow": "Rata de economisire e scăzută luna aceasta.",
+      "projection": "Proiecție pentru zilele rămase",
+      "expectedIncome": "Venit estimat",
+      "expectedExpenses": "Cheltuieli estimate",
+      "recurringDue": "Plăți recurente de efectuat",
+      "upcomingRecurring": "Plăți recurente viitoare"
     },
     "recurring": {
       "title": "Plăți Recurente",
@@ -171,6 +246,25 @@
         "biweekly": "Bisăptămânal",
         "monthly": "Lunar"
       }
+    },
+    "incomeDetails": {
+      "monthlyTrend": "Evoluție venituri lunare",
+      "incomeTransactions": "Tranzacții venituri",
+      "noIncome": "Niciun venit înregistrat în această perioadă",
+      "avgMonthly": "Medie lunară"
+    },
+    "expenseDetails": {
+      "perDay": "zi"
+    },
+    "budgetVsActual": {
+      "title": "Planificat vs. Real",
+      "planned": "Planificat",
+      "spent": "Cheltuit",
+      "overBudget": "Depășit!",
+      "totalPlanned": "Total planificat",
+      "totalSpent": "Total cheltuit",
+      "emptyTitle": "Niciun buget setat",
+      "emptyDesc": "Setează limite în tab-ul Buget pentru a vedea comparația planificat vs. real aici."
     },
     "categories": {
       "count": "categorii",
@@ -221,6 +315,8 @@
     "sectionAccount": "Cont",
     "sectionPreferences": "Preferințe",
     "sectionOther": "Altele",
+    "achievements": "Realizările Tale",
+    "badgesUnlocked": "realizări deblocate",
     "editProfileTitle": "Editează profilul",
     "namePlaceholder": "Numele tău",
     "emailPlaceholder": "Adresa de email",
@@ -257,7 +353,16 @@
     "termsTitle": "Termeni & Condiții",
     "termsContent": "Prin utilizarea Novence, acceptați termenii și condițiile noastre. Aplicația folosește API-ul BT Open Banking pentru a accesa datele financiare. Datele sunt procesate în conformitate cu GDPR. Nu ne asumăm responsabilitatea pentru deciziile financiare luate pe baza informațiilor oferite.",
     "currencyTitle": "Selectează moneda",
-    "selectTheme": "Selectează tema"
+    "selectTheme": "Selectează tema",
+    "biometric": "Autentificare biometrică",
+    "biometricEnabled": "Activată",
+    "biometricDisabled": "Dezactivată",
+    "biometricDisableConfirm": "Dezactivezi autentificarea biometrică?",
+    "biometricDisableMsg": "Va trebui să folosești parola pentru a te autentifica.",
+    "biometricDisableYes": "Dezactivează",
+    "avatarUpdated": "Fotografia de profil a fost actualizată!",
+    "avatarError": "Eroare la actualizarea fotografiei",
+    "avatarPermissionDenied": "Accesul la bibliotecă foto a fost refuzat"
   },
   "export": {
     "reportTitle": "Raport Financiar Lunar",
@@ -310,6 +415,8 @@
     "needsLabel": "Necesități (50%)",
     "wantsLabel": "Dorințe (30%)",
     "savingsLabel": "Economii (20%)",
+    "smartWeights": "Din cheltuieli",
+    "smartWeightsDesc": "Pe baza cheltuielilor tale medii din ultimele 3 luni",
     "eventBudgets": "Bugete Speciale",
     "addEvent": "Adaugă buget special",
     "eventName": "Nume buget",
@@ -326,6 +433,55 @@
     "removeEvent": "Șterge bugetul special",
     "editEvent": "Editează bugetul special",
     "allCategories": "Toate categoriile"
+  },
+  "transactions": {
+    "addTx": "Adaugă tranzacție",
+    "editTx": "Editează tranzacția",
+    "deleteTitle": "Șterge tranzacția",
+    "deleteDesc": "Această tranzacție va fi ștearsă definitiv.",
+    "manualTx": "Tranzacție manuală",
+    "editCategory": "Schimbă categoria",
+    "description": "Descriere",
+    "descriptionPlaceholder": "ex: Chirie, curent...",
+    "amount": "Sumă",
+    "category": "Categorie",
+    "manual": "MANUAL",
+    "title": "Tranzacții",
+    "count": "rezultate",
+    "searchPlaceholder": "Caută după comerciant, descriere...",
+    "allCategories": "Toate",
+    "empty": "Nicio tranzacție încă",
+    "noResults": "Nicio tranzacție nu corespunde căutării",
+    "type": {
+      "all": "Toate",
+      "expense": "Cheltuieli",
+      "income": "Venituri"
+    },
+    "filters": "Filtre",
+    "dateRange": "Interval de date",
+    "amountRange": "Interval sumă (RON)",
+    "from": "De la",
+    "to": "Până la",
+    "minAmount": "Min",
+    "maxAmount": "Max",
+    "applyFilters": "Aplică filtrele",
+    "resetFilters": "Resetează",
+    "activeFilters": "{{count}} active",
+    "sortBy": "Sortează după",
+    "sortOptions": {
+      "date_desc": "Cele mai recente",
+      "date_asc": "Cele mai vechi",
+      "amount_desc": "Sumă descrescătoare",
+      "amount_asc": "Sumă crescătoare"
+    },
+    "datePresets": {
+      "all": "Toate",
+      "today": "Azi",
+      "week": "Săptămâna aceasta",
+      "month": "Luna aceasta",
+      "lastMonth": "Luna trecută",
+      "custom": "Personalizat"
+    }
   },
   "tabs": {
     "home": "Acasă",
@@ -358,11 +514,12 @@
     "btGetTransactionsFailed": "Nu s-au putut prelua tranzacțiile",
     "btGetBalancesFailed": "Nu s-au putut prelua balan\u021bele",
     "btSessionExpired": "Sesiunea bancara a expirat. Te rugam sa reconectezi contul.",
-    "internalServerError": "Eroare interna de server"
+    "internalServerError": "Eroare internă de server",
+    "tooManyRequests": "Prea multe încercări. Te rugăm să aștepți câteva minute înainte să reîncerci."
   },
   "onboarding": {
     "badge": "Pasul {{step}} din {{total}}",
-    "skip": "Sari",
+    "skip": "Sari peste",
     "next": "Continuă",
     "back": "Înapoi",
     "finish": "Hai să începem",
@@ -372,12 +529,27 @@
     },
     "step2": {
       "title": "Venitul lunar aproximativ",
-      "subtitle": "O estimare e suficientă — ne ajută să sugerăm bugete realiste."
+      "subtitle": "O estimare e suficientă — ne ajută să sugerăm bugete realiste.",
+      "preview": {
+        "label": "Planul tău estimat (50/30/20)",
+        "needs": "Necesități (50%)",
+        "wants": "Dorințe (30%)",
+        "savings": "Economii (20%)"
+      }
     },
     "step3": {
       "title": "Ce contează cel mai mult?",
       "subtitle": "Alege categoriile de cheltuieli pe care vrei să le urmărești.",
       "hint": "Selectează cel puțin o categorie pentru a continua."
+    },
+    "step4": {
+      "title": "Planul tău financiar",
+      "subtitle": "Pe baza răspunsurilor tale, ți-am pregătit un buget personalizat.",
+      "savingsNote": "Economii recomandate (20%)",
+      "savingsDesc": "Aceștia sunt banii pe care îi poți pune deoparte lunar.",
+      "accept": "Acceptă planul",
+      "skip": "Personalizează mai târziu",
+      "noSuggestions": "Selectează categorii la pasul anterior pentru a vedea planul."
     },
     "goals": {
       "savings": {
@@ -397,5 +569,25 @@
         "sublabel": "Achită împrumuturile și datoriile cât mai repede posibil"
       }
     }
+  },
+  "goals": {
+    "title": "Obiective de economisire",
+    "addGoal": "Adaugă obiectiv",
+    "editGoal": "Editează obiectiv",
+    "empty": "Niciun obiectiv de economisire. Creează primul tău obiectiv!",
+    "goalName": "Denumire obiectiv",
+    "goalNamePlaceholder": "ex. Fond vacanță",
+    "target": "Sumă țintă",
+    "saved": "Economisit",
+    "deadline": "Data țintă",
+    "optional": "opțional",
+    "icon": "Pictogramă",
+    "color": "Culoare",
+    "deleteGoal": "Șterge obiectivul"
+  },
+  "inbox": {
+    "title": "Notificări",
+    "emptyTitle": "Nicio notificare încă",
+    "emptyDesc": "Alertele de buget, badge-urile câștigate și rezumatele lunare vor apărea aici."
   }
 }

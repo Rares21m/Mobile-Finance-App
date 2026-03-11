@@ -3,19 +3,46 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import SectionHeader from "../../components/SectionHeader";
+import { useBadges } from "../../context/BadgesContext";
 import { useBudget } from "../../context/BudgetContext";
+import { useGoals } from "../../context/GoalsContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import { useTheme } from "../../context/ThemeContext";
 import { CATEGORIES } from "../../utils/categoryUtils";
+
+const GOAL_ICONS = [
+  "star-outline",
+  "home-outline",
+  "car-outline",
+  "airplane-outline",
+  "laptop-outline",
+  "gift-outline",
+  "school-outline",
+  "medkit-outline",
+  "fitness-outline",
+  "paw-outline",
+  "diamond-outline",
+  "umbrella-outline",
+];
+const GOAL_COLORS = [
+  "#10B981",
+  "#818CF8",
+  "#F59E0B",
+  "#EF4444",
+  "#3B82F6",
+  "#EC4899",
+  "#8B5CF6",
+  "#14B8A6",
+];
 
 // ─── Progress Bar ──────────────────────────────────────────────────────────────
 function ProgressBar({ percentage, status, c }) {
@@ -114,9 +141,9 @@ function BudgetItem({ categoryKey, onEdit, c, t }) {
               : status === "warning"
                 ? t("budget.nearLimit")
                 : t("budget.remaining", {
-                  amount: remaining.toFixed(0),
-                  currency: t("common.currency"),
-                })}
+                    amount: remaining.toFixed(0),
+                    currency: t("common.currency"),
+                  })}
           </Text>
         </View>
         <View style={{ alignItems: "flex-end" }}>
@@ -219,11 +246,14 @@ function EventBudgetItem({ budget, onEdit, onDelete, getStatus, c, t }) {
           <Ionicons name="calendar" size={20} color={c.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: c.foreground, fontWeight: "600", fontSize: 15 }}>
+          <Text
+            style={{ color: c.foreground, fontWeight: "600", fontSize: 15 }}
+          >
             {budget.name}
           </Text>
           <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 1 }}>
-            {fmtDate(budget.startDate)} – {fmtDate(budget.endDate)}  •  {statusLabel}
+            {fmtDate(budget.startDate)} – {fmtDate(budget.endDate)} •{" "}
+            {statusLabel}
           </Text>
         </View>
         <View style={{ alignItems: "flex-end" }}>
@@ -235,11 +265,122 @@ function EventBudgetItem({ budget, onEdit, onDelete, getStatus, c, t }) {
           </Text>
         </View>
       </View>
-      <ProgressBar percentage={st.percentage} status={st.status === "expired" ? "ok" : st.status} c={c} />
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-        <Text style={{ color: c.textMuted, fontSize: 11 }}>0 {t("common.currency")}</Text>
-        <Text style={{ color: statusColor, fontWeight: "600", fontSize: 11 }}>{st.percentage}%</Text>
-        <Text style={{ color: c.textMuted, fontSize: 11 }}>{budget.totalLimit.toFixed(0)} {t("common.currency")}</Text>
+      <ProgressBar
+        percentage={st.percentage}
+        status={st.status === "expired" ? "ok" : st.status}
+        c={c}
+      />
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginTop: 2,
+        }}
+      >
+        <Text style={{ color: c.textMuted, fontSize: 11 }}>
+          0 {t("common.currency")}
+        </Text>
+        <Text style={{ color: statusColor, fontWeight: "600", fontSize: 11 }}>
+          {st.percentage}%
+        </Text>
+        <Text style={{ color: c.textMuted, fontSize: 11 }}>
+          {budget.totalLimit.toFixed(0)} {t("common.currency")}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+// ─── Goal Card ────────────────────────────────────────────────────────────────
+function GoalCard({ goal, onPress, c, t }) {
+  const pct =
+    goal.targetAmount > 0
+      ? Math.round((goal.savedAmount / goal.targetAmount) * 100)
+      : 0;
+  const isComplete = pct >= 100;
+  const fmtDate = (d) => {
+    const dt = new Date(d);
+    return `${dt.getDate().toString().padStart(2, "0")}/${(dt.getMonth() + 1).toString().padStart(2, "0")}/${dt.getFullYear()}`;
+  };
+  return (
+    <Pressable
+      onPress={() => onPress(goal)}
+      className="active:opacity-75"
+      style={{
+        backgroundColor: c.card,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: isComplete ? goal.color + "40" : c.border,
+        flexDirection: "row",
+        alignItems: "center",
+      }}
+    >
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: 24,
+          backgroundColor: goal.color + "18",
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: 14,
+        }}
+      >
+        <Ionicons name={goal.icon} size={22} color={goal.color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 4,
+          }}
+        >
+          <Text
+            style={{
+              color: c.foreground,
+              fontWeight: "600",
+              fontSize: 15,
+              flex: 1,
+            }}
+            numberOfLines={1}
+          >
+            {goal.name}
+          </Text>
+          {goal.deadline && (
+            <Text style={{ color: c.textMuted, fontSize: 11 }}>
+              {fmtDate(goal.deadline)}
+            </Text>
+          )}
+        </View>
+        <ProgressBar
+          percentage={Math.min(pct, 100)}
+          status={isComplete ? "ok" : pct >= 75 ? "warning" : "ok"}
+          c={c}
+        />
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            marginTop: 4,
+          }}
+        >
+          <Text style={{ color: goal.color, fontWeight: "700", fontSize: 13 }}>
+            {goal.savedAmount.toLocaleString("ro-RO", {
+              minimumFractionDigits: 0,
+            })}{" "}
+            {t("common.currency")}
+          </Text>
+          <Text style={{ color: c.textMuted, fontSize: 12 }}>
+            {pct}% ·{" "}
+            {goal.targetAmount.toLocaleString("ro-RO", {
+              minimumFractionDigits: 0,
+            })}{" "}
+            {t("common.currency")}
+          </Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -261,16 +402,22 @@ export default function Budget() {
     getBudgetStatus,
     getSuggestedBudgets,
     applySuggestedBudgets,
+    getSmartWeightSuggestions,
     eventBudgets,
     addEventBudget,
     removeEventBudget,
     getEventBudgetStatus,
   } = useBudget();
+  const { goals, goalsLoaded, createGoal, updateGoal, deleteGoal } = useGoals();
+  const { triggerEvaluate } = useBadges();
 
-  // ── Sheet state: null | 'pick' | 'edit' | 'event-add' | 'event-edit' ────
+  // ── Sheet state: null | 'pick' | 'edit' | 'event-add' | 'event-edit' | 'goal-add' | 'goal-edit' ────
   const [sheetMode, setSheetMode] = useState(null);
   const [pendingCat, setPendingCat] = useState(null); // { key, icon, color }
   const [amountInput, setAmountInput] = useState("");
+
+  // ── Suggestions tab: 'smart' | '5030' ──────────────────────────────────
+  const [suggMode, setSuggMode] = useState("smart");
 
   // ── Event budget form state ─────────────────────────────────────────────
   const [eventName, setEventName] = useState("");
@@ -278,6 +425,15 @@ export default function Budget() {
   const [eventStartDate, setEventStartDate] = useState("");
   const [eventEndDate, setEventEndDate] = useState("");
   const [pendingEventBudget, setPendingEventBudget] = useState(null);
+
+  // ── Goal form state ─────────────────────────────────────────────────────
+  const [goalName, setGoalName] = useState("");
+  const [goalTarget, setGoalTarget] = useState("");
+  const [goalSaved, setGoalSaved] = useState("");
+  const [goalDeadline, setGoalDeadline] = useState("");
+  const [goalIcon, setGoalIcon] = useState("star-outline");
+  const [goalColor, setGoalColor] = useState("#10B981");
+  const [pendingGoal, setPendingGoal] = useState(null);
 
   // ── Derived lists ────────────────────────────────────────────────────────
   const budgetedKeys = Object.keys(limits);
@@ -315,9 +471,9 @@ export default function Budget() {
     () =>
       totalBudgeted > 0
         ? Math.min(
-          Math.round((totalSpentOnBudgeted / totalBudgeted) * 100),
-          100,
-        )
+            Math.round((totalSpentOnBudgeted / totalBudgeted) * 100),
+            100,
+          )
         : 0,
     [totalBudgeted, totalSpentOnBudgeted],
   );
@@ -350,6 +506,8 @@ export default function Budget() {
     setSheetMode(null);
     setPendingCat(null);
     setAmountInput("");
+    // Budget limits are debounce-synced to server (1s). Evaluate badges after that.
+    setTimeout(() => triggerEvaluate(), 1500);
   };
 
   const handleDelete = () => {
@@ -364,6 +522,50 @@ export default function Budget() {
     setSheetMode(null);
     setPendingCat(null);
     setAmountInput("");
+  };
+
+  const openGoalSheet = () => {
+    setGoalName("");
+    setGoalTarget("");
+    setGoalSaved("0");
+    setGoalDeadline("");
+    setGoalIcon("star-outline");
+    setGoalColor("#10B981");
+    setPendingGoal(null);
+    setSheetMode("goal-add");
+  };
+
+  const handleGoalSave = async () => {
+    if (!goalName.trim() || !goalTarget) return;
+    const data = {
+      name: goalName.trim(),
+      targetAmount: parseFloat(goalTarget),
+      savedAmount: parseFloat(goalSaved) || 0,
+      deadline: goalDeadline || null,
+      icon: goalIcon,
+      color: goalColor,
+    };
+    try {
+      if (pendingGoal) {
+        await updateGoal(pendingGoal.id, data);
+      } else {
+        await createGoal(data);
+      }
+      triggerEvaluate();
+    } catch (e) {
+      // silently ignore — server errors handled by api interceptor
+    }
+    setSheetMode(null);
+    setPendingGoal(null);
+  };
+
+  const handleGoalDelete = async () => {
+    if (!pendingGoal) return;
+    try {
+      await deleteGoal(pendingGoal.id);
+    } catch (e) {}
+    setSheetMode(null);
+    setPendingGoal(null);
   };
 
   const isEditingExisting = pendingCat && !!limits[pendingCat.key];
@@ -586,105 +788,264 @@ export default function Budget() {
           </View>
         )}
 
-        {/* ── AI Suggested Budgets (50/30/20) ──────────────────────────── */}
-        {profile && activeBudgetKeys.length === 0 && (() => {
-          const suggestions = getSuggestedBudgets(profile);
-          if (suggestions.length === 0) return null;
-          const incomeMap = { under_1500: "< 1.500", "1500_3000": "1.500–3.000", "3000_6000": "3.000–6.000", over_6000: "> 6.000" };
-          return (
-            <View
-              style={{
-                marginTop: 24,
-                backgroundColor: `${c.primary}08`,
-                borderRadius: 20,
-                padding: 20,
-                borderWidth: 1,
-                borderColor: `${c.primary}25`,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+        {/* ── Smart / 50-30-20 Suggested Budgets ───────────────────────── */}
+        {profile &&
+          activeBudgetKeys.length === 0 &&
+          (() => {
+            const smartSuggestions = getSmartWeightSuggestions();
+            const classicSuggestions = getSuggestedBudgets(profile);
+            const hasSmartData = smartSuggestions.length > 0;
+            const activeSuggestions =
+              suggMode === "smart" && hasSmartData
+                ? smartSuggestions
+                : classicSuggestions;
+            if (activeSuggestions.length === 0) return null;
+
+            const incomeMap = {
+              under_1500: "< 1.500",
+              "1500_3000": "1.500–3.000",
+              "3000_6000": "3.000–6.000",
+              over_6000: "> 6.000",
+            };
+
+            return (
+              <View
+                style={{
+                  marginTop: 24,
+                  backgroundColor: `${c.primary}08`,
+                  borderRadius: 20,
+                  padding: 20,
+                  borderWidth: 1,
+                  borderColor: `${c.primary}25`,
+                }}
+              >
+                {/* Header */}
                 <View
                   style={{
-                    width: 40, height: 40, borderRadius: 20,
-                    backgroundColor: `${c.primary}18`,
-                    alignItems: "center", justifyContent: "center", marginRight: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginBottom: 14,
                   }}
                 >
-                  <Ionicons name="sparkles" size={20} color={c.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: c.foreground, fontWeight: "700", fontSize: 16 }}>
-                    {t("budget.suggestedTitle")}
-                  </Text>
-                  <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 2 }}>
-                    {t("budget.suggestedDesc")}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Income info */}
-              <Text style={{ color: c.textMuted, fontSize: 12, marginBottom: 12 }}>
-                📊 {incomeMap[profile.incomeRange] || "—"} RON/lună
-              </Text>
-
-              {/* Suggestion list */}
-              {suggestions.map((s) => {
-                const cat = CATEGORIES.find((x) => x.key === s.key) || { icon: "ellipsis-horizontal", color: "#6B7280" };
-                return (
                   <View
-                    key={s.key}
                     style={{
-                      flexDirection: "row", alignItems: "center",
-                      paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: c.border,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: `${c.primary}18`,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 12,
                     }}
                   >
-                    <Ionicons name={cat.icon} size={16} color={cat.color} style={{ marginRight: 10 }} />
-                    <Text style={{ color: c.foreground, fontSize: 14, flex: 1 }}>
-                      {t(`analytics.categories.${s.key}`)}
+                    <Ionicons name="sparkles" size={20} color={c.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        color: c.foreground,
+                        fontWeight: "700",
+                        fontSize: 16,
+                      }}
+                    >
+                      {t("budget.suggestedTitle")}
                     </Text>
-                    <Text style={{ color: c.textMuted, fontSize: 11, marginRight: 6 }}>
-                      {s.type === "need" ? t("budget.needsLabel") : t("budget.wantsLabel")}
-                    </Text>
-                    <Text style={{ color: c.foreground, fontWeight: "600", fontSize: 14 }}>
-                      {s.suggestedLimit.toFixed(0)} {t("common.currency")}
+                    <Text
+                      style={{ color: c.textMuted, fontSize: 12, marginTop: 2 }}
+                    >
+                      {t("budget.suggestedDesc")}
                     </Text>
                   </View>
-                );
-              })}
+                </View>
 
-              {/* Action buttons */}
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-                <Pressable
-                  onPress={() => applySuggestedBudgets(suggestions)}
-                  className="active:opacity-80"
-                  style={{ flex: 1, borderRadius: 12, overflow: "hidden" }}
-                >
-                  <LinearGradient
-                    colors={[c.primary, c.primaryDark]}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={{ paddingVertical: 12, alignItems: "center" }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "700", fontSize: 14 }}>
-                      {t("budget.acceptSuggestions")}
-                    </Text>
-                  </LinearGradient>
-                </Pressable>
-                <Pressable
-                  onPress={openPickSheet}
-                  className="active:opacity-70"
+                {/* Mode toggle tabs */}
+                <View
                   style={{
-                    flex: 1, borderRadius: 12, borderWidth: 1, borderColor: c.border,
-                    paddingVertical: 12, alignItems: "center",
+                    flexDirection: "row",
+                    backgroundColor: c.card,
+                    borderRadius: 12,
+                    padding: 3,
+                    marginBottom: 14,
+                    borderWidth: 1,
+                    borderColor: c.border,
                   }}
                 >
-                  <Text style={{ color: c.textMuted, fontWeight: "600", fontSize: 14 }}>
-                    {t("budget.customizeBudgets")}
-                  </Text>
-                </Pressable>
+                  <Pressable
+                    onPress={() => setSuggMode("smart")}
+                    className="active:opacity-80"
+                    style={{
+                      flex: 1,
+                      paddingVertical: 7,
+                      borderRadius: 10,
+                      alignItems: "center",
+                      backgroundColor:
+                        suggMode === "smart" ? c.primary : "transparent",
+                      opacity: !hasSmartData ? 0.4 : 1,
+                    }}
+                    disabled={!hasSmartData}
+                  >
+                    <Text
+                      style={{
+                        color: suggMode === "smart" ? "white" : c.textMuted,
+                        fontWeight: "600",
+                        fontSize: 12,
+                      }}
+                    >
+                      📊 {t("budget.smartWeights")}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setSuggMode("5030")}
+                    className="active:opacity-80"
+                    style={{
+                      flex: 1,
+                      paddingVertical: 7,
+                      borderRadius: 10,
+                      alignItems: "center",
+                      backgroundColor:
+                        suggMode === "5030" || !hasSmartData
+                          ? c.primary
+                          : "transparent",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color:
+                          suggMode === "5030" || !hasSmartData
+                            ? "white"
+                            : c.textMuted,
+                        fontWeight: "600",
+                        fontSize: 12,
+                      }}
+                    >
+                      ✦ 50/30/20
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {/* Mode description line */}
+                <Text
+                  style={{ color: c.textMuted, fontSize: 12, marginBottom: 12 }}
+                >
+                  {suggMode === "smart" && hasSmartData
+                    ? `📈 ${t("budget.smartWeightsDesc")}`
+                    : `📊 ${incomeMap[profile.incomeRange] || "—"} RON/lună`}
+                </Text>
+
+                {/* Suggestion list */}
+                {activeSuggestions.map((s) => {
+                  const cat = CATEGORIES.find((x) => x.key === s.key) || {
+                    icon: "ellipsis-horizontal",
+                    color: "#6B7280",
+                  };
+                  return (
+                    <View
+                      key={s.key}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingVertical: 8,
+                        borderBottomWidth: 0.5,
+                        borderBottomColor: c.border,
+                      }}
+                    >
+                      <Ionicons
+                        name={cat.icon}
+                        size={16}
+                        color={cat.color}
+                        style={{ marginRight: 10 }}
+                      />
+                      <Text
+                        style={{ color: c.foreground, fontSize: 14, flex: 1 }}
+                      >
+                        {t(`analytics.categories.${s.key}`)}
+                      </Text>
+                      {suggMode === "smart" && hasSmartData ? (
+                        <Text
+                          style={{
+                            color: c.textMuted,
+                            fontSize: 11,
+                            marginRight: 6,
+                          }}
+                        >
+                          {s.percentage}%
+                        </Text>
+                      ) : (
+                        <Text
+                          style={{
+                            color: c.textMuted,
+                            fontSize: 11,
+                            marginRight: 6,
+                          }}
+                        >
+                          {s.type === "need"
+                            ? t("budget.needsLabel")
+                            : t("budget.wantsLabel")}
+                        </Text>
+                      )}
+                      <Text
+                        style={{
+                          color: c.foreground,
+                          fontWeight: "600",
+                          fontSize: 14,
+                        }}
+                      >
+                        {s.suggestedLimit.toFixed(0)} {t("common.currency")}
+                      </Text>
+                    </View>
+                  );
+                })}
+
+                {/* Action buttons */}
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                  <Pressable
+                    onPress={() => applySuggestedBudgets(activeSuggestions)}
+                    className="active:opacity-80"
+                    style={{ flex: 1, borderRadius: 12, overflow: "hidden" }}
+                  >
+                    <LinearGradient
+                      colors={[c.primary, c.primaryDark]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ paddingVertical: 12, alignItems: "center" }}
+                    >
+                      <Text
+                        style={{
+                          color: "white",
+                          fontWeight: "700",
+                          fontSize: 14,
+                        }}
+                      >
+                        {t("budget.acceptSuggestions")}
+                      </Text>
+                    </LinearGradient>
+                  </Pressable>
+                  <Pressable
+                    onPress={openPickSheet}
+                    className="active:opacity-70"
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      paddingVertical: 12,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: c.textMuted,
+                        fontWeight: "600",
+                        fontSize: 14,
+                      }}
+                    >
+                      {t("budget.customizeBudgets")}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          );
-        })()}
+            );
+          })()}
 
         {/* ── Suggestions (categories with spending but no budget) ─── */}
         {suggestedCategories.length > 0 && activeBudgetKeys.length > 0 && (
@@ -738,6 +1099,58 @@ export default function Budget() {
           </View>
         )}
 
+        {/* ═══ SAVINGS GOALS SECTION ═══════════════════════════════════ */}
+        <View style={{ marginTop: 28 }}>
+          <SectionHeader
+            title={t("goals.title")}
+            rightText={t("goals.addGoal")}
+            onPress={openGoalSheet}
+          />
+          {!goalsLoaded ? null : goals.length === 0 ? (
+            <View
+              style={{
+                backgroundColor: c.card,
+                borderRadius: 16,
+                padding: 20,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: c.border,
+              }}
+            >
+              <Ionicons name="flag-outline" size={32} color={c.textMuted} />
+              <Text
+                style={{
+                  color: c.textMuted,
+                  fontSize: 14,
+                  marginTop: 8,
+                  textAlign: "center",
+                }}
+              >
+                {t("goals.empty")}
+              </Text>
+            </View>
+          ) : (
+            goals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                onPress={(g) => {
+                  setPendingGoal(g);
+                  setGoalName(g.name);
+                  setGoalTarget(g.targetAmount.toString());
+                  setGoalSaved(g.savedAmount.toString());
+                  setGoalDeadline(g.deadline ? g.deadline.split("T")[0] : "");
+                  setGoalIcon(g.icon);
+                  setGoalColor(g.color);
+                  setSheetMode("goal-edit");
+                }}
+                c={c}
+                t={t}
+              />
+            ))
+          )}
+        </View>
+
         {/* ═══ EVENT BUDGETS SECTION ═══════════════════════════════════ */}
         <View style={{ marginTop: 28 }}>
           <SectionHeader
@@ -767,7 +1180,14 @@ export default function Budget() {
               }}
             >
               <Ionicons name="calendar-outline" size={32} color={c.textMuted} />
-              <Text style={{ color: c.textMuted, fontSize: 14, marginTop: 8, textAlign: "center" }}>
+              <Text
+                style={{
+                  color: c.textMuted,
+                  fontSize: 14,
+                  marginTop: 8,
+                  textAlign: "center",
+                }}
+              >
                 {t("budget.noEventBudgets")}
               </Text>
             </View>
@@ -775,7 +1195,13 @@ export default function Budget() {
             /* Sort: active first, then upcoming, then expired */
             [...eventBudgets]
               .sort((a, b) => {
-                const order = { active: 0, warning: 0, over: 0, upcoming: 1, expired: 2 };
+                const order = {
+                  active: 0,
+                  warning: 0,
+                  over: 0,
+                  upcoming: 1,
+                  expired: 2,
+                };
                 const sa = getEventBudgetStatus(a).status;
                 const sb = getEventBudgetStatus(b).status;
                 return (order[sa] ?? 1) - (order[sb] ?? 1);
@@ -1185,7 +1611,10 @@ export default function Budget() {
           onPress={closeSheet}
           style={{
             position: "absolute",
-            top: 0, left: 0, right: 0, bottom: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             backgroundColor: c.overlay,
           }}
         >
@@ -1212,22 +1641,38 @@ export default function Budget() {
             {/* Handle */}
             <View
               style={{
-                width: 40, height: 4, borderRadius: 2,
-                backgroundColor: c.handle, alignSelf: "center", marginBottom: 24,
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: c.handle,
+                alignSelf: "center",
+                marginBottom: 24,
               }}
             />
             {/* Title */}
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
               <View
                 style={{
-                  width: 46, height: 46, borderRadius: 23,
+                  width: 46,
+                  height: 46,
+                  borderRadius: 23,
                   backgroundColor: `${c.primary}18`,
-                  alignItems: "center", justifyContent: "center", marginRight: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 14,
                 }}
               >
                 <Ionicons name="calendar" size={22} color={c.primary} />
               </View>
-              <Text style={{ color: c.foreground, fontSize: 18, fontWeight: "700" }}>
+              <Text
+                style={{ color: c.foreground, fontSize: 18, fontWeight: "700" }}
+              >
                 {sheetMode === "event-edit"
                   ? t("budget.editEvent")
                   : t("budget.addEvent")}
@@ -1235,15 +1680,27 @@ export default function Budget() {
             </View>
 
             {/* Event Name */}
-            <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>
+            <Text
+              style={{
+                color: c.textMuted,
+                fontSize: 13,
+                fontWeight: "500",
+                marginBottom: 6,
+              }}
+            >
               {t("budget.eventName")}
             </Text>
             <TextInput
               style={{
                 backgroundColor: c.card,
-                borderRadius: 14, borderWidth: 1, borderColor: c.border,
-                paddingHorizontal: 16, paddingVertical: 12,
-                color: c.foreground, fontSize: 15, marginBottom: 14,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: c.border,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                color: c.foreground,
+                fontSize: 15,
+                marginBottom: 14,
               }}
               placeholder={t("budget.eventNamePlaceholder")}
               placeholderTextColor={c.placeholder}
@@ -1252,24 +1709,45 @@ export default function Budget() {
             />
 
             {/* Total Limit */}
-            <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>
+            <Text
+              style={{
+                color: c.textMuted,
+                fontSize: 13,
+                fontWeight: "500",
+                marginBottom: 6,
+              }}
+            >
               {t("budget.totalLimit")} ({t("common.currency")})
             </Text>
             <View
               style={{
-                flexDirection: "row", alignItems: "center",
-                backgroundColor: c.card, borderRadius: 14,
-                borderWidth: 1, borderColor: c.border,
-                paddingHorizontal: 16, marginBottom: 14,
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: c.card,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: c.border,
+                paddingHorizontal: 16,
+                marginBottom: 14,
               }}
             >
-              <Text style={{ color: c.textMuted, fontSize: 16, fontWeight: "500", marginRight: 8 }}>
+              <Text
+                style={{
+                  color: c.textMuted,
+                  fontSize: 16,
+                  fontWeight: "500",
+                  marginRight: 8,
+                }}
+              >
                 {t("common.currency")}
               </Text>
               <TextInput
                 style={{
-                  flex: 1, color: c.foreground,
-                  fontSize: 20, fontWeight: "700", paddingVertical: 12,
+                  flex: 1,
+                  color: c.foreground,
+                  fontSize: 20,
+                  fontWeight: "700",
+                  paddingVertical: 12,
                 }}
                 placeholder="0"
                 placeholderTextColor={c.placeholder}
@@ -1282,15 +1760,27 @@ export default function Budget() {
             {/* Date row */}
             <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>
+                <Text
+                  style={{
+                    color: c.textMuted,
+                    fontSize: 13,
+                    fontWeight: "500",
+                    marginBottom: 6,
+                  }}
+                >
                   {t("budget.startDate")}
                 </Text>
                 <TextInput
                   style={{
-                    backgroundColor: c.card, borderRadius: 14,
-                    borderWidth: 1, borderColor: c.border,
-                    paddingHorizontal: 14, paddingVertical: 12,
-                    color: c.foreground, fontSize: 14, textAlign: "center",
+                    backgroundColor: c.card,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    color: c.foreground,
+                    fontSize: 14,
+                    textAlign: "center",
                   }}
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor={c.placeholder}
@@ -1299,15 +1789,27 @@ export default function Budget() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: "500", marginBottom: 6 }}>
+                <Text
+                  style={{
+                    color: c.textMuted,
+                    fontSize: 13,
+                    fontWeight: "500",
+                    marginBottom: 6,
+                  }}
+                >
                   {t("budget.endDate")}
                 </Text>
                 <TextInput
                   style={{
-                    backgroundColor: c.card, borderRadius: 14,
-                    borderWidth: 1, borderColor: c.border,
-                    paddingHorizontal: 14, paddingVertical: 12,
-                    color: c.foreground, fontSize: 14, textAlign: "center",
+                    backgroundColor: c.card,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    color: c.foreground,
+                    fontSize: 14,
+                    textAlign: "center",
                   }}
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor={c.placeholder}
@@ -1320,7 +1822,13 @@ export default function Budget() {
             {/* Save button */}
             <Pressable
               onPress={() => {
-                if (!eventName.trim() || !eventLimit || !eventStartDate || !eventEndDate) return;
+                if (
+                  !eventName.trim() ||
+                  !eventLimit ||
+                  !eventStartDate ||
+                  !eventEndDate
+                )
+                  return;
                 if (sheetMode === "event-edit" && pendingEventBudget) {
                   // For simplicity: delete old, create new
                   removeEventBudget(pendingEventBudget.id);
@@ -1332,6 +1840,7 @@ export default function Budget() {
                   endDate: eventEndDate,
                   categories: [],
                 });
+                triggerEvaluate();
                 closeSheet();
               }}
               className="active:opacity-80"
@@ -1339,10 +1848,13 @@ export default function Budget() {
             >
               <LinearGradient
                 colors={[c.primary, c.primaryDark]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{ paddingVertical: 15, alignItems: "center" }}
               >
-                <Text style={{ color: "white", fontWeight: "700", fontSize: 16 }}>
+                <Text
+                  style={{ color: "white", fontWeight: "700", fontSize: 16 }}
+                >
                   {t("common.save")}
                 </Text>
               </LinearGradient>
@@ -1357,19 +1869,341 @@ export default function Budget() {
                 }}
                 className="active:opacity-70"
                 style={{
-                  paddingVertical: 13, alignItems: "center",
-                  borderRadius: 14, borderWidth: 1,
-                  borderColor: `${c.expense}40`, marginBottom: 4,
+                  paddingVertical: 13,
+                  alignItems: "center",
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: `${c.expense}40`,
+                  marginBottom: 4,
                 }}
               >
-                <Text style={{ color: c.expense, fontWeight: "600", fontSize: 15 }}>
+                <Text
+                  style={{ color: c.expense, fontWeight: "600", fontSize: 15 }}
+                >
                   {t("budget.removeEvent")}
                 </Text>
               </Pressable>
             )}
 
-            <Pressable onPress={closeSheet} style={{ alignItems: "center", paddingTop: 12 }}>
-              <Text style={{ color: c.textMuted, fontWeight: "500", fontSize: 14 }}>
+            <Pressable
+              onPress={closeSheet}
+              style={{ alignItems: "center", paddingTop: 12 }}
+            >
+              <Text
+                style={{ color: c.textMuted, fontWeight: "500", fontSize: 14 }}
+              >
+                {t("common.cancel")}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+
+      {/* ===== GOAL BOTTOM SHEET ===== */}
+      {(sheetMode === "goal-add" || sheetMode === "goal-edit") && (
+        <Pressable
+          onPress={() => setSheetMode(null)}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: c.overlay,
+          }}
+        >
+          <View style={{ flex: 1 }} />
+        </Pressable>
+      )}
+      {(sheetMode === "goal-add" || sheetMode === "goal-edit") && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "position" : undefined}
+          style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+        >
+          <View
+            style={{
+              backgroundColor: c.surface,
+              borderTopWidth: 1,
+              borderTopColor: c.border,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingHorizontal: 24,
+              paddingTop: 24,
+              paddingBottom: 48,
+            }}
+          >
+            {/* Handle */}
+            <View
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: c.handle,
+                alignSelf: "center",
+                marginBottom: 20,
+              }}
+            />
+            {/* Title */}
+            <Text
+              style={{
+                color: c.foreground,
+                fontSize: 18,
+                fontWeight: "700",
+                marginBottom: 20,
+              }}
+            >
+              {sheetMode === "goal-edit"
+                ? t("goals.editGoal")
+                : t("goals.addGoal")}
+            </Text>
+
+            {/* Name */}
+            <Text
+              style={{
+                color: c.textMuted,
+                fontSize: 13,
+                fontWeight: "500",
+                marginBottom: 6,
+              }}
+            >
+              {t("goals.goalName")}
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: c.card,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: c.border,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                color: c.foreground,
+                fontSize: 15,
+                marginBottom: 14,
+              }}
+              placeholder={t("goals.goalNamePlaceholder")}
+              placeholderTextColor={c.placeholder}
+              value={goalName}
+              onChangeText={setGoalName}
+            />
+
+            {/* Target + Saved row */}
+            <View style={{ flexDirection: "row", gap: 12, marginBottom: 14 }}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: c.textMuted,
+                    fontSize: 13,
+                    fontWeight: "500",
+                    marginBottom: 6,
+                  }}
+                >
+                  {t("goals.target")} ({t("common.currency")})
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: c.card,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    color: c.foreground,
+                    fontSize: 15,
+                    textAlign: "center",
+                  }}
+                  placeholder="0"
+                  placeholderTextColor={c.placeholder}
+                  value={goalTarget}
+                  onChangeText={setGoalTarget}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: c.textMuted,
+                    fontSize: 13,
+                    fontWeight: "500",
+                    marginBottom: 6,
+                  }}
+                >
+                  {t("goals.saved")} ({t("common.currency")})
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: c.card,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    color: c.foreground,
+                    fontSize: 15,
+                    textAlign: "center",
+                  }}
+                  placeholder="0"
+                  placeholderTextColor={c.placeholder}
+                  value={goalSaved}
+                  onChangeText={setGoalSaved}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+
+            {/* Deadline */}
+            <Text
+              style={{
+                color: c.textMuted,
+                fontSize: 13,
+                fontWeight: "500",
+                marginBottom: 6,
+              }}
+            >
+              {t("goals.deadline")} ({t("goals.optional")})
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: c.card,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: c.border,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                color: c.foreground,
+                fontSize: 15,
+                marginBottom: 14,
+              }}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={c.placeholder}
+              value={goalDeadline}
+              onChangeText={setGoalDeadline}
+            />
+
+            {/* Icon picker */}
+            <Text
+              style={{
+                color: c.textMuted,
+                fontSize: 13,
+                fontWeight: "500",
+                marginBottom: 8,
+              }}
+            >
+              {t("goals.icon")}
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: 14 }}
+              contentContainerStyle={{ gap: 10 }}
+            >
+              {GOAL_ICONS.map((ico) => (
+                <Pressable
+                  key={ico}
+                  onPress={() => setGoalIcon(ico)}
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 21,
+                    backgroundColor:
+                      goalIcon === ico ? goalColor + "28" : c.card,
+                    borderWidth: 2,
+                    borderColor: goalIcon === ico ? goalColor : c.border,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons
+                    name={ico}
+                    size={20}
+                    color={goalIcon === ico ? goalColor : c.textMuted}
+                  />
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {/* Color picker */}
+            <Text
+              style={{
+                color: c.textMuted,
+                fontSize: 13,
+                fontWeight: "500",
+                marginBottom: 8,
+              }}
+            >
+              {t("goals.color")}
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 10,
+                marginBottom: 20,
+              }}
+            >
+              {GOAL_COLORS.map((col) => (
+                <Pressable
+                  key={col}
+                  onPress={() => setGoalColor(col)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: col,
+                    borderWidth: goalColor === col ? 3 : 0,
+                    borderColor: c.foreground,
+                  }}
+                />
+              ))}
+            </View>
+
+            {/* Save */}
+            <Pressable
+              onPress={handleGoalSave}
+              className="active:opacity-80"
+              style={{ borderRadius: 14, overflow: "hidden", marginBottom: 12 }}
+            >
+              <LinearGradient
+                colors={[goalColor, goalColor + "CC"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ paddingVertical: 15, alignItems: "center" }}
+              >
+                <Text
+                  style={{ color: "white", fontWeight: "700", fontSize: 16 }}
+                >
+                  {t("common.save")}
+                </Text>
+              </LinearGradient>
+            </Pressable>
+
+            {sheetMode === "goal-edit" && (
+              <Pressable
+                onPress={handleGoalDelete}
+                className="active:opacity-70"
+                style={{
+                  paddingVertical: 13,
+                  alignItems: "center",
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: c.expense + "40",
+                  marginBottom: 4,
+                }}
+              >
+                <Text
+                  style={{ color: c.expense, fontWeight: "600", fontSize: 15 }}
+                >
+                  {t("goals.deleteGoal")}
+                </Text>
+              </Pressable>
+            )}
+
+            <Pressable
+              onPress={() => setSheetMode(null)}
+              style={{ alignItems: "center", paddingTop: 12 }}
+            >
+              <Text
+                style={{ color: c.textMuted, fontWeight: "500", fontSize: 14 }}
+              >
                 {t("common.cancel")}
               </Text>
             </Pressable>

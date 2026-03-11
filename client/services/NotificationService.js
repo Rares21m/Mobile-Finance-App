@@ -9,9 +9,37 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import { INBOX_KEY, MAX_INBOX_SIZE } from "../context/NotificationsContext";
 
 const NOTIF_SENT_KEY = "budget_notif_sent_v1";
 const COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12 hours per category
+
+/**
+ * Persist a notification entry directly to AsyncStorage so it appears in the
+ * in-app Inbox. Safe to call outside of React (no context required).
+ *
+ * @param {{ type: string, title: string, body: string, lang?: string }} entry
+ */
+export async function saveToInbox({ type, title, body, lang }) {
+  const notification = {
+    id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    type,
+    title,
+    body,
+    lang,
+    timestamp: Date.now(),
+    read: false,
+  };
+  try {
+    const raw = await AsyncStorage.getItem(INBOX_KEY);
+    const existing = raw ? JSON.parse(raw) : [];
+    // Prepend newest first; cap at MAX_INBOX_SIZE
+    const updated = [notification, ...existing].slice(0, MAX_INBOX_SIZE);
+    await AsyncStorage.setItem(INBOX_KEY, JSON.stringify(updated));
+  } catch {
+    // Non-critical — ignore failures
+  }
+}
 
 // expo-notifications push-token auto-registration was removed from Expo Go in
 // SDK 53. We guard every call so the module is only loaded in dev/prod builds.
@@ -40,17 +68,33 @@ export async function requestNotificationPermission() {
  * @param {Function} t  i18next translation function
  */
 export async function checkAndNotifyBudgets(budgetSummary, t) {
-  if (IS_EXPO_GO || !budgetSummary || budgetSummary.length === 0) {
-    // In Expo Go: log what would have been notified (for dev testing)
-    if (IS_EXPO_GO && budgetSummary?.length > 0) {
-      const alerts = budgetSummary.filter(
-        (b) => b.status === "warning" || b.status === "over",
+  if (!budgetSummary || budgetSummary.length === 0) return;
+
+  const alerts = budgetSummary.filter(
+    (b) => b.status === "warning" || b.status === "over",
+  );
+
+  if (IS_EXPO_GO) {
+    // In Expo Go: OS push is unavailable, but still persist to inbox
+    if (alerts.length > 0) {
+      console.log(
+        "[NotificationService] Expo Go – saving inbox entries for:",
+        alerts.map((b) => `${b.key} (${b.percentage}% – ${b.status})`),
       );
-      if (alerts.length > 0) {
-        console.log(
-          "[NotificationService] Expo Go – would send notifications for:",
-          alerts.map((b) => `${b.key} (${b.percentage}% – ${b.status})`),
-        );
+      for (const budget of alerts) {
+        const categoryName = t(`analytics.categories.${budget.key}`);
+        const body =
+          budget.status === "over"
+            ? t("dashboard.budgetAlert.over", { category: categoryName })
+            : t("dashboard.budgetAlert.warning", {
+                category: categoryName,
+                pct: budget.percentage,
+              });
+        await saveToInbox({
+          type: budget.status === "over" ? "budget_over" : "budget_warning",
+          title: "Novence 💳",
+          body,
+        });
       }
     }
     return;
@@ -93,6 +137,13 @@ export async function checkAndNotifyBudgets(budgetSummary, t) {
         sound: true,
       },
       trigger: null, // fire immediately
+    });
+
+    // Also persist to Inbox for history
+    await saveToInbox({
+      type: budget.status === "over" ? "budget_over" : "budget_warning",
+      title: "Novence 💳",
+      body,
     });
 
     updated[budget.key] = now;

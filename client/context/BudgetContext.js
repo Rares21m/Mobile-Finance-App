@@ -10,18 +10,21 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useState,
 } from "react";
+import api from "../services/api";
 import {
-  CATEGORIES,
-  filterByPeriod,
-  getCategoryBreakdown,
+    CATEGORIES,
+    categorizeTransaction,
+    filterByPeriod,
+    getCategoryBreakdown,
 } from "../utils/categoryUtils";
+import { useAuth } from "./AuthContext";
 import { useBankData } from "./BankContext";
 
 const BUDGET_STORAGE_KEY = "budget_limits_v1";
@@ -33,7 +36,13 @@ const BudgetContext = createContext(null);
 // Needs (50%): food, transport, utilities, housing, health
 // Wants (30%): shopping, entertainment, other
 // Savings (20%): not allocated to categories — just informational
-const NEEDS_CATEGORIES = ["food", "transport", "utilities", "housing", "health"];
+const NEEDS_CATEGORIES = [
+  "food",
+  "transport",
+  "utilities",
+  "housing",
+  "health",
+];
 const WANTS_CATEGORIES = ["shopping", "entertainment", "other"];
 
 // Midpoint for each income range
@@ -46,6 +55,7 @@ const INCOME_MIDPOINTS = {
 
 export function BudgetProvider({ children }) {
   const { transactions } = useBankData();
+  const { token } = useAuth();
 
   // ── Monthly budget limits ───────────────────────────────────────────────
   /** limits: { food: 500, transport: 300, ... } */
@@ -90,7 +100,7 @@ export function BudgetProvider({ children }) {
   useEffect(() => {
     if (loaded) {
       AsyncStorage.setItem(BUDGET_STORAGE_KEY, JSON.stringify(limits)).catch(
-        () => { },
+        () => {},
       );
     }
   }, [limits, loaded]);
@@ -101,9 +111,40 @@ export function BudgetProvider({ children }) {
       AsyncStorage.setItem(
         EVENT_BUDGETS_KEY,
         JSON.stringify(eventBudgets),
-      ).catch(() => { });
+      ).catch(() => {});
     }
   }, [eventBudgets, eventsLoaded]);
+
+  // ── Server sync: fetch limits on login ──────────────────────────────────
+  useEffect(() => {
+    if (!token) return;
+    api
+      .get("/budgets/limits")
+      .then((res) => {
+        if (res.data?.limits) setLimits(res.data.limits);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  // ── Server sync: fetch events on login ──────────────────────────────────
+  useEffect(() => {
+    if (!token) return;
+    api
+      .get("/budgets/events")
+      .then((res) => {
+        if (res.data?.events) setEventBudgets(res.data.events);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  // ── Server sync: push limits to server (debounced 1s) ───────────────────
+  useEffect(() => {
+    if (!token || !loaded) return;
+    const timer = setTimeout(() => {
+      api.put("/budgets/limits", { limits }).catch(() => {});
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [limits, token, loaded]);
 
   // ── Set or remove a budget limit for a category ─────────────────────────
   const setBudgetLimit = useCallback((categoryKey, amount) => {
@@ -240,6 +281,47 @@ export function BudgetProvider({ children }) {
     });
   }, []);
 
+  /**
+   * Smart weight suggestions based on actual spending from the last 3 months.
+   * Returns [{ key, percentage, suggestedLimit }] sorted by suggestedLimit desc.
+   */
+  const getSmartWeightSuggestions = useCallback(() => {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+
+    const expenses = transactions.filter((tx) => {
+      const amount = parseFloat(tx.transactionAmount?.amount || 0);
+      if (amount >= 0) return false;
+      const date = new Date(tx.bookingDate || tx.valueDate || "");
+      return date >= threeMonthsAgo;
+    });
+
+    if (expenses.length < 3) return [];
+
+    const SKIP_KEYS = new Set(["salary", "transfer"]);
+    const groups = {};
+    let grandTotal = 0;
+
+    for (const tx of expenses) {
+      const cat = categorizeTransaction(tx);
+      if (SKIP_KEYS.has(cat.key)) continue;
+      const amount = Math.abs(parseFloat(tx.transactionAmount?.amount || 0));
+      grandTotal += amount;
+      groups[cat.key] = (groups[cat.key] || 0) + amount;
+    }
+
+    if (grandTotal === 0) return [];
+
+    return Object.entries(groups)
+      .map(([key, total]) => ({
+        key,
+        percentage: Math.round((total / grandTotal) * 100),
+        suggestedLimit: Math.round(total / 3), // 3-month average
+      }))
+      .filter((s) => s.percentage >= 2)
+      .sort((a, b) => b.suggestedLimit - a.suggestedLimit);
+  }, [transactions]);
+
   // ═══════════════════════════════════════════════════════════════════════════
   // ── EVENT BUDGETS (vacations, weekends, etc.) ─────────────────────────────
   // ═══════════════════════════════════════════════════════════════════════════
@@ -248,35 +330,70 @@ export function BudgetProvider({ children }) {
    * Add a new event budget.
    * @param {{ name, totalLimit, startDate, endDate, categories? }} budget
    */
-  const addEventBudget = useCallback((budget) => {
-    const newBudget = {
-      id: Date.now().toString() + Math.random().toString(36).slice(2, 7),
-      name: budget.name,
-      totalLimit: parseFloat(budget.totalLimit),
-      startDate: budget.startDate,
-      endDate: budget.endDate,
-      categories: budget.categories || [], // empty = all categories
-      createdAt: new Date().toISOString(),
-    };
-    setEventBudgets((prev) => [...prev, newBudget]);
-    return newBudget;
-  }, []);
+  const addEventBudget = useCallback(
+    async (budget) => {
+      const tempId =
+        Date.now().toString() + Math.random().toString(36).slice(2, 7);
+      const newBudget = {
+        id: tempId,
+        name: budget.name,
+        totalLimit: parseFloat(budget.totalLimit),
+        startDate: budget.startDate,
+        endDate: budget.endDate,
+        categories: budget.categories || [],
+        createdAt: new Date().toISOString(),
+      };
+      setEventBudgets((prev) => [...prev, newBudget]);
+      if (token) {
+        try {
+          const res = await api.post("/budgets/events", {
+            name: budget.name,
+            totalLimit: budget.totalLimit,
+            startDate: budget.startDate,
+            endDate: budget.endDate,
+            categories: budget.categories || [],
+          });
+          const serverBudget = res.data.event;
+          setEventBudgets((prev) =>
+            prev.map((eb) => (eb.id === tempId ? serverBudget : eb)),
+          );
+          return serverBudget;
+        } catch (e) {
+          // keep local optimistic state
+        }
+      }
+      return newBudget;
+    },
+    [token],
+  );
 
   /**
    * Update an existing event budget.
    */
-  const updateEventBudget = useCallback((id, data) => {
-    setEventBudgets((prev) =>
-      prev.map((eb) => (eb.id === id ? { ...eb, ...data } : eb)),
-    );
-  }, []);
+  const updateEventBudget = useCallback(
+    (id, data) => {
+      setEventBudgets((prev) =>
+        prev.map((eb) => (eb.id === id ? { ...eb, ...data } : eb)),
+      );
+      if (token) {
+        api.put(`/budgets/events/${id}`, data).catch(() => {});
+      }
+    },
+    [token],
+  );
 
   /**
    * Remove an event budget.
    */
-  const removeEventBudget = useCallback((id) => {
-    setEventBudgets((prev) => prev.filter((eb) => eb.id !== id));
-  }, []);
+  const removeEventBudget = useCallback(
+    (id) => {
+      setEventBudgets((prev) => prev.filter((eb) => eb.id !== id));
+      if (token) {
+        api.delete(`/budgets/events/${id}`).catch(() => {});
+      }
+    },
+    [token],
+  );
 
   /**
    * Compute spent amount for a given event budget from transactions.
@@ -335,7 +452,8 @@ export function BudgetProvider({ children }) {
         limit: eventBudget.totalLimit,
         percentage,
         status,
-        daysLeft: now <= end ? Math.max(0, Math.ceil((end - now) / 86400000)) : 0,
+        daysLeft:
+          now <= end ? Math.max(0, Math.ceil((end - now) / 86400000)) : 0,
       };
     },
     [transactions],
@@ -370,7 +488,7 @@ export function BudgetProvider({ children }) {
       // Suggestions
       getSuggestedBudgets,
       applySuggestedBudgets,
-      // Event budgets
+      getSmartWeightSuggestions,
       eventBudgets,
       eventsLoaded,
       addEventBudget,
@@ -390,6 +508,7 @@ export function BudgetProvider({ children }) {
       getBudgetSummary,
       getSuggestedBudgets,
       applySuggestedBudgets,
+      getSmartWeightSuggestions,
       eventBudgets,
       eventsLoaded,
       addEventBudget,
