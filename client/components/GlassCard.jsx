@@ -6,20 +6,58 @@
 import { View } from "react-native";
 
 import { BlurView } from "expo-blur";
+import { useTheme } from "../context/ThemeContext";
 
 /**
  * Frosted-glass card container used in auth screens.
  *
  * @param {ReactNode} children - Card content
  */
-export default function GlassCard({ children }) {
+export default function GlassCard({
+    children,
+    variant = "default",
+    intensity = 20,
+    style,
+    contentStyle,
+}) {
+    const { theme, tokens } = useTheme();
+    const c = theme.colors;
+
+    const VARIANT_MAP = {
+        default: {
+            bg: `${c.foreground}0D`,
+            border: `${c.foreground}1A`,
+        },
+        subtle: {
+            bg: `${c.foreground}08`,
+            border: `${c.foreground}14`,
+        },
+        elevated: {
+            bg: `${c.foreground}12`,
+            border: `${c.primary}26`,
+        },
+    };
+
+    const resolved = VARIANT_MAP[variant] || VARIANT_MAP.default;
+
     return (
         <BlurView
-            intensity={20}
-            tint="default"
-            className="rounded-3xl overflow-hidden"
+            intensity={intensity}
+            tint={theme.mode === "dark" ? "dark" : "light"}
+            style={[{ borderRadius: tokens.radius.xl, overflow: "hidden" }, style]}
         >
-            <View className="bg-foreground/5 p-7 rounded-3xl border border-foreground/10">
+            <View
+                style={[
+                    {
+                        backgroundColor: resolved.bg,
+                        padding: 28,
+                        borderRadius: tokens.radius.xl,
+                        borderWidth: 1,
+                        borderColor: resolved.border,
+                    },
+                    contentStyle,
+                ]}
+            >
                 {children}
             </View>
         </BlurView>

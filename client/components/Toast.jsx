@@ -8,34 +8,48 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 
-const CONFIG = {
-  success: {
-    icon: "checkmark-circle",
-    color: "#22C55E",
-    bg: "rgba(34,197,94,0.12)",
-    border: "rgba(34,197,94,0.3)",
-  },
-  error: {
-    icon: "close-circle",
-    color: "#F43F5E",
-    bg: "rgba(244,63,94,0.12)",
-    border: "rgba(244,63,94,0.3)",
-  },
-  info: {
-    icon: "information-circle",
-    color: "#6366F1",
-    bg: "rgba(99,102,241,0.12)",
-    border: "rgba(99,102,241,0.3)",
-  },
-};
+function withAlpha(color, alpha) {
+  if (!color || typeof color !== "string") return `rgba(0,0,0,${alpha})`;
+  if (color.startsWith("#") && color.length === 7) {
+    const r = parseInt(color.slice(1, 3), 16);
+    const g = parseInt(color.slice(3, 5), 16);
+    const b = parseInt(color.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  return color;
+}
 
 export default function Toast() {
   const { toast, hideToast } = useToast();
+  const { theme, tokens } = useTheme();
+  const c = theme.colors;
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(-120)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+
+  const CONFIG = {
+    success: {
+      icon: "checkmark-circle",
+      color: c.success,
+      bg: withAlpha(c.success, 0.12),
+      border: withAlpha(c.success, 0.3),
+    },
+    error: {
+      icon: "close-circle",
+      color: c.expense,
+      bg: withAlpha(c.expense, 0.12),
+      border: withAlpha(c.expense, 0.3),
+    },
+    info: {
+      icon: "information-circle",
+      color: c.accent,
+      bg: withAlpha(c.accent, 0.12),
+      border: withAlpha(c.accent, 0.3),
+    },
+  };
 
   useEffect(() => {
     if (toast) {
@@ -49,7 +63,7 @@ export default function Toast() {
         }),
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 200,
+          duration: tokens.motion.fast,
           useNativeDriver: true,
         }),
       ]).start();
@@ -58,17 +72,17 @@ export default function Toast() {
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: -120,
-          duration: 250,
+          duration: tokens.motion.normal,
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 200,
+          duration: tokens.motion.fast,
           useNativeDriver: true,
         }),
       ]).start();
     }
-  }, [toast]);
+  }, [toast, tokens.motion.fast, tokens.motion.normal]);
 
   if (!toast && opacity._value === 0) return null;
 
@@ -94,7 +108,7 @@ export default function Toast() {
             backgroundColor: cfg.bg,
             borderWidth: 1,
             borderColor: cfg.border,
-            borderRadius: 16,
+            borderRadius: tokens.radius.lg,
             paddingVertical: 12,
             paddingHorizontal: 14,
             gap: 10,

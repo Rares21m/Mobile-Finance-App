@@ -15,7 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import BadgeEarnedModal from "../components/BadgeEarnedModal";
 import CircularLoading from "../components/CircularLoading";
 import Toast from "../components/Toast";
-import { paperTheme } from "../constants/theme";
+import { createPaperTheme } from "../constants/theme";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { BadgesProvider } from "../context/BadgesContext";
 import { BankProvider } from "../context/BankContext";
@@ -104,6 +104,7 @@ function SplashOverlay() {
 
 function RootLayoutContent() {
   const { isDark, theme } = useTheme();
+  const paperTheme = createPaperTheme(theme);
 
   const cssVars = vars({
     "--color-bg": theme.colors.bg,
@@ -130,37 +131,39 @@ function RootLayoutContent() {
         style={[{ flex: 1 }, cssVars]}
         className={isDark ? "dark" : "light"}
       >
-        <ToastProvider>
-          <AuthProvider>
-            <OnboardingProvider>
-              <NotificationsProvider>
-                <BankProvider>
-                  <BudgetProvider>
-                    <GoalsProvider>
-                      <BadgesProvider>
-                        <StatusBar style={isDark ? "light" : "dark"} />
-                        <NavigationThemeProvider
-                          value={isDark ? DarkTheme : DefaultTheme}
-                        >
-                          <Stack screenOptions={{ headerShown: false }}>
-                            <Stack.Screen name="(auth)" />
-                            <Stack.Screen name="onboarding" />
-                            <Stack.Screen name="(tabs)" />
-                            <Stack.Screen name="transactions" />
-                          </Stack>
-                        </NavigationThemeProvider>
-                        <NavigationGuard />
-                        <Toast />
-                        <BadgeEarnedModal />
-                        <SplashOverlay />
-                      </BadgesProvider>
-                    </GoalsProvider>
-                  </BudgetProvider>
-                </BankProvider>
-              </NotificationsProvider>
-            </OnboardingProvider>
-          </AuthProvider>
-        </ToastProvider>
+        <PaperProvider theme={paperTheme}>
+          <ToastProvider>
+            <AuthProvider>
+              <OnboardingProvider>
+                <NotificationsProvider>
+                  <BankProvider>
+                    <BudgetProvider>
+                      <GoalsProvider>
+                        <BadgesProvider>
+                          <StatusBar style={isDark ? "light" : "dark"} />
+                          <NavigationThemeProvider
+                            value={isDark ? DarkTheme : DefaultTheme}
+                          >
+                            <Stack screenOptions={{ headerShown: false }}>
+                              <Stack.Screen name="(auth)" />
+                              <Stack.Screen name="onboarding" />
+                              <Stack.Screen name="(tabs)" />
+                              <Stack.Screen name="transactions" />
+                            </Stack>
+                          </NavigationThemeProvider>
+                          <NavigationGuard />
+                          <Toast />
+                          <BadgeEarnedModal />
+                          <SplashOverlay />
+                        </BadgesProvider>
+                      </GoalsProvider>
+                    </BudgetProvider>
+                  </BankProvider>
+                </NotificationsProvider>
+              </OnboardingProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </PaperProvider>
       </View>
     </SafeAreaProvider>
   );
@@ -168,10 +171,8 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <PaperProvider theme={paperTheme}>
-      <ThemeProvider>
-        <RootLayoutContent />
-      </ThemeProvider>
-    </PaperProvider>
+    <ThemeProvider>
+      <RootLayoutContent />
+    </ThemeProvider>
   );
 }

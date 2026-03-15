@@ -15,9 +15,17 @@ import { useTheme } from "../context/ThemeContext";
  * @param {Function}  onClose  - Called on dismiss
  * @param {ReactNode} children - Bottom sheet content
  */
-export default function BottomSheet({ visible, onClose, children }) {
+export default function BottomSheet({ visible, onClose, children, size = "md" }) {
     const { t } = useTranslation();
-    const { theme } = useTheme();
+    const { theme, tokens } = useTheme();
+
+    const SIZE_MAP = {
+        sm: { horizontal: 20, top: 20, bottom: 28 },
+        md: { horizontal: 24, top: 24, bottom: 40 },
+        lg: { horizontal: 24, top: 28, bottom: 48 },
+    };
+
+    const resolvedSize = SIZE_MAP[size] || SIZE_MAP.md;
 
     return (
         <Modal
@@ -42,11 +50,11 @@ export default function BottomSheet({ visible, onClose, children }) {
                     backgroundColor: theme.colors.surface,
                     borderTopWidth: 1,
                     borderTopColor: theme.colors.border,
-                    borderTopLeftRadius: 24,
-                    borderTopRightRadius: 24,
-                    paddingHorizontal: 24,
-                    paddingTop: 24,
-                    paddingBottom: 40,
+                    borderTopLeftRadius: tokens.radius.xl,
+                    borderTopRightRadius: tokens.radius.xl,
+                    paddingHorizontal: resolvedSize.horizontal,
+                    paddingTop: resolvedSize.top,
+                    paddingBottom: resolvedSize.bottom,
                 }}
             >
                 <View
@@ -56,7 +64,7 @@ export default function BottomSheet({ visible, onClose, children }) {
                         borderRadius: 2,
                         backgroundColor: theme.colors.handle,
                         alignSelf: "center",
-                        marginBottom: 20,
+                        marginBottom: tokens.spacing.lg,
                     }}
                 />
                 {children}
@@ -64,7 +72,13 @@ export default function BottomSheet({ visible, onClose, children }) {
                     className="mt-4 py-3 items-center active:opacity-70"
                     onPress={onClose}
                 >
-                    <Text style={{ color: theme.colors.textMuted, fontWeight: "500", fontSize: 14 }}>
+                    <Text
+                        style={{
+                            color: theme.colors.textMuted,
+                            fontWeight: "500",
+                            fontSize: tokens.typography.sizes.sm,
+                        }}
+                    >
                         {t("common.cancel")}
                     </Text>
                 </Pressable>

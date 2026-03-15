@@ -6,6 +6,7 @@
 import { Text, TextInput, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../context/ThemeContext";
 
 /**
  * Glass-styled text input used in auth screens.
@@ -26,29 +27,66 @@ export default function GlassInput({
     onChangeText,
     placeholder,
     error,
+    success,
     isLast = false,
+    inputStyle,
+    containerStyle,
     ...inputProps
 }) {
+    const { theme, tokens } = useTheme();
+    const c = theme.colors;
     const spacerClass = isLast ? "mb-6" : "mb-4";
+
+    const borderColor = error
+        ? c.expense
+        : success
+            ? c.success
+            : c.border;
 
     return (
         <>
-            <Text className="text-text-muted text-sm font-medium mb-2">
+            <Text
+                style={{
+                    color: c.textMuted,
+                    fontSize: tokens.typography.sizes.sm,
+                    fontWeight: "500",
+                    marginBottom: tokens.spacing.sm,
+                }}
+            >
                 {label}
             </Text>
-            <View className="flex-row items-center bg-card rounded-2xl border border-border mb-1 px-4">
-                <Ionicons name={icon} size={18} color="#6B7280" />
+            <View
+                className="flex-row items-center rounded-2xl border mb-1 px-4"
+                style={[
+                    {
+                        backgroundColor: c.card,
+                        borderColor,
+                    },
+                    containerStyle,
+                ]}
+            >
+                <Ionicons name={icon} size={18} color={c.textMuted} />
                 <TextInput
-                    className="flex-1 text-foreground py-4 ml-3 text-sm"
+                    className="flex-1 py-4 ml-3"
+                    style={[
+                        {
+                            color: c.foreground,
+                            fontSize: tokens.typography.sizes.sm,
+                        },
+                        inputStyle,
+                    ]}
                     placeholder={placeholder}
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={c.placeholder}
                     value={value}
                     onChangeText={onChangeText}
                     {...inputProps}
                 />
             </View>
             {error ? (
-                <Text className={`text-expense text-xs ${isLast ? "mb-6" : "mb-3"} ml-1`}>
+                <Text
+                    className={`${isLast ? "mb-6" : "mb-3"} ml-1`}
+                    style={{ color: c.expense, fontSize: tokens.typography.sizes.xs }}
+                >
                     {error}
                 </Text>
             ) : (

@@ -1099,58 +1099,6 @@ export default function Budget() {
           </View>
         )}
 
-        {/* ═══ SAVINGS GOALS SECTION ═══════════════════════════════════ */}
-        <View style={{ marginTop: 28 }}>
-          <SectionHeader
-            title={t("goals.title")}
-            rightText={t("goals.addGoal")}
-            onPress={openGoalSheet}
-          />
-          {!goalsLoaded ? null : goals.length === 0 ? (
-            <View
-              style={{
-                backgroundColor: c.card,
-                borderRadius: 16,
-                padding: 20,
-                alignItems: "center",
-                borderWidth: 1,
-                borderColor: c.border,
-              }}
-            >
-              <Ionicons name="flag-outline" size={32} color={c.textMuted} />
-              <Text
-                style={{
-                  color: c.textMuted,
-                  fontSize: 14,
-                  marginTop: 8,
-                  textAlign: "center",
-                }}
-              >
-                {t("goals.empty")}
-              </Text>
-            </View>
-          ) : (
-            goals.map((goal) => (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                onPress={(g) => {
-                  setPendingGoal(g);
-                  setGoalName(g.name);
-                  setGoalTarget(g.targetAmount.toString());
-                  setGoalSaved(g.savedAmount.toString());
-                  setGoalDeadline(g.deadline ? g.deadline.split("T")[0] : "");
-                  setGoalIcon(g.icon);
-                  setGoalColor(g.color);
-                  setSheetMode("goal-edit");
-                }}
-                c={c}
-                t={t}
-              />
-            ))
-          )}
-        </View>
-
         {/* ═══ EVENT BUDGETS SECTION ═══════════════════════════════════ */}
         <View style={{ marginTop: 28 }}>
           <SectionHeader
@@ -1224,6 +1172,58 @@ export default function Budget() {
                   t={t}
                 />
               ))
+          )}
+        </View>
+
+        {/* ═══ SAVINGS GOALS SECTION ═══════════════════════════════════ */}
+        <View style={{ marginTop: 28 }}>
+          <SectionHeader
+            title={t("goals.title")}
+            rightText={t("goals.addGoal")}
+            onPress={openGoalSheet}
+          />
+          {!goalsLoaded ? null : goals.length === 0 ? (
+            <View
+              style={{
+                backgroundColor: c.card,
+                borderRadius: 16,
+                padding: 20,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: c.border,
+              }}
+            >
+              <Ionicons name="flag-outline" size={32} color={c.textMuted} />
+              <Text
+                style={{
+                  color: c.textMuted,
+                  fontSize: 14,
+                  marginTop: 8,
+                  textAlign: "center",
+                }}
+              >
+                {t("goals.empty")}
+              </Text>
+            </View>
+          ) : (
+            goals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                onPress={(g) => {
+                  setPendingGoal(g);
+                  setGoalName(g.name);
+                  setGoalTarget(g.targetAmount.toString());
+                  setGoalSaved(g.savedAmount.toString());
+                  setGoalDeadline(g.deadline ? g.deadline.split("T")[0] : "");
+                  setGoalIcon(g.icon);
+                  setGoalColor(g.color);
+                  setSheetMode("goal-edit");
+                }}
+                c={c}
+                t={t}
+              />
+            ))
           )}
         </View>
       </ScrollView>

@@ -53,3 +53,7 @@ npm run dev
 - Dashboard cu sold total și tranzacții recente
 - Statistici pe categorii de cheltuieli
 - Consultant AI financiar (în dezvoltare)
+
+## Planificare Redesign
+
+- Board principal redesign (UI + functionalitati + backend/BD): `REDESIGN_TASK_BOARD.md`

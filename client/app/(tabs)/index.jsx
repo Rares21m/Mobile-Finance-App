@@ -1034,6 +1034,7 @@ export default function Dashboard() {
     accounts,
     transactions,
     loading,
+    sessionExpired,
     getTotalBalance,
     getRecentTransactions,
   } = useBankData();
@@ -1098,6 +1099,27 @@ export default function Dashboard() {
 
   // First name only for greeting
   const firstName = user?.name?.split(" ")[0] || t("profile.defaultUser");
+
+  const quickActions = [
+    {
+      key: "accounts",
+      icon: "link-outline",
+      label: t("accounts.connectNow"),
+      onPress: () => router.push("/(tabs)/accounts"),
+    },
+    {
+      key: "budget",
+      icon: "wallet-outline",
+      label: t("dashboard.nudge.noBudget.action"),
+      onPress: () => router.push("/(tabs)/budget"),
+    },
+    {
+      key: "transactions",
+      icon: "receipt-outline",
+      label: t("dashboard.seeAll"),
+      onPress: () => router.push("/transactions"),
+    },
+  ];
 
   // ─── Inbox ──────────────────────────────────────────────────────────────────
   const { unreadCount, reload: reloadInbox } = useNotifications();
@@ -1351,7 +1373,41 @@ export default function Dashboard() {
               </View>
             </View>
 
-            {/* ===== NUDGE CARD ===== */}
+            {/* ===== ALERTS ===== */}
+            {sessionExpired && (
+              <Pressable
+                onPress={() => router.push("/(tabs)/accounts")}
+                className="active:opacity-80"
+                style={{
+                  backgroundColor: `${c.warning}14`,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: `${c.warning}40`,
+                  padding: 12,
+                  marginBottom: 10,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={18}
+                  color={c.warning}
+                  style={{ marginRight: 10 }}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: c.foreground, fontWeight: "700", fontSize: 13 }}>
+                    {t("accounts.sessionExpired")}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={c.warning} />
+              </Pressable>
+            )}
+
+            {budgetAlerts.length > 0 && (
+              <BudgetAlerts alerts={budgetAlerts} router={router} c={c} t={t} />
+            )}
+
             <NudgeCard
               accounts={accounts}
               limits={limits}
@@ -1365,7 +1421,52 @@ export default function Dashboard() {
               t={t}
             />
 
-            {/* ===== GOAL INSIGHT CARD ===== */}
+            {/* ===== QUICK ACTIONS ===== */}
+            <View className="mb-6">
+              <SectionHeader title={t("dashboard.quickActions")} />
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {quickActions.map((action) => (
+                  <Pressable
+                    key={action.key}
+                    onPress={action.onPress}
+                    className="active:opacity-80"
+                    style={{
+                      flex: 1,
+                      backgroundColor: c.surface,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      paddingVertical: 12,
+                      paddingHorizontal: 8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 10,
+                        backgroundColor: `${c.primary}18`,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Ionicons name={action.icon} size={16} color={c.primary} />
+                    </View>
+                    <Text
+                      numberOfLines={1}
+                      style={{ color: c.foreground, fontWeight: "600", fontSize: 12 }}
+                    >
+                      {action.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* ===== DETAILS ===== */}
             {profile?.goal &&
               (totalIncome > 0 ||
                 (profile.goal === "savings" && goals.length > 0)) && (
@@ -1381,11 +1482,6 @@ export default function Dashboard() {
                   t={t}
                 />
               )}
-
-            {/* ===== BUDGET ALERTS ===== */}
-            {budgetAlerts.length > 0 && (
-              <BudgetAlerts alerts={budgetAlerts} router={router} c={c} t={t} />
-            )}
 
             {/* ===== SPENDING INSIGHTS ===== */}
             {categoryBreakdown.length > 0 && (

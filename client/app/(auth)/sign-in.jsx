@@ -10,11 +10,13 @@ import GlassCard from "../../components/GlassCard";
 import GlassInput from "../../components/GlassInput";
 import GradientButton from "../../components/GradientButton";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import { useToast } from "../../context/ToastContext";
 import { getErrorKey } from "../../utils/errorCodes";
 
 export default function SignIn() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const {
     login,
     biometricEnabled,
@@ -129,7 +131,7 @@ export default function SignIn() {
             onPress={onBiometricLogin}
             className="mt-5 flex-row items-center justify-center gap-2 active:opacity-70"
           >
-            <Ionicons name="finger-print-outline" size={22} color="#10B981" />
+            <Ionicons name="finger-print-outline" size={22} color={theme.colors.primary} />
             <Text className="text-primary font-semibold text-base">
               {t("auth.biometricLogin")}
             </Text>

@@ -49,7 +49,8 @@ export default function Welcome() {
             width: 180,
             height: 180,
             borderRadius: 90,
-            backgroundColor: "rgba(16,185,129,0.06)",
+            backgroundColor: c.authDecorCircle1,
+            opacity: 0.65,
           }}
         />
         {/* Subtle grid decoration */}
@@ -87,7 +88,7 @@ export default function Welcome() {
           <View className="flex-row items-center">
             <View className="w-10 h-10 rounded-xl overflow-hidden mr-3">
               <LinearGradient
-                colors={["#10B981", "#6366F1"]}
+                colors={[c.primary, c.accent]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -97,7 +98,7 @@ export default function Welcome() {
                   justifyContent: "center",
                 }}
               >
-                <Ionicons name="wallet" size={22} color="#fff" />
+                <Ionicons name="wallet" size={22} color={c.textInverse} />
               </LinearGradient>
             </View>
             <Text
@@ -127,8 +128,9 @@ export default function Welcome() {
               className="flex-1 border border-foreground/15 rounded-2xl py-4 items-center active:opacity-70"
               style={({ pressed }) => ({
                 backgroundColor: pressed
-                  ? "rgba(255,255,255,0.05)"
+                  ? c.card
                   : "transparent",
+                opacity: pressed ? 0.8 : 1,
               })}
               onPress={() => router.push("/(auth)/sign-in")}
             >
@@ -142,7 +144,7 @@ export default function Welcome() {
               onPress={() => router.push("/(auth)/sign-up")}
             >
               <LinearGradient
-                colors={["#10B981", "#059669"]}
+                colors={[c.primary, c.primaryDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -153,7 +155,7 @@ export default function Welcome() {
                   bottom: 0,
                 }}
               />
-              <Text className="text-foreground font-bold text-base">
+              <Text className="font-bold text-base" style={{ color: c.textInverse }}>
                 {t("auth.register")}
               </Text>
             </Pressable>

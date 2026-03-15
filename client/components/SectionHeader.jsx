@@ -13,23 +13,34 @@ import { useTheme } from "../context/ThemeContext";
  * @param {string}   [rightText]  - Optional right-side text
  * @param {Function} [onPress]    - Optional onPress for the right text
  */
-export default function SectionHeader({ title, rightText, onPress }) {
-  const { theme } = useTheme();
+export default function SectionHeader({
+  title,
+  subtitle,
+  rightText,
+  onPress,
+  compact = false,
+}) {
+  const { theme, tokens } = useTheme();
   const c = theme.colors;
+
+  const titleSize = compact
+    ? tokens.typography.sizes.xs
+    : tokens.typography.sizes.sm;
+
   return (
     <View
       style={{
         flexDirection: "row",
-        alignItems: "center",
+        alignItems: subtitle ? "flex-start" : "center",
         justifyContent: "space-between",
-        marginBottom: 12,
+        marginBottom: tokens.spacing.md,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: tokens.spacing.sm }}>
         <View
           style={{
             width: 3,
-            height: 16,
+            height: subtitle ? 24 : 16,
             borderRadius: 2,
             backgroundColor: c.primary,
           }}
@@ -37,13 +48,18 @@ export default function SectionHeader({ title, rightText, onPress }) {
         <Text
           style={{
             color: c.foreground,
-            fontSize: 13,
+            fontSize: titleSize,
             fontWeight: "600",
             letterSpacing: 0.2,
           }}
         >
           {title}
         </Text>
+        {!!subtitle && (
+          <Text style={{ color: c.textMuted, fontSize: tokens.typography.sizes.xs }}>
+            {subtitle}
+          </Text>
+        )}
       </View>
       {rightText &&
         (onPress ? (
@@ -51,12 +67,20 @@ export default function SectionHeader({ title, rightText, onPress }) {
             onPress={onPress}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            <Text style={{ color: c.primary, fontSize: 12, fontWeight: "600" }}>
+            <Text
+              style={{
+                color: c.primary,
+                fontSize: tokens.typography.sizes.xs,
+                fontWeight: "600",
+              }}
+            >
               {rightText}
             </Text>
           </Pressable>
         ) : (
-          <Text style={{ color: c.textMuted, fontSize: 12 }}>{rightText}</Text>
+          <Text style={{ color: c.textMuted, fontSize: tokens.typography.sizes.xs }}>
+            {rightText}
+          </Text>
         ))}
     </View>
   );
