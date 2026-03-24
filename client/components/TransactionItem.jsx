@@ -1,110 +1,105 @@
 /**
  * @fileoverview Transaction row component displaying category icon,
- * description, date, and amount. Used in dashboard and analytics.
+ * description, date, and amount in a modern Neon Fintech style.
  */
-
-import { Pressable, Text, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-
+import { TouchableOpacity, Text, View } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 import { categorizeTransaction } from "../utils/categoryUtils";
-/**
- * A single transaction row used in dashboard, accounts, and analytics.
- *
- * @param {object}   tx             - Transaction object from BankContext
- * @param {boolean}  isLast         - Whether this is the last item (hides bottom border)
- * @param {boolean}  [showCategory] - Show category label below the description
- * @param {Function} [onLongPress]  - Called when the row is long-pressed (for category override / edit)
- */
+
 export default function TransactionItem({
   tx,
   isLast,
   showCategory = false,
-  onLongPress,
+  onLongPress
 }) {
   const { t } = useTranslation();
+  const { theme, isDark } = useTheme();
+  const c = theme.colors;
 
   const rawAmount = parseFloat(tx.transactionAmount?.amount || 0);
   const isExpense = rawAmount < 0;
   const cat = categorizeTransaction(tx);
 
-  // For expenses: show who was paid (creditorName)
-  // For income: show who sent the money (debtorName)
-  const description = isExpense
-    ? tx.creditorName ||
-      tx.remittanceInformationUnstructured ||
-      t("dashboard.transaction")
-    : tx.debtorName ||
-      tx.creditorName ||
-      tx.remittanceInformationUnstructured ||
-      t("dashboard.transaction");
+  const description = isExpense ?
+  tx.creditorName ||
+  tx.remittanceInformationUnstructured ||
+  t("dashboard.transaction") :
+  tx.debtorName ||
+  tx.creditorName ||
+  tx.remittanceInformationUnstructured ||
+  t("dashboard.transaction");
 
-  const dateStr = tx.bookingDate
-    ? new Date(tx.bookingDate).toLocaleDateString("ro-RO", {
-        day: "numeric",
-        month: "short",
-      })
-    : "";
+  const dateStr = tx.bookingDate ?
+  new Date(tx.bookingDate).toLocaleDateString("ro-RO", {
+    day: "numeric",
+    month: "short"
+  }) :
+  "";
 
   return (
-    <Pressable
+    <TouchableOpacity
+      activeOpacity={0.7}
       onLongPress={onLongPress}
       delayLongPress={400}
-      className={`flex-row items-center p-4 ${!isLast ? "border-b border-border" : ""}`}
-    >
-      {/* Category icon */}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderBottomWidth: isLast ? 0 : 1,
+        borderBottomColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"
+      }}>
+      
+      {}
       <View
-        className="w-10 h-10 rounded-xl items-center justify-center mr-3"
-        style={{ backgroundColor: `${cat.color}18` }}
-      >
-        <Ionicons name={cat.icon} size={18} color={cat.color} />
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 23,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
+          marginRight: 16
+        }}>
+        
+        <Ionicons name={cat.icon} size={20} color={c.foreground} />
       </View>
 
-      {/* Description + date */}
-      <View className="flex-1">
+      {}
+      <View style={{ flex: 1, justifyContent: "center" }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Text
-            className="text-foreground font-medium text-sm"
             numberOfLines={1}
-            style={{ flex: 1 }}
-          >
+            style={{ flex: 1, color: c.foreground, fontSize: 16, fontWeight: "700", marginBottom: 2 }}>
+            
             {description}
           </Text>
-          {tx.isManual && (
-            <View
-              style={{
-                backgroundColor: "#6366F118",
-                borderRadius: 6,
-                paddingHorizontal: 5,
-                paddingVertical: 2,
-              }}
-            >
-              <Text
-                style={{ color: "#6366F1", fontSize: 9, fontWeight: "700" }}
-              >
-                {t("transactions.manual")}
-              </Text>
-            </View>
-          )}
         </View>
-        <Text className="text-text-muted text-xs mt-0.5">
-          {showCategory
-            ? `${t(`analytics.categories.${cat.key}`)} • ${dateStr}`
-            : dateStr}
+        <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: "500" }}>
+          {showCategory ?
+          `${t(`analytics.categories.${cat.key}`)} • ${dateStr}` :
+          dateStr}
         </Text>
       </View>
 
-      {/* Amount */}
-      <Text
-        className={`font-bold text-sm ${isExpense ? "text-expense" : "text-success"}`}
-      >
-        {isExpense ? "" : "+"}
-        {Math.abs(rawAmount).toLocaleString("ro-RO", {
-          minimumFractionDigits: 2,
-        })}{" "}
-        <Text className="font-normal text-xs">RON</Text>
-      </Text>
-    </Pressable>
-  );
+      {}
+      <View style={{ alignItems: "flex-end", justifyContent: "center" }}>
+        <Text style={{ fontWeight: "800", fontSize: 16, color: c.foreground }}>
+          {isExpense ? "-" : "+"}
+          {Math.abs(rawAmount).toLocaleString("ro-RO", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}
+        </Text>
+        {tx.isManual &&
+        <Text style={{ color: c.primary, fontSize: 10, fontWeight: "700", marginTop: 2 }}>
+            {t("transactions.manual").toUpperCase()}
+          </Text>
+        }
+      </View>
+    </TouchableOpacity>);
+
 }

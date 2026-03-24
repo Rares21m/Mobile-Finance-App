@@ -4,9 +4,9 @@
  * instead of raw error codes returned by the API.
  */
 
-/** @type {Record<string, string>} */
+
 const ERROR_CODE_MAP = {
-  // Auth errors
+
   EMAIL_PASSWORD_REQUIRED: "serverErrors.emailPasswordRequired",
   EMAIL_ALREADY_EXISTS: "serverErrors.emailAlreadyExists",
   EMAIL_ALREADY_IN_USE: "serverErrors.emailAlreadyInUse",
@@ -21,7 +21,7 @@ const ERROR_CODE_MAP = {
   TOKEN_MISSING: "serverErrors.tokenMissing",
   TOKEN_EXPIRED_OR_INVALID: "serverErrors.tokenExpiredOrInvalid",
 
-  // BT errors
+
   BANK_CONNECTION_NOT_FOUND: "serverErrors.bankConnectionNotFound",
   ACTIVE_CONNECTION_NOT_FOUND: "serverErrors.activeConnectionNotFound",
   BT_REGISTER_CLIENT_FAILED: "serverErrors.btRegisterClientFailed",
@@ -31,20 +31,40 @@ const ERROR_CODE_MAP = {
   BT_GET_TRANSACTIONS_FAILED: "serverErrors.btGetTransactionsFailed",
   BT_GET_BALANCES_FAILED: "serverErrors.btGetBalancesFailed",
   BT_SESSION_EXPIRED: "serverErrors.btSessionExpired",
+  BT_RATE_LIMITED: "serverErrors.tooManyRequests",
+  BT_TIMEOUT: "serverErrors.internalServerError",
+  BANKING_PROVIDER_DEGRADED: "serverErrors.internalServerError",
 
-  // Generic
+
+  BRD_INIT_CONSENT_FAILED: "serverErrors.internalServerError",
+  BRD_TOKEN_EXCHANGE_FAILED: "serverErrors.internalServerError",
+  BRD_GET_CONNECTION_DATA_FAILED: "serverErrors.internalServerError",
+  BRD_RATE_LIMITED: "serverErrors.tooManyRequests",
+  BRD_TIMEOUT: "serverErrors.internalServerError",
+
+
+  IDEMPOTENCY_KEY_REQUIRED: "serverErrors.internalServerError",
+  IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD:
+  "serverErrors.internalServerError",
+  IDEMPOTENCY_REQUEST_IN_PROGRESS: "serverErrors.internalServerError",
+
+
+  ADVISOR_TIMEOUT: "serverErrors.internalServerError",
+  AI_PROVIDER_DEGRADED: "serverErrors.internalServerError",
+
+
   INTERNAL_SERVER_ERROR: "serverErrors.internalServerError",
-  TOO_MANY_REQUESTS: "serverErrors.tooManyRequests",
+  TOO_MANY_REQUESTS: "serverErrors.tooManyRequests"
 };
 
-/**
- * Resolves a server error code to the corresponding i18n key.
- * Falls back to `fallbackKey` if the code is not recognized.
- *
- * @param {string} code     - Error code from server (e.g. "EMAIL_ALREADY_EXISTS")
- * @param {string} fallback - Fallback i18n key if code is unknown
- * @returns {string} i18n translation key
- */
+
+
+
+
+
+
+
+
 export function getErrorKey(code, fallback = "common.error") {
   return ERROR_CODE_MAP[code] || fallback;
 }

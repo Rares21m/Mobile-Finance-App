@@ -1,18 +1,27 @@
-﻿import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Pressable,
-    ScrollView,
-    Text,
-    View,
-} from "react-native";
-import { BarChart, PieChart } from "react-native-gifted-charts";
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Pressable,
+  ScrollView,
+  Text,
+  View } from
+"react-native";
+import { BarChart, PieChart, LineChart } from "react-native-gifted-charts";
+import ChartSkeleton from "../../components/analytics/ChartSkeleton";
+import CategoryBreakdownWithPie from "../../components/analytics/CategoryBreakdownWithPie";
+import BudgetVsActualCard from "../../components/analytics/BudgetVsActualCard";
+import HealthScoreRing from "../../components/analytics/HealthScoreRing";
+import SmartSummary from "../../components/analytics/SmartSummary";
+import AnomalyPills from "../../components/analytics/AnomalyPills";
+import TrendComboChart from "../../components/analytics/TrendComboChart";
+import SafeToSpendHero from "../../components/analytics/SafeToSpendHero";
+import TimeTabs from "../../components/analytics/TimeTabs";
 import BottomSheet from "../../components/BottomSheet";
 import SectionHeader from "../../components/SectionHeader";
 import TransactionItem from "../../components/TransactionItem";
@@ -20,75 +29,118 @@ import { useBankData } from "../../context/BankContext";
 import { useBudget } from "../../context/BudgetContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
-    CATEGORIES,
-    categorizeTransaction,
-    detectRecurringTransactions,
-    filterByPeriod,
-    getCashFlowForecast,
-    getCategoryBreakdown,
-    getDailyExpenses,
-    getMonthlyComparison,
-    getMonthlyIncomeTrend,
-} from "../../utils/categoryUtils";
+  CATEGORIES,
+  categorizeTransaction,
+  detectAnomalies,
+  detectRecurringTransactions,
+  explainTotals,
+  filterByPeriod,
+  getCashFlowForecast,
+  getCategoryBreakdown,
+  getDailyExpenses,
+  getFinancialHealthScore,
+  getMonthlyComparison,
+  getMonthlyIncomeTrend,
+  calculateSafeToSpend,
+  getAdvancedRegressionForecast } from
+"../../utils/categoryUtils";
 import { exportFinancialReport } from "../../utils/exportPdf";
+import api from "../../services/api";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+
+
 
 export default function Analytics() {
   const { isDark, theme } = useTheme();
   const c = theme.colors;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [selectedPeriod, setSelectedPeriod] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [activeView, setActiveView] = useState(null);
-  const { transactions } = useBankData();
-  const { getBudgetSummary } = useBudget();
+  const [timeMode, setTimeMode] = useState("present");
+  const [monthlySummaryTrend, setMonthlySummaryTrend] = useState([]);
+  const { transactions, loading, getTotalBalance } = useBankData();
+  const { getBudgetSummary, limits, currentMonthSpending } = useBudget();
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadMonthlySummary() {
+      try {
+        const res = await api.get("/analytics/monthly-summary", {
+          params: { months: 6 }
+        });
+
+        if (!mounted) return;
+
+        const locale = i18n.language?.startsWith("ro") ? "ro-RO" : "en-US";
+        const mapped = (res.data?.monthly || []).map((row) => {
+          const monthDate = new Date(row.monthStart);
+          const label = Number.isNaN(monthDate.getTime()) ?
+          String(row.monthStart || "") :
+          monthDate.toLocaleDateString(locale, {
+            month: "short"
+          });
+
+          return {
+            label,
+            income: Number(row.income || 0),
+            expenses: Number(row.expenses || 0),
+            net: Number(row.net || 0),
+            monthStart: row.monthStart
+          };
+        });
+
+        setMonthlySummaryTrend(mapped);
+      } catch {
+        if (mounted) setMonthlySummaryTrend([]);
+      }
+    }
+
+    loadMonthlySummary();
+
+    return () => {
+      mounted = false;
+    };
+  }, [i18n.language]);
 
   const PERIODS = [
-    t("analytics.thisMonth"),
-    t("analytics.lastMonth"),
-    t("analytics.threeMonths"),
-  ];
+  t("analytics.thisMonth"),
+  t("analytics.lastMonth"),
+  t("analytics.threeMonths")];
+
 
   const filteredTx = useMemo(
     () => filterByPeriod(transactions, selectedPeriod),
-    [transactions, selectedPeriod],
+    [transactions, selectedPeriod]
   );
 
-  const totalExpenses = useMemo(
-    () =>
-      filteredTx
-        .filter((tx) => parseFloat(tx.transactionAmount?.amount || 0) < 0)
-        .reduce(
-          (sum, tx) =>
-            sum + Math.abs(parseFloat(tx.transactionAmount?.amount || 0)),
-          0,
-        ),
-    [filteredTx],
-  );
+  const explainability = useMemo(() => explainTotals(filteredTx), [filteredTx]);
+  const totalIncome = explainability.income;
+  const totalExpenses = explainability.expenses;
 
-  const totalIncome = useMemo(
-    () =>
-      filteredTx
-        .filter((tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0)
-        .reduce(
-          (sum, tx) => sum + parseFloat(tx.transactionAmount?.amount || 0),
-          0,
-        ),
-    [filteredTx],
-  );
+  const latestSourceUpdate = useMemo(() => {
+    if (filteredTx.length === 0) return null;
+    const latestMillis = filteredTx.
+    map((tx) => new Date(tx.lastUpdatedAt || tx.bookingDate || tx.valueDate).getTime()).
+    filter((value) => Number.isFinite(value)).
+    sort((a, b) => b - a)[0];
+
+    return latestMillis ? new Date(latestMillis) : null;
+  }, [filteredTx]);
 
   const categoryData = useMemo(
     () => getCategoryBreakdown(filteredTx),
-    [filteredTx],
+    [filteredTx]
   );
 
   const dailyData = useMemo(() => getDailyExpenses(filteredTx), [filteredTx]);
 
   const spendingInsights = useMemo(() => {
     const expenseTx = filteredTx.filter(
-      (tx) => parseFloat(tx.transactionAmount?.amount || 0) < 0,
+      (tx) => parseFloat(tx.transactionAmount?.amount || 0) < 0
     );
     if (expenseTx.length === 0) return null;
 
@@ -99,63 +151,70 @@ export default function Analytics() {
     const merchantFreq = {};
     expenseTx.forEach((tx) => {
       const name =
-        tx.creditorName || tx.remittanceInformationUnstructured || "Unknown";
+      tx.creditorName || tx.remittanceInformationUnstructured || "Unknown";
       merchantFreq[name] = (merchantFreq[name] || 0) + 1;
     });
     const topMerchant = Object.entries(merchantFreq).sort(
-      (a, b) => b[1] - a[1],
+      (a, b) => b[1] - a[1]
     )[0];
 
     const lastMonthTx = filterByPeriod(transactions, 1);
-    const lastMonthExpenses = lastMonthTx
-      .filter((tx) => parseFloat(tx.transactionAmount?.amount || 0) < 0)
-      .reduce(
-        (sum, tx) =>
-          sum + Math.abs(parseFloat(tx.transactionAmount?.amount || 0)),
-        0,
-      );
+    const lastMonthExpenses = lastMonthTx.
+    filter((tx) => parseFloat(tx.transactionAmount?.amount || 0) < 0).
+    reduce(
+      (sum, tx) =>
+      sum + Math.abs(parseFloat(tx.transactionAmount?.amount || 0)),
+      0
+    );
     const percentChange =
-      lastMonthExpenses > 0
-        ? ((totalExpenses - lastMonthExpenses) / lastMonthExpenses) * 100
-        : 0;
+    lastMonthExpenses > 0 ?
+    (totalExpenses - lastMonthExpenses) / lastMonthExpenses * 100 :
+    0;
 
     return {
       avgDaily,
       topMerchant: topMerchant ? topMerchant[0] : null,
       topMerchantCount: topMerchant ? topMerchant[1] : 0,
       percentChange,
-      lastMonthExpenses,
+      lastMonthExpenses
     };
   }, [filteredTx, totalExpenses, transactions]);
 
   const recurringTransactions = useMemo(
     () => detectRecurringTransactions(transactions),
-    [transactions],
+    [transactions]
   );
 
   const totalMonthlyRecurring = useMemo(
     () => recurringTransactions.reduce((sum, r) => sum + r.monthlyEstimate, 0),
-    [recurringTransactions],
+    [recurringTransactions]
   );
 
   const monthlyComparison = useMemo(
     () => getMonthlyComparison(transactions),
-    [transactions],
+    [transactions]
+  );
+
+  const totalBalance = getTotalBalance();
+
+  const advancedForecast = useMemo(
+    () => getAdvancedRegressionForecast(transactions, totalBalance),
+    [transactions, totalBalance]
   );
 
   const cashFlowForecast = useMemo(
-    () => getCashFlowForecast(transactions),
-    [transactions],
+    () => getCashFlowForecast(transactions, totalBalance),
+    [transactions, totalBalance]
   );
 
   const categoryTransactions = useMemo(() => {
     if (!selectedCategory) return [];
-    return filteredTx
-      .filter((tx) => {
-        const cat = categorizeTransaction(tx);
-        return cat.key === selectedCategory.key;
-      })
-      .sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
+    return filteredTx.
+    filter((tx) => {
+      const cat = categorizeTransaction(tx);
+      return cat.key === selectedCategory.key;
+    }).
+    sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
   }, [filteredTx, selectedCategory]);
 
   const pieData = useMemo(() => {
@@ -165,57 +224,60 @@ export default function Analytics() {
       color: cat.color,
       text: `${cat.percentage}%`,
       textColor: "#fff",
-      textSize: 10,
+      textSize: 10
     }));
   }, [categoryData]);
 
   const barData = useMemo(
     () =>
-      dailyData.map((d) => ({
-        value: d.value,
-        label: d.label,
-        frontColor: "#10B981",
-        gradientColor: "#059669",
-        topLabelComponent: () => (
-          <Text
-            style={{
-              color: c.chartAxisTextColor,
-              fontSize: 9,
-              marginBottom: 2,
-            }}
-          >
+    dailyData.map((d) => ({
+      value: d.value,
+      label: d.label,
+      frontColor: "#10B981",
+      gradientColor: "#059669",
+      topLabelComponent: () =>
+      <Text
+        style={{
+          color: c.chartAxisTextColor,
+          fontSize: 9,
+          marginBottom: 2
+        }}>
+        
             {d.value > 0 ? Math.round(d.value) : ""}
           </Text>
-        ),
-      })),
-    [dailyData, isDark],
+
+    })),
+    [dailyData, isDark]
   );
 
   const monthlyIncomeTrend = useMemo(
-    () => getMonthlyIncomeTrend(transactions, 6),
-    [transactions],
+    () =>
+    monthlySummaryTrend.length > 0 ?
+    monthlySummaryTrend :
+    getMonthlyIncomeTrend(transactions, 6),
+    [monthlySummaryTrend, transactions]
   );
 
   const incomeTrendBarData = useMemo(
     () =>
-      monthlyIncomeTrend.map((d) => ({
-        value: d.income,
-        label: d.label,
-        frontColor: "#22C55E",
-        gradientColor: "#16A34A",
-        topLabelComponent: () => (
-          <Text
-            style={{
-              color: c.chartAxisTextColor,
-              fontSize: 8,
-              marginBottom: 2,
-            }}
-          >
+    monthlyIncomeTrend.map((d) => ({
+      value: d.income,
+      label: d.label,
+      frontColor: "#22C55E",
+      gradientColor: "#16A34A",
+      topLabelComponent: () =>
+      <Text
+        style={{
+          color: c.chartAxisTextColor,
+          fontSize: 8,
+          marginBottom: 2
+        }}>
+        
             {d.income > 0 ? Math.round(d.income) : ""}
           </Text>
-        ),
-      })),
-    [monthlyIncomeTrend, isDark],
+
+    })),
+    [monthlyIncomeTrend, isDark]
   );
 
   const budgetVsActualData = useMemo(() => {
@@ -224,12 +286,33 @@ export default function Analytics() {
       return {
         ...b,
         color: cat?.color ?? "#6B7280",
-        icon: cat?.icon ?? "ellipsis-horizontal",
+        icon: cat?.icon ?? "ellipsis-horizontal"
       };
     });
   }, [getBudgetSummary]);
 
+  const healthScore = useMemo(
+    () =>
+    getFinancialHealthScore(
+      transactions,
+      limits,
+      currentMonthSpending
+    ),
+    [transactions, limits, currentMonthSpending]
+  );
+
+  const safeToSpendData = useMemo(
+    () => calculateSafeToSpend(transactions, recurringTransactions, 0),
+    [transactions, recurringTransactions]
+  );
+
+  const anomalies = useMemo(
+    () => detectAnomalies(transactions, limits, currentMonthSpending),
+    [transactions, limits, currentMonthSpending]
+  );
+
   const hasData = filteredTx.length > 0;
+  const shouldShowChartSkeleton = loading && hasData;
 
   const handleExport = async () => {
     if (exporting) return;
@@ -267,8 +350,8 @@ export default function Analytics() {
           health: t("analytics.categories.health"),
           transfer: t("analytics.categories.transfer"),
           salary: t("analytics.categories.salary"),
-          other: t("analytics.categories.other"),
-        },
+          other: t("analytics.categories.other")
+        }
       };
       await exportFinancialReport({
         filteredTx,
@@ -278,7 +361,7 @@ export default function Analytics() {
         spendingInsights,
         budgetSummary: getBudgetSummary(),
         periodLabel: PERIODS[selectedPeriod],
-        labels,
+        labels
       });
     } catch {
       Alert.alert("Export", t("export.exportError"));
@@ -300,586 +383,776 @@ export default function Analytics() {
     venituri: t("analytics.fab.venituri"),
     cheltuieli: t("analytics.fab.cheltuieli"),
     buget: t("analytics.fab.buget"),
+    trend: t("analytics.trend.title")
+  };
+
+  const handleAnomalyTap = (anomaly) => {
+    if (anomaly.categoryKey) {
+      const cat = categoryData.find((c) => c.key === anomaly.categoryKey);
+      if (cat) setSelectedCategory(cat);else
+      openSubView("categorii");
+    } else if (anomaly.type === "good_news") {
+      openSubView("cashflow");
+    }
   };
 
   return (
     <View className="flex-1 bg-background">
       <ScrollView
-        className="flex-1"
+        style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 32 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Top bar ── */}
-        <View className="flex-row mx-6 mt-14 gap-3 items-center">
-          {activeView ? (
-            <>
+        showsVerticalScrollIndicator={false}>
+        
+        {}
+        {}
+        <View style={{ flexDirection: "row", marginHorizontal: 24, marginTop: 56, gap: 12, alignItems: "center" }}>
+          {activeView ?
+          <>
               <Pressable
-                onPress={goBack}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: `${c.primary}15`,
-                  borderWidth: 1,
-                  borderColor: `${c.primary}25`,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
+              onPress={goBack}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                borderWidth: 1,
+                borderColor: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+              
                 <Ionicons name="arrow-back" size={18} color={c.primary} />
               </Pressable>
-              <View className="flex-1">
-                <Text className="text-foreground font-bold text-base">
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: c.foreground, fontWeight: "700", fontSize: 15 }}>
                   {VIEW_LABELS[activeView]}
                 </Text>
-                <Text className="text-text-muted text-xs">
+                <Text style={{ color: c.textMuted, fontSize: 12 }}>
                   {PERIODS[selectedPeriod]}
                 </Text>
               </View>
-            </>
-          ) : (
-            <View className="flex-1 bg-surface rounded-2xl p-1.5 border border-border flex-row">
-              {PERIODS.map((period, idx) => (
-                <Pressable
-                  key={period}
-                  className="flex-1 py-2.5 rounded-xl items-center overflow-hidden"
-                  onPress={() => setSelectedPeriod(idx)}
-                >
-                  {selectedPeriod === idx && (
-                    <LinearGradient
-                      colors={["#10B981", "#059669"]}
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        borderRadius: 12,
-                      }}
-                    />
-                  )}
-                  <Text
-                    className={`text-xs font-semibold ${
-                      selectedPeriod === idx
-                        ? "text-foreground"
-                        : "text-text-muted"
-                    }`}
-                  >
-                    {period}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {!activeView && (
-            <Pressable
-              onPress={handleExport}
-              disabled={exporting || !hasData}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 14,
-                backgroundColor: `${c.primary}18`,
-                borderWidth: 1,
-                borderColor: `${c.primary}30`,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: exporting || !hasData ? 0.4 : 1,
-              }}
-            >
-              {exporting ? (
-                <ActivityIndicator size="small" color={c.primary} />
-              ) : (
-                <Ionicons name="download-outline" size={19} color={c.primary} />
-              )}
-            </Pressable>
-          )}
+            </> :
+          null}
+          
         </View>
 
-        {/* ── Income & Expenses cards ── */}
-        <View className="flex-row mx-6 mt-5 gap-3">
-          <Pressable
-            className="flex-1 rounded-2xl p-4 active:opacity-80"
-            onPress={() => openSubView("venituri")}
-            style={{
-              backgroundColor: c.card,
-              borderLeftWidth: 3,
-              borderLeftColor: "#22C55E",
-            }}
-          >
-            <View className="flex-row items-center mb-3">
-              <Ionicons
-                name="trending-up"
-                size={15}
-                color="#22C55E"
-                style={{ marginRight: 6 }}
-              />
-              <Text className="text-text-muted text-xs flex-1">
-                {t("analytics.income")}
-              </Text>
-              <Ionicons name="chevron-forward" size={12} color="#22C55E" />
-            </View>
-            <Text className="text-success font-bold text-lg">
-              +
-              {totalIncome.toLocaleString("ro-RO", {
-                minimumFractionDigits: 2,
-              })}
-            </Text>
-            <Text className="text-text-muted text-xs mt-0.5">RON</Text>
-          </Pressable>
+        {}
+        {!activeView &&
+        <TimeTabs
+          activeTab={timeMode}
+          onTabChange={setTimeMode}
+          isDark={isDark}
+          theme={theme} />
 
-          <Pressable
-            className="flex-1 rounded-2xl p-4 active:opacity-80"
-            onPress={() => openSubView("cheltuieli")}
-            style={{
-              backgroundColor: c.card,
-              borderLeftWidth: 3,
-              borderLeftColor: "#F43F5E",
-            }}
-          >
-            <View className="flex-row items-center mb-3">
-              <Ionicons
-                name="trending-down"
-                size={15}
-                color="#F43F5E"
-                style={{ marginRight: 6 }}
-              />
-              <Text className="text-text-muted text-xs flex-1">
-                {t("analytics.expenses")}
-              </Text>
-              <Ionicons name="chevron-forward" size={12} color="#F43F5E" />
-            </View>
-            <Text className="text-expense font-bold text-lg">
-              -
-              {totalExpenses.toLocaleString("ro-RO", {
-                minimumFractionDigits: 2,
-              })}
-            </Text>
-            <Text className="text-text-muted text-xs mt-0.5">RON</Text>
-          </Pressable>
-        </View>
+        }
 
-        {/* ── No data ── */}
-        {!hasData && !activeView && (
-          <View
-            className="mx-6 mt-6 rounded-2xl p-5"
-            style={{
-              borderWidth: 1,
-              borderStyle: "dashed",
-              borderColor: c.border,
-            }}
-          >
-            <View className="flex-row items-center">
-              <View className="flex-1 pr-4">
-                <Text className="text-foreground font-bold text-base mb-1">
-                  {t("analytics.noData")}
-                </Text>
-                <Text className="text-text-muted text-sm leading-5">
-                  {t("analytics.noDataDesc")}
-                </Text>
-              </View>
-              <Ionicons
-                name="stats-chart-outline"
-                size={44}
-                color={c.textMuted}
-              />
+        {loading &&
+        <View
+          style={{
+            marginHorizontal: 24,
+            marginTop: 16,
+            borderRadius: 20,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            backgroundColor: isDark ? "rgba(16,185,129,0.08)" : "rgba(16,185,129,0.06)",
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(16,185,129,0.20)" : "rgba(16,185,129,0.15)",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10
+          }}>
+          
+            <ActivityIndicator size="small" color={c.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: c.foreground, fontSize: 13, fontWeight: "600" }}>
+                {t("analytics.syncingData")}
+              </Text>
+              <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 2 }}>
+                {t("analytics.syncingHint")}
+              </Text>
             </View>
           </View>
-        )}
+        }
 
-        {/* ══════════ OVERVIEW ══════════ */}
-        {hasData && !activeView && (
-          <>
-            {spendingInsights && (
-              <View className="mx-6 mt-5">
-                <SectionHeader title={t("analytics.spendingInsights")} />
-                <View className="flex-row gap-3">
-                  <Pressable
-                    className="flex-1 rounded-2xl p-4 active:opacity-80"
-                    onPress={() => openSubView("cheltuieli")}
-                    style={{
-                      backgroundColor: c.card,
-                      borderLeftWidth: 3,
-                      borderLeftColor: "#3B82F6",
-                    }}
-                  >
-                    <Ionicons
-                      name="calendar"
-                      size={15}
-                      color="#3B82F6"
-                      style={{ marginBottom: 8 }}
-                    />
-                    <Text className="text-text-muted text-xs mb-1">
-                      {t("analytics.avgDaily")}
-                    </Text>
-                    <Text className="text-foreground font-bold text-base">
-                      {spendingInsights.avgDaily.toLocaleString("ro-RO", {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      })}{" "}
-                      <Text className="text-text-muted font-normal text-xs">
-                        RON
-                      </Text>
-                    </Text>
-                  </Pressable>
 
-                  {selectedPeriod !== 1 && (
-                    <Pressable
-                      className="flex-1 rounded-2xl p-4 active:opacity-80"
-                      onPress={() => openSubView("comparatie")}
-                      style={{
-                        backgroundColor: c.card,
-                        borderLeftWidth: 3,
-                        borderLeftColor:
-                          spendingInsights.percentChange <= 0
-                            ? "#22C55E"
-                            : "#F43F5E",
-                      }}
-                    >
-                      <Ionicons
-                        name={
-                          spendingInsights.percentChange <= 0
-                            ? "arrow-down"
-                            : "arrow-up"
-                        }
-                        size={15}
-                        color={
-                          spendingInsights.percentChange <= 0
-                            ? "#22C55E"
-                            : "#F43F5E"
-                        }
-                        style={{ marginBottom: 8 }}
-                      />
-                      <Text className="text-text-muted text-xs mb-1">
-                        {t("analytics.vsLastMonth")}
-                      </Text>
-                      <Text
-                        className={`font-bold text-base ${
-                          spendingInsights.percentChange <= 0
-                            ? "text-success"
-                            : "text-expense"
-                        }`}
-                      >
-                        {spendingInsights.percentChange > 0 ? "+" : ""}
-                        {spendingInsights.percentChange.toFixed(0)}%
-                      </Text>
-                    </Pressable>
-                  )}
+
+        {
+
+        }
+        {timeMode === "present" && !activeView &&
+        <>
+            {}
+            <SafeToSpendHero data={safeToSpendData} c={c} isDark={isDark} t={t} />
+
+            {}
+            <View
+            style={{
+              flexDirection: "row",
+              marginHorizontal: 24,
+              marginTop: 20,
+              gap: 12
+            }}>
+            
+              <Pressable
+              onPress={() => openSubView("venituri")}
+              style={{
+                flex: 1,
+                borderRadius: 20,
+                padding: 16,
+                backgroundColor: isDark ?
+                "rgba(34,197,94,0.08)" :
+                "rgba(34,197,94,0.06)",
+                borderWidth: 1,
+                borderColor: isDark ?
+                "rgba(34,197,94,0.20)" :
+                "rgba(34,197,94,0.15)"
+              }}>
+              
+                <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 12
+                }}>
+                
+                  <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    backgroundColor: "rgba(34,197,94,0.15)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 6
+                  }}>
+                  
+                    <Ionicons name="trending-up" size={14} color="#22C55E" />
+                  </View>
+                  <Text style={{ color: c.textMuted, fontSize: 11, flex: 1 }}>
+                    {t("analytics.income")}
+                  </Text>
                 </View>
+                <Text
+                style={{ color: "#22C55E", fontWeight: "700", fontSize: 17 }}>
+                
+                  +{totalIncome.toLocaleString("ro-RO", {
+                  maximumFractionDigits: 0
+                })}
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 2 }}>
+                  RON
+                </Text>
+              </Pressable>
 
-                {spendingInsights.topMerchant &&
-                  spendingInsights.topMerchantCount > 1 && (
-                    <Pressable
-                      className="rounded-2xl p-4 mt-3 flex-row items-center active:opacity-80"
-                      onPress={() => openSubView("tranzactii")}
-                      style={{
-                        backgroundColor: c.card,
-                        borderLeftWidth: 3,
-                        borderLeftColor: "#8B5CF6",
-                      }}
-                    >
-                      <Ionicons
-                        name="star"
-                        size={16}
-                        color="#8B5CF6"
-                        style={{ marginRight: 12 }}
-                      />
-                      <View className="flex-1">
-                        <Text className="text-text-muted text-xs">
-                          {t("analytics.topMerchant")}
-                        </Text>
-                        <Text
-                          className="text-foreground font-semibold text-sm mt-0.5"
-                          numberOfLines={1}
-                        >
-                          {spendingInsights.topMerchant}
-                        </Text>
-                      </View>
-                      <View className="bg-[#8B5CF6]/10 px-3 py-1 rounded-full">
-                        <Text className="text-[#8B5CF6] text-xs font-semibold">
-                          {spendingInsights.topMerchantCount}x
-                        </Text>
-                      </View>
-                    </Pressable>
-                  )}
+              <Pressable
+              onPress={() => openSubView("cheltuieli")}
+              style={{
+                flex: 1,
+                borderRadius: 20,
+                padding: 16,
+                backgroundColor: isDark ?
+                "rgba(244,63,94,0.08)" :
+                "rgba(244,63,94,0.06)",
+                borderWidth: 1,
+                borderColor: isDark ?
+                "rgba(244,63,94,0.20)" :
+                "rgba(244,63,94,0.15)"
+              }}>
+              
+                <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 12
+                }}>
+                
+                  <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    backgroundColor: "rgba(244,63,94,0.15)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 6
+                  }}>
+                  
+                    <Ionicons name="trending-down" size={14} color="#F43F5E" />
+                  </View>
+                  <Text style={{ color: c.textMuted, fontSize: 11, flex: 1 }}>
+                    {t("analytics.expenses")}
+                  </Text>
+                </View>
+                <Text
+                style={{ color: "#F43F5E", fontWeight: "700", fontSize: 17 }}>
+                
+                  -{totalExpenses.toLocaleString("ro-RO", {
+                  maximumFractionDigits: 0
+                })}
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 2 }}>
+                  RON
+                </Text>
+              </Pressable>
+            </View>
+
+            {}
+            {hasData &&
+          <View style={{ marginHorizontal: 24, marginTop: 16 }}>
+                <SmartSummary
+              totalIncome={totalIncome}
+              totalExpenses={totalExpenses}
+              spendingInsights={spendingInsights}
+              cashFlowForecast={cashFlowForecast}
+              categoryData={categoryData}
+              c={c}
+              isDark={isDark}
+              t={t} />
+            
               </View>
-            )}
+          }
 
-            {/* Quick-access tiles */}
-            <View className="mx-6 mt-5">
-              <SectionHeader title={t("analytics.quickAccess")} />
-              <View className="flex-row flex-wrap gap-3">
+            {}
+            {hasData && anomalies.length > 0 &&
+          <View style={{ marginHorizontal: 24, marginTop: 16 }}>
+                <AnomalyPills
+              anomalies={anomalies}
+              onTapAnomaly={handleAnomalyTap}
+              c={c}
+              isDark={isDark}
+              t={t} />
+            
+              </View>
+          }
+          </>
+        }
+
+        {
+
+        }
+        {timeMode === "past" && !activeView &&
+        <>
+            {}
+            {hasData &&
+          <View style={{ marginHorizontal: 24, marginTop: 20 }}>
+                <HealthScoreRing
+              healthScore={healthScore}
+              onDrillDown={() => openSubView("categorii")}
+              c={c}
+              isDark={isDark}
+              t={t} />
+            
+              </View>
+          }
+
+            {}
+            <View style={{ marginHorizontal: 24, marginTop: 20 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+                {}
                 <Pressable
-                  className="active:opacity-70"
-                  style={{ width: (SCREEN_WIDTH - 60) / 2 }}
-                  onPress={() => openSubView("categorii")}
-                >
-                  <LinearGradient
-                    colors={["#8B5CF620", "#8B5CF608"]}
+                style={{ width: (SCREEN_WIDTH - 60) / 2 }}
+                onPress={() => openSubView("categorii")}>
+                
+                  <View
+                  style={{
+                    borderRadius: 20,
+                    padding: 16,
+                    borderWidth: 1,
+                    borderColor: isDark ?
+                    "rgba(139,92,246,0.20)" :
+                    "rgba(139,92,246,0.15)",
+                    backgroundColor: isDark ?
+                    "rgba(139,92,246,0.08)" :
+                    "rgba(139,92,246,0.05)"
+                  }}>
+                  
+                    <View
                     style={{
-                      borderRadius: 20,
-                      padding: 16,
-                      borderWidth: 1,
-                      borderColor: "#8B5CF630",
-                    }}
-                  >
-                    <View className="w-10 h-10 rounded-xl bg-[#8B5CF6]/20 items-center justify-center mb-3">
-                      <Ionicons name="pie-chart" size={20} color="#8B5CF6" />
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: "rgba(139,92,246,0.15)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 12
+                    }}>
+                    
+                      <Ionicons name="pie-chart" size={18} color="#8B5CF6" />
                     </View>
-                    <Text className="text-foreground font-bold text-sm mb-0.5">
+                    <Text
+                    style={{
+                      color: c.foreground,
+                      fontWeight: "700",
+                      fontSize: 13,
+                      marginBottom: 2
+                    }}>
+                    
                       {t("analytics.fab.categorii")}
                     </Text>
-                    <Text className="text-text-muted text-xs">
+                    <Text style={{ color: c.textMuted, fontSize: 11 }}>
                       {categoryData.length} {t("analytics.categories.count")}
                     </Text>
-                    <View style={{ position: "absolute", top: 12, right: 12 }}>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={14}
-                        color="#8B5CF6"
-                      />
-                    </View>
-                  </LinearGradient>
+                  </View>
                 </Pressable>
 
+                {}
                 <Pressable
-                  className="active:opacity-70"
-                  style={{ width: (SCREEN_WIDTH - 60) / 2 }}
-                  onPress={() => openSubView("recurente")}
-                >
-                  <LinearGradient
-                    colors={["#F59E0B20", "#F59E0B08"]}
+                style={{ width: (SCREEN_WIDTH - 60) / 2 }}
+                onPress={() => openSubView("recurente")}>
+                
+                  <View
+                  style={{
+                    borderRadius: 20,
+                    padding: 16,
+                    borderWidth: 1,
+                    borderColor: isDark ?
+                    "rgba(245,158,11,0.20)" :
+                    "rgba(245,158,11,0.15)",
+                    backgroundColor: isDark ?
+                    "rgba(245,158,11,0.08)" :
+                    "rgba(245,158,11,0.05)"
+                  }}>
+                  
+                    <View
                     style={{
-                      borderRadius: 20,
-                      padding: 16,
-                      borderWidth: 1,
-                      borderColor: "#F59E0B30",
-                    }}
-                  >
-                    <View className="w-10 h-10 rounded-xl bg-[#F59E0B]/20 items-center justify-center mb-3">
-                      <Ionicons name="repeat" size={20} color="#F59E0B" />
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: "rgba(245,158,11,0.15)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 12
+                    }}>
+                    
+                      <Ionicons name="repeat" size={18} color="#F59E0B" />
                     </View>
-                    <Text className="text-foreground font-bold text-sm mb-0.5">
+                    <Text
+                    style={{
+                      color: c.foreground,
+                      fontWeight: "700",
+                      fontSize: 13,
+                      marginBottom: 2
+                    }}>
+                    
                       {t("analytics.fab.recurente")}
                     </Text>
-                    <Text className="text-text-muted text-xs" numberOfLines={1}>
-                      {recurringTransactions.length > 0
-                        ? `${totalMonthlyRecurring.toLocaleString("ro-RO", {
-                            maximumFractionDigits: 0,
-                          })} RON/${t("analytics.recurring.mo")}`
-                        : t("analytics.recurring.none")}
-                    </Text>
-                    <View style={{ position: "absolute", top: 12, right: 12 }}>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={14}
-                        color="#F59E0B"
-                      />
-                    </View>
-                  </LinearGradient>
-                </Pressable>
-
-                <Pressable
-                  className="active:opacity-70"
-                  style={{ width: (SCREEN_WIDTH - 60) / 2 }}
-                  onPress={() => openSubView("tranzactii")}
-                >
-                  <LinearGradient
-                    colors={["#3B82F620", "#3B82F608"]}
-                    style={{
-                      borderRadius: 20,
-                      padding: 16,
-                      borderWidth: 1,
-                      borderColor: "#3B82F630",
-                    }}
-                  >
-                    <View className="w-10 h-10 rounded-xl bg-[#3B82F6]/20 items-center justify-center mb-3">
-                      <Ionicons name="list" size={20} color="#3B82F6" />
-                    </View>
-                    <Text className="text-foreground font-bold text-sm mb-0.5">
-                      {t("analytics.fab.tranzactii")}
-                    </Text>
-                    <Text className="text-text-muted text-xs">
-                      {filteredTx.length} {t("analytics.transactions")}
-                    </Text>
-                    <View style={{ position: "absolute", top: 12, right: 12 }}>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={14}
-                        color="#3B82F6"
-                      />
-                    </View>
-                  </LinearGradient>
-                </Pressable>
-
-                {/* Comparatie lunara */}
-                <Pressable
-                  className="active:opacity-70"
-                  style={{ width: (SCREEN_WIDTH - 60) / 2 }}
-                  onPress={() => openSubView("comparatie")}
-                >
-                  <LinearGradient
-                    colors={["#06B6D420", "#06B6D408"]}
-                    style={{
-                      borderRadius: 20,
-                      padding: 16,
-                      borderWidth: 1,
-                      borderColor: "#06B6D430",
-                    }}
-                  >
-                    <View className="w-10 h-10 rounded-xl bg-[#06B6D4]/20 items-center justify-center mb-3">
-                      <Ionicons name="bar-chart" size={20} color="#06B6D4" />
-                    </View>
-                    <Text className="text-foreground font-bold text-sm mb-0.5">
-                      {t("analytics.fab.comparatie")}
-                    </Text>
-                    <Text className="text-text-muted text-xs" numberOfLines={1}>
-                      {monthlyComparison.length}{" "}
-                      {t("analytics.categories.count")}
-                    </Text>
-                    <View style={{ position: "absolute", top: 12, right: 12 }}>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={14}
-                        color="#06B6D4"
-                      />
-                    </View>
-                  </LinearGradient>
-                </Pressable>
-
-                {/* Cash Flow Forecast */}
-                <Pressable
-                  className="active:opacity-70"
-                  style={{ width: (SCREEN_WIDTH - 60) / 2 }}
-                  onPress={() => openSubView("cashflow")}
-                >
-                  <LinearGradient
-                    colors={["#10B98120", "#10B98108"]}
-                    style={{
-                      borderRadius: 20,
-                      padding: 16,
-                      borderWidth: 1,
-                      borderColor: "#10B98130",
-                    }}
-                  >
-                    <View className="w-10 h-10 rounded-xl bg-[#10B981]/20 items-center justify-center mb-3">
-                      <Ionicons name="trending-up" size={20} color="#10B981" />
-                    </View>
-                    <Text className="text-foreground font-bold text-sm mb-0.5">
-                      {t("analytics.fab.cashflow")}
-                    </Text>
                     <Text
-                      className={`text-xs font-semibold ${
-                        cashFlowForecast.projectedNet >= 0
-                          ? "text-success"
-                          : "text-expense"
-                      }`}
-                      numberOfLines={1}
-                    >
-                      {cashFlowForecast.projectedNet >= 0 ? "+" : ""}
-                      {cashFlowForecast.projectedNet.toLocaleString("ro-RO", {
-                        maximumFractionDigits: 0,
-                      })}{" "}
-                      RON
+                    style={{ color: c.textMuted, fontSize: 11 }}
+                    numberOfLines={1}>
+                    
+                      {recurringTransactions.length}{" "}
+                      {t("analytics.recurring.subscriptions")}
                     </Text>
-                    <View style={{ position: "absolute", top: 12, right: 12 }}>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={14}
-                        color="#10B981"
-                      />
-                    </View>
-                  </LinearGradient>
+                  </View>
                 </Pressable>
 
-                {/* Budget vs. Actual */}
-                {budgetVsActualData.length > 0 && (
-                  <Pressable
-                    className="active:opacity-70"
-                    style={{ width: (SCREEN_WIDTH - 60) / 2 }}
-                    onPress={() => openSubView("buget")}
-                  >
-                    <LinearGradient
-                      colors={["#6366F120", "#6366F108"]}
-                      style={{
-                        borderRadius: 20,
-                        padding: 16,
-                        borderWidth: 1,
-                        borderColor: "#6366F130",
-                      }}
-                    >
-                      <View className="w-10 h-10 rounded-xl bg-[#6366F1]/20 items-center justify-center mb-3">
+                {}
+                <Pressable
+                style={{ width: (SCREEN_WIDTH - 60) / 2 }}
+                onPress={() => openSubView("trend")}>
+                
+                  <View
+                  style={{
+                    borderRadius: 20,
+                    padding: 16,
+                    borderWidth: 1,
+                    borderColor: isDark ?
+                    "rgba(6,182,212,0.20)" :
+                    "rgba(6,182,212,0.15)",
+                    backgroundColor: isDark ?
+                    "rgba(6,182,212,0.08)" :
+                    "rgba(6,182,212,0.05)"
+                  }}>
+                  
+                    <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: "rgba(6,182,212,0.15)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 12
+                    }}>
+                    
+                      <Ionicons name="stats-chart" size={18} color="#06B6D4" />
+                    </View>
+                    <Text
+                    style={{
+                      color: c.foreground,
+                      fontWeight: "700",
+                      fontSize: 13,
+                      marginBottom: 2
+                    }}>
+                    
+                      {t("analytics.trend.title")}
+                    </Text>
+                    <Text style={{ color: c.textMuted, fontSize: 11 }}>
+                      {monthlyIncomeTrend.length} {t("analytics.recurring.mo")}
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {}
+                {budgetVsActualData.length > 0 &&
+              <Pressable
+                style={{ width: (SCREEN_WIDTH - 60) / 2 }}
+                onPress={() => openSubView("buget")}>
+                
+                    <View
+                  style={{
+                    borderRadius: 20,
+                    padding: 16,
+                    borderWidth: 1,
+                    borderColor: isDark ?
+                    "rgba(99,102,241,0.20)" :
+                    "rgba(99,102,241,0.15)",
+                    backgroundColor: isDark ?
+                    "rgba(99,102,241,0.08)" :
+                    "rgba(99,102,241,0.05)"
+                  }}>
+                  
+                      <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: "rgba(99,102,241,0.15)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 12
+                    }}>
+                    
                         <Ionicons
-                          name="git-compare-outline"
-                          size={20}
-                          color="#6366F1"
-                        />
+                      name="git-compare-outline"
+                      size={18}
+                      color="#6366F1" />
+                    
                       </View>
-                      <Text className="text-foreground font-bold text-sm mb-0.5">
+                      <Text
+                    style={{
+                      color: c.foreground,
+                      fontWeight: "700",
+                      fontSize: 13,
+                      marginBottom: 2
+                    }}>
+                    
                         {t("analytics.fab.buget")}
                       </Text>
-                      <Text
-                        className="text-text-muted text-xs"
-                        numberOfLines={1}
-                      >
+                      <Text style={{ color: c.textMuted, fontSize: 11 }}>
                         {budgetVsActualData.length}{" "}
                         {t("analytics.categories.count")}
                       </Text>
-                      <View
-                        style={{ position: "absolute", top: 12, right: 12 }}
-                      >
-                        <Ionicons
-                          name="chevron-forward"
-                          size={14}
-                          color="#6366F1"
-                        />
-                      </View>
-                    </LinearGradient>
+                    </View>
                   </Pressable>
-                )}
+              }
               </View>
+
+              {}
+              <Pressable
+              onPress={handleExport}
+              disabled={exporting || !hasData}
+              style={{ marginTop: 16, opacity: exporting || !hasData ? 0.6 : 1 }}>
+              
+                <LinearGradient
+                colors={isDark ? ["rgba(59,130,246,0.15)", "rgba(59,130,246,0.05)"] : ["#EFF6FF", "#DBEAFE"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  borderRadius: 20,
+                  padding: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: isDark ? "rgba(59,130,246,0.2)" : "rgba(59,130,246,0.1)"
+                }}>
+                
+                  <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    backgroundColor: "#3B82F6",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 16
+                  }}>
+                  
+                    {exporting ?
+                  <ActivityIndicator size="small" color="#fff" /> :
+
+                  <Ionicons name="document-text" size={20} color="#fff" />
+                  }
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: c.foreground, fontWeight: "700", fontSize: 14 }}>
+                      {t("analytics.past.exportReport")}
+                    </Text>
+                    <Text style={{ color: c.textMuted, fontSize: 11 }}>
+                      PDF • {PERIODS[selectedPeriod]}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+                </LinearGradient>
+              </Pressable>
             </View>
           </>
-        )}
+        }
 
-        {/* ══════════ SUB-VIEW: CATEGORII ══════════ */}
-        {activeView === "categorii" && hasData && (
-          <View className="mx-6 mt-5">
-            {categoryData.length > 0 ? (
-              <View className="bg-surface rounded-2xl p-5 border border-border">
-                <View className="items-center mb-5">
-                  <PieChart
-                    data={pieData}
-                    donut
-                    radius={90}
-                    innerRadius={55}
-                    innerCircleColor={c.chartInnerCircle}
-                    centerLabelComponent={() => (
-                      <View className="items-center">
-                        <Text className="text-foreground text-lg font-bold">
-                          {totalExpenses.toLocaleString("ro-RO", {
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          })}
-                        </Text>
-                        <Text className="text-text-muted text-xs">
-                          {t("common.currency")}
-                        </Text>
-                      </View>
-                    )}
-                  />
+        {
+
+        }
+        {timeMode === "future" && !activeView &&
+        <>
+            {}
+            <View style={{ marginHorizontal: 24, marginTop: 20 }}>
+              <SectionHeader title={t("analytics.future.forecast")} />
+              <View
+              style={{
+                backgroundColor: isDark ?
+                "rgba(255,255,255,0.03)" :
+                "rgba(0,0,0,0.02)",
+                borderRadius: 24,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: isDark ?
+                "rgba(255,255,255,0.08)" :
+                "rgba(0,0,0,0.06)"
+              }}>
+              
+                <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginBottom: 24
+                }}>
+                
+                  <View>
+                    <Text style={{ color: c.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 4 }}>
+                      {t("analytics.future.endOfMonth")}
+                    </Text>
+                    <Text
+                    style={{
+                      color: c.foreground,
+                      fontSize: 24,
+                      fontWeight: "800"
+                    }}>
+                    
+                      {advancedForecast.projectedEndBalance.toLocaleString("ro-RO")}{" "}
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: c.textMuted }}>RON</Text>
+                    </Text>
+                  </View>
+                  <View
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 20,
+                    backgroundColor: advancedForecast.netChange >= 0 ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)",
+                    height: 28,
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}>
+                  
+                    <Text style={{ color: advancedForecast.netChange >= 0 ? "#10B981" : "#EF4444", fontSize: 12, fontWeight: "700" }}>
+                      {advancedForecast.netChange >= 0 ? "+" : ""}{Math.round(advancedForecast.netChange).toLocaleString("ro-RO")}
+                    </Text>
+                  </View>
                 </View>
-                {categoryData.map((cat) => (
-                  <Pressable
-                    key={cat.key}
-                    className="flex-row items-center py-2.5 border-t border-border active:opacity-60"
-                    onPress={() => setSelectedCategory(cat)}
-                  >
+
+                {}
+                <View style={{ height: 140, overflow: "hidden", marginTop: 8 }}>
+                  <LineChart
+                  data={advancedForecast.dailyPoints || []}
+                  width={SCREEN_WIDTH - 96}
+                  height={110}
+                  thickness={2.5}
+                  color1={advancedForecast.netChange >= 0 ? "#10B981" : "#F43F5E"}
+                  startFillColor1={advancedForecast.netChange >= 0 ? "#10B981" : "#F43F5E"}
+                  endFillColor1="transparent"
+                  startOpacity={0.12}
+                  endOpacity={0}
+                  initialSpacing={8}
+                  spacing={(SCREEN_WIDTH - 120) / 30}
+                  noOfSections={3}
+                  yAxisColor="transparent"
+                  xAxisColor="transparent"
+                  yAxisTextStyle={{ color: c.textMuted, fontSize: 8 }}
+                  xAxisLabelTextStyle={{ color: c.textMuted, fontSize: 8 }}
+                  hideDataPoints
+                  curved
+                  hideRules
+                  hideYAxisText />
+                
+                </View>
+
+                {}
+                <LinearGradient
+                colors={isDark ? ["rgba(255,255,255,0.05)", "rgba(255,255,255,0.02)"] : ["#F8FAFC", "#F1F5F9"]}
+                style={{ borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}>
+                
+                  <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8, gap: 8 }}>
+                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: c.primary, alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="sparkles" size={12} color="#fff" />
+                    </View>
+                    <Text style={{ color: c.foreground, fontWeight: "700", fontSize: 13 }}>
+                      {t("analytics.future.aiInsightTitle")}
+                    </Text>
+                  </View>
+                  <Text style={{ color: c.textMuted, fontSize: 13, lineHeight: 18 }}>
+                    {t(`analytics.future.insights.${advancedForecast.insightKey}`)}
+                  </Text>
+                  <View style={{ flexDirection: "row", marginTop: 12, gap: 16 }}>
+                    <View>
+                      <Text style={{ color: c.textMuted, fontSize: 10 }}>{t("analytics.future.trendSlope")}</Text>
+                      <Text style={{ color: advancedForecast.slope >= 0 ? "#10B981" : "#EF4444", fontWeight: "700", fontSize: 13 }}>
+                        {advancedForecast.slope >= 0 ? "+" : ""}{advancedForecast.slope.toFixed(2)} RON/zi
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={{ color: c.textMuted, fontSize: 10 }}>{t("analytics.future.volatility")}</Text>
+                      <Text style={{ color: advancedForecast.volatility === "stable" ? "#10B981" : "#F59E0B", fontWeight: "700", fontSize: 13 }}>
+                        {advancedForecast.volatility === "stable" ? t("analytics.future.volatilityLow") : t("analytics.future.volatilityHigh")}
+                      </Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </View>
+            </View>
+
+            {}
+            <View style={{ marginHorizontal: 24, marginTop: 24 }}>
+              <SectionHeader title={t("analytics.future.upcomingBills")} />
+              {(recurringTransactions || []).
+            filter((r) => {
+              const d = new Date(r.nextDate);
+              return d >= new Date();
+            }).
+            slice(0, 5).
+            map((bill, idx) =>
+            <View
+              key={idx}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 12,
+                borderBottomWidth: idx < 4 ? 1 : 0,
+                borderBottomColor: isDark ?
+                "rgba(255,255,255,0.06)" :
+                "rgba(0,0,0,0.05)"
+              }}>
+              
                     <View
-                      className="w-8 h-8 rounded-full items-center justify-center mr-3"
-                      style={{ backgroundColor: `${cat.color}18` }}
-                    >
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: isDark ?
+                  "rgba(255,255,255,0.06)" :
+                  "rgba(0,0,0,0.04)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 12
+                }}>
+                
+                      <Ionicons
+                  name="calendar-outline"
+                  size={18}
+                  color={c.textMuted} />
+                
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                  style={{
+                    color: c.foreground,
+                    fontSize: 14,
+                    fontWeight: "600"
+                  }}>
+                  
+                        {bill.name}
+                      </Text>
+                      <Text style={{ color: c.textMuted, fontSize: 11 }}>
+                        {new Date(bill.nextDate).toLocaleDateString(
+                    "ro-RO",
+                    { day: "numeric", month: "short" }
+                  )}
+                      </Text>
+                    </View>
+                    <Text
+                style={{
+                  color: c.foreground,
+                  fontSize: 14,
+                  fontWeight: "700"
+                }}>
+                
+                      {bill.monthlyEstimate.toLocaleString("ro-RO", {
+                  maximumFractionDigits: 0
+                })}{" "}
+                      RON
+                    </Text>
+                  </View>
+            )}
+            </View>
+          </>
+        }
+
+        {}
+        {activeView === "trend" && hasData &&
+        <View style={{ marginHorizontal: 24, marginTop: 20 }}>
+            <TrendComboChart
+            monthlyIncomeTrend={monthlyIncomeTrend}
+            screenWidth={SCREEN_WIDTH}
+            c={c}
+            isDark={isDark}
+            t={t} />
+          
+          </View>
+        }
+
+        {}
+        {activeView === "categorii" && hasData &&
+        <View className="mx-6 mt-5">
+            {categoryData.length > 0 ?
+          <View className="bg-surface rounded-2xl p-5 border border-border">
+                <View className="items-center mb-5">
+                  {shouldShowChartSkeleton ?
+              <ChartSkeleton
+                borderColor={c.border}
+                tint={c.card}
+                height={200} /> :
+
+
+              <PieChart
+                data={pieData}
+                donut
+                radius={90}
+                innerRadius={55}
+                innerCircleColor={c.chartInnerCircle}
+                centerLabelComponent={() =>
+                <View className="items-center">
+                          <Text className="text-foreground text-lg font-bold">
+                            {totalExpenses.toLocaleString("ro-RO", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0
+                    })}
+                          </Text>
+                          <Text className="text-text-muted text-xs">
+                            {t("common.currency")}
+                          </Text>
+                        </View>
+                } />
+
+              }
+                </View>
+                {categoryData.map((cat) =>
+            <Pressable
+              key={cat.key}
+              className="flex-row items-center py-2.5 border-t border-border active:opacity-60"
+              onPress={() => setSelectedCategory(cat)}>
+              
+                    <View
+                className="w-8 h-8 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: `${cat.color}18` }}>
+                
                       <Ionicons name={cat.icon} size={15} color={cat.color} />
                     </View>
                     <View className="flex-1">
@@ -894,37 +1167,37 @@ export default function Analytics() {
                       <View className="items-end mr-2">
                         <Text className="text-foreground font-semibold text-sm">
                           {cat.total.toLocaleString("ro-RO", {
-                            minimumFractionDigits: 2,
-                          })}
+                      minimumFractionDigits: 2
+                    })}
                         </Text>
                         <Text className="text-text-muted text-xs mt-0.5">
                           {cat.percentage}%
                         </Text>
                       </View>
                       <Ionicons
-                        name="chevron-forward"
-                        size={14}
-                        color={c.textMuted}
-                      />
+                  name="chevron-forward"
+                  size={14}
+                  color={c.textMuted} />
+                
                     </View>
                   </Pressable>
-                ))}
-              </View>
-            ) : (
-              <View className="bg-surface rounded-2xl p-8 border border-border items-center">
+            )}
+              </View> :
+
+          <View className="bg-surface rounded-2xl p-8 border border-border items-center">
                 <Text className="text-text-muted text-sm">
                   {t("analytics.noData")}
                 </Text>
               </View>
-            )}
+          }
           </View>
-        )}
+        }
 
-        {/* ══════════ SUB-VIEW: RECURENTE ══════════ */}
-        {activeView === "recurente" && (
-          <View className="mx-6 mt-5">
-            {recurringTransactions.length > 0 ? (
-              <>
+        {}
+        {activeView === "recurente" &&
+        <View className="mx-6 mt-5">
+            {recurringTransactions.length > 0 ?
+          <>
                 <View className="bg-surface rounded-2xl p-4 border border-border mb-4 flex-row items-center">
                   <View className="w-10 h-10 rounded-xl bg-[#F59E0B]/15 items-center justify-center mr-3">
                     <Ionicons name="repeat" size={20} color="#F59E0B" />
@@ -935,8 +1208,8 @@ export default function Analytics() {
                     </Text>
                     <Text className="text-foreground font-bold text-base mt-0.5">
                       {totalMonthlyRecurring.toLocaleString("ro-RO", {
-                        minimumFractionDigits: 2,
-                      })}{" "}
+                    minimumFractionDigits: 2
+                  })}{" "}
                       <Text className="text-text-muted font-normal text-xs">
                         RON
                       </Text>
@@ -950,30 +1223,30 @@ export default function Analytics() {
                   </View>
                 </View>
                 <View className="bg-surface rounded-2xl border border-border overflow-hidden">
-                  {recurringTransactions.map((item, idx) => (
-                    <View
-                      key={`${item.name}-${idx}`}
-                      className={`flex-row items-center p-4 ${
-                        idx < recurringTransactions.length - 1
-                          ? "border-b border-border"
-                          : ""
-                      }`}
-                    >
+                  {recurringTransactions.map((item, idx) =>
+              <View
+                key={`${item.name}-${idx}`}
+                className={`flex-row items-center p-4 ${
+                idx < recurringTransactions.length - 1 ?
+                "border-b border-border" :
+                ""}`
+                }>
+                
                       <View
-                        className="w-9 h-9 rounded-full items-center justify-center mr-3"
-                        style={{ backgroundColor: `${item.category.color}18` }}
-                      >
+                  className="w-9 h-9 rounded-full items-center justify-center mr-3"
+                  style={{ backgroundColor: `${item.category.color}18` }}>
+                  
                         <Ionicons
-                          name={item.category.icon}
-                          size={17}
-                          color={item.category.color}
-                        />
+                    name={item.category.icon}
+                    size={17}
+                    color={item.category.color} />
+                  
                       </View>
                       <View className="flex-1 mr-2">
                         <Text
-                          className="text-foreground font-semibold text-sm"
-                          numberOfLines={1}
-                        >
+                    className="text-foreground font-semibold text-sm"
+                    numberOfLines={1}>
+                    
                           {item.name}
                         </Text>
                         <View className="flex-row items-center mt-0.5 gap-2">
@@ -985,9 +1258,9 @@ export default function Analytics() {
                           <Text className="text-text-muted text-[10px]">
                             {t("analytics.recurring.next")}{" "}
                             {new Date(item.nextDate).toLocaleDateString(
-                              "ro-RO",
-                              { day: "numeric", month: "short" },
-                            )}
+                        "ro-RO",
+                        { day: "numeric", month: "short" }
+                      )}
                           </Text>
                         </View>
                       </View>
@@ -995,26 +1268,26 @@ export default function Analytics() {
                         <Text className="text-expense font-bold text-sm">
                           -
                           {item.amount.toLocaleString("ro-RO", {
-                            minimumFractionDigits: 2,
-                          })}
+                      minimumFractionDigits: 2
+                    })}
                         </Text>
                         <Text className="text-text-muted text-[10px] mt-0.5">
                           {item.occurrences}x
                         </Text>
                       </View>
                     </View>
-                  ))}
+              )}
                 </View>
-              </>
-            ) : (
-              <View
-                className="rounded-2xl p-5"
-                style={{
-                  borderWidth: 1,
-                  borderStyle: "dashed",
-                  borderColor: c.border,
-                }}
-              >
+              </> :
+
+          <View
+            className="rounded-2xl p-5"
+            style={{
+              borderWidth: 1,
+              borderStyle: "dashed",
+              borderColor: c.border
+            }}>
+            
                 <View className="flex-row items-center">
                   <View className="flex-1 pr-4">
                     <Text className="text-foreground font-semibold text-sm mb-1">
@@ -1025,37 +1298,37 @@ export default function Analytics() {
                     </Text>
                   </View>
                   <Ionicons
-                    name="repeat-outline"
-                    size={36}
-                    color={c.textMuted}
-                  />
+                name="repeat-outline"
+                size={36}
+                color={c.textMuted} />
+              
                 </View>
               </View>
-            )}
+          }
           </View>
-        )}
+        }
 
-        {/* ══════════ SUB-VIEW: COMPARATIE LUNARA ══════════ */}
-        {activeView === "comparatie" && (
-          <View className="mx-6 mt-5">
-            {monthlyComparison.length > 0 ? (
-              <View className="bg-surface rounded-2xl border border-border overflow-hidden">
-                {/* Legend */}
+        {}
+        {activeView === "comparatie" &&
+        <View className="mx-6 mt-5">
+            {monthlyComparison.length > 0 ?
+          <View className="bg-surface rounded-2xl border border-border overflow-hidden">
+                {}
                 <View className="flex-row items-center justify-end px-4 pt-4 pb-2 gap-4">
                   <View className="flex-row items-center gap-1.5">
                     <View
-                      className="w-3 h-3 rounded-sm"
-                      style={{ backgroundColor: "#06B6D4" }}
-                    />
+                  className="w-3 h-3 rounded-sm"
+                  style={{ backgroundColor: "#06B6D4" }} />
+                
                     <Text className="text-text-muted text-xs">
                       {t("analytics.comparison.current")}
                     </Text>
                   </View>
                   <View className="flex-row items-center gap-1.5">
                     <View
-                      className="w-3 h-3 rounded-sm"
-                      style={{ backgroundColor: "#94A3B8" }}
-                    />
+                  className="w-3 h-3 rounded-sm"
+                  style={{ backgroundColor: "#94A3B8" }} />
+                
                     <Text className="text-text-muted text-xs">
                       {t("analytics.comparison.previous")}
                     </Text>
@@ -1063,102 +1336,102 @@ export default function Analytics() {
                 </View>
 
                 {monthlyComparison.map((item, idx) => {
-                  const maxVal = Math.max(item.current, item.previous, 1);
-                  const barWidth = SCREEN_WIDTH - 48 - 32 - 48; // screen - mx - padding - label col
-                  return (
-                    <View
-                      key={item.key}
-                      className={`px-4 py-3 ${
-                        idx < monthlyComparison.length - 1
-                          ? "border-b border-border"
-                          : ""
-                      }`}
-                    >
+              const maxVal = Math.max(item.current, item.previous, 1);
+              const barWidth = SCREEN_WIDTH - 48 - 32 - 48;
+              return (
+                <View
+                  key={item.key}
+                  className={`px-4 py-3 ${
+                  idx < monthlyComparison.length - 1 ?
+                  "border-b border-border" :
+                  ""}`
+                  }>
+                  
                       <View className="flex-row items-center mb-2">
                         <View
-                          className="w-7 h-7 rounded-full items-center justify-center mr-2"
-                          style={{ backgroundColor: `${item.color}18` }}
-                        >
+                      className="w-7 h-7 rounded-full items-center justify-center mr-2"
+                      style={{ backgroundColor: `${item.color}18` }}>
+                      
                           <Ionicons
-                            name={item.icon}
-                            size={13}
-                            color={item.color}
-                          />
+                        name={item.icon}
+                        size={13}
+                        color={item.color} />
+                      
                         </View>
                         <Text className="text-foreground text-xs font-semibold flex-1">
                           {t(`analytics.categories.${item.key}`)}
                         </Text>
-                        {item.diffPct !== null && (
-                          <View
-                            className="px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor:
-                                item.diff <= 0 ? "#22C55E18" : "#F43F5E18",
-                            }}
-                          >
+                        {item.diffPct !== null &&
+                    <View
+                      className="px-2 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor:
+                        item.diff <= 0 ? "#22C55E18" : "#F43F5E18"
+                      }}>
+                      
                             <Text
-                              className="text-[10px] font-bold"
-                              style={{
-                                color: item.diff <= 0 ? "#22C55E" : "#F43F5E",
-                              }}
-                            >
+                        className="text-[10px] font-bold"
+                        style={{
+                          color: item.diff <= 0 ? "#22C55E" : "#F43F5E"
+                        }}>
+                        
                               {item.diff <= 0 ? "▼" : "▲"}
                               {Math.abs(item.diffPct)}%
                             </Text>
                           </View>
-                        )}
+                    }
                       </View>
 
-                      {/* Current month bar */}
+                      {}
                       <View className="flex-row items-center mb-1 gap-2">
                         <View
-                          style={{
-                            width: barWidth * (item.current / maxVal),
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: "#06B6D4",
-                            minWidth: item.current > 0 ? 4 : 0,
-                          }}
-                        />
+                      style={{
+                        width: barWidth * (item.current / maxVal),
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: "#06B6D4",
+                        minWidth: item.current > 0 ? 4 : 0
+                      }} />
+                    
                         <Text className="text-foreground text-[10px] font-semibold">
                           {item.current.toLocaleString("ro-RO", {
-                            maximumFractionDigits: 0,
-                          })}{" "}
+                        maximumFractionDigits: 0
+                      })}{" "}
                           RON
                         </Text>
                       </View>
 
-                      {/* Previous month bar */}
+                      {}
                       <View className="flex-row items-center gap-2">
                         <View
-                          style={{
-                            width: barWidth * (item.previous / maxVal),
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: "#94A3B8",
-                            minWidth: item.previous > 0 ? 4 : 0,
-                          }}
-                        />
+                      style={{
+                        width: barWidth * (item.previous / maxVal),
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: "#94A3B8",
+                        minWidth: item.previous > 0 ? 4 : 0
+                      }} />
+                    
                         <Text className="text-text-muted text-[10px]">
                           {item.previous.toLocaleString("ro-RO", {
-                            maximumFractionDigits: 0,
-                          })}{" "}
+                        maximumFractionDigits: 0
+                      })}{" "}
                           RON
                         </Text>
                       </View>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : (
-              <View
-                className="rounded-2xl p-5"
-                style={{
-                  borderWidth: 1,
-                  borderStyle: "dashed",
-                  borderColor: c.border,
-                }}
-              >
+                    </View>);
+
+            })}
+              </View> :
+
+          <View
+            className="rounded-2xl p-5"
+            style={{
+              borderWidth: 1,
+              borderStyle: "dashed",
+              borderColor: c.border
+            }}>
+            
                 <View className="flex-row items-center">
                   <View className="flex-1 pr-4">
                     <Text className="text-foreground font-semibold text-sm mb-1">
@@ -1169,155 +1442,155 @@ export default function Analytics() {
                     </Text>
                   </View>
                   <Ionicons
-                    name="bar-chart-outline"
-                    size={36}
-                    color={c.textMuted}
-                  />
+                name="bar-chart-outline"
+                size={36}
+                color={c.textMuted} />
+              
                 </View>
               </View>
-            )}
+          }
           </View>
-        )}
+        }
 
-        {/* ══════════ SUB-VIEW: CASH FLOW FORECAST ══════════ */}
-        {activeView === "cashflow" && (
-          <View className="mx-6 mt-5">
-            {/* Projected net card */}
+        {}
+        {activeView === "cashflow" &&
+        <View className="mx-6 mt-5">
+            {}
             <View
-              className="rounded-2xl p-5 mb-4"
-              style={{
-                backgroundColor: c.card,
-                borderLeftWidth: 4,
-                borderLeftColor:
-                  cashFlowForecast.projectedNet >= 0 ? "#10B981" : "#F43F5E",
-              }}
-            >
+            className="rounded-2xl p-5 mb-4"
+            style={{
+              backgroundColor: c.card,
+              borderLeftWidth: 4,
+              borderLeftColor:
+              cashFlowForecast.projectedNet >= 0 ? "#10B981" : "#F43F5E"
+            }}>
+            
               <Text className="text-text-muted text-xs mb-1">
                 {t("analytics.cashflow.projectedNet")}
               </Text>
               <Text
-                className="font-bold text-2xl mb-0.5"
-                style={{
-                  color:
-                    cashFlowForecast.projectedNet >= 0 ? "#10B981" : "#F43F5E",
-                }}
-              >
+              className="font-bold text-2xl mb-0.5"
+              style={{
+                color:
+                cashFlowForecast.projectedNet >= 0 ? "#10B981" : "#F43F5E"
+              }}>
+              
                 {cashFlowForecast.projectedNet >= 0 ? "+" : ""}
                 {cashFlowForecast.projectedNet.toLocaleString("ro-RO", {
-                  minimumFractionDigits: 2,
-                })}{" "}
+                minimumFractionDigits: 2
+              })}{" "}
                 RON
               </Text>
               <Text className="text-text-muted text-xs">
                 {t("analytics.cashflow.daysLeft", {
-                  count: cashFlowForecast.daysLeft,
-                })}
+                count: cashFlowForecast.daysLeft
+              })}
               </Text>
             </View>
 
-            {/* Stats grid */}
+            {}
             <View className="flex-row gap-3 mb-4">
               <View
-                className="flex-1 rounded-2xl p-4"
-                style={{
-                  backgroundColor: c.card,
-                  borderLeftWidth: 3,
-                  borderLeftColor: "#22C55E",
-                }}
-              >
+              className="flex-1 rounded-2xl p-4"
+              style={{
+                backgroundColor: c.card,
+                borderLeftWidth: 3,
+                borderLeftColor: "#22C55E"
+              }}>
+              
                 <Ionicons
-                  name="trending-up"
-                  size={15}
-                  color="#22C55E"
-                  style={{ marginBottom: 6 }}
-                />
+                name="trending-up"
+                size={15}
+                color="#22C55E"
+                style={{ marginBottom: 6 }} />
+              
                 <Text className="text-text-muted text-[10px] mb-0.5">
                   {t("analytics.cashflow.incomeToDate")}
                 </Text>
                 <Text className="text-success font-bold text-sm">
                   +
                   {cashFlowForecast.incomeToDate.toLocaleString("ro-RO", {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                  })}{" "}
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                })}{" "}
                   RON
                 </Text>
               </View>
               <View
-                className="flex-1 rounded-2xl p-4"
-                style={{
-                  backgroundColor: c.card,
-                  borderLeftWidth: 3,
-                  borderLeftColor: "#F43F5E",
-                }}
-              >
+              className="flex-1 rounded-2xl p-4"
+              style={{
+                backgroundColor: c.card,
+                borderLeftWidth: 3,
+                borderLeftColor: "#F43F5E"
+              }}>
+              
                 <Ionicons
-                  name="trending-down"
-                  size={15}
-                  color="#F43F5E"
-                  style={{ marginBottom: 6 }}
-                />
+                name="trending-down"
+                size={15}
+                color="#F43F5E"
+                style={{ marginBottom: 6 }} />
+              
                 <Text className="text-text-muted text-[10px] mb-0.5">
                   {t("analytics.cashflow.expensesToDate")}
                 </Text>
                 <Text className="text-expense font-bold text-sm">
                   -
                   {cashFlowForecast.expensesToDate.toLocaleString("ro-RO", {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                  })}{" "}
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                })}{" "}
                   RON
                 </Text>
               </View>
             </View>
 
-            {/* Savings rate bar */}
+            {}
             <View className="bg-surface rounded-2xl p-4 border border-border mb-4">
               <View className="flex-row justify-between items-center mb-3">
                 <Text className="text-foreground font-semibold text-sm">
                   {t("analytics.cashflow.savingsRate")}
                 </Text>
                 <Text
-                  className="font-bold text-sm"
-                  style={{
-                    color:
-                      cashFlowForecast.savingsRateToDate >= 20
-                        ? "#10B981"
-                        : cashFlowForecast.savingsRateToDate >= 10
-                          ? "#F59E0B"
-                          : "#F43F5E",
-                  }}
-                >
+                className="font-bold text-sm"
+                style={{
+                  color:
+                  cashFlowForecast.savingsRateToDate >= 20 ?
+                  "#10B981" :
+                  cashFlowForecast.savingsRateToDate >= 10 ?
+                  "#F59E0B" :
+                  "#F43F5E"
+                }}>
+                
                   {cashFlowForecast.savingsRateToDate}%
                 </Text>
               </View>
               <View
-                className="h-3 rounded-full overflow-hidden"
-                style={{ backgroundColor: c.border }}
-              >
+              className="h-3 rounded-full overflow-hidden"
+              style={{ backgroundColor: c.border }}>
+              
                 <View
-                  className="h-3 rounded-full"
-                  style={{
-                    width: `${Math.min(Math.max(cashFlowForecast.savingsRateToDate, 0), 100)}%`,
-                    backgroundColor:
-                      cashFlowForecast.savingsRateToDate >= 20
-                        ? "#10B981"
-                        : cashFlowForecast.savingsRateToDate >= 10
-                          ? "#F59E0B"
-                          : "#F43F5E",
-                  }}
-                />
+                className="h-3 rounded-full"
+                style={{
+                  width: `${Math.min(Math.max(cashFlowForecast.savingsRateToDate, 0), 100)}%`,
+                  backgroundColor:
+                  cashFlowForecast.savingsRateToDate >= 20 ?
+                  "#10B981" :
+                  cashFlowForecast.savingsRateToDate >= 10 ?
+                  "#F59E0B" :
+                  "#F43F5E"
+                }} />
+              
               </View>
               <Text className="text-text-muted text-xs mt-2">
-                {cashFlowForecast.savingsRateToDate >= 20
-                  ? t("analytics.cashflow.savingsGood")
-                  : cashFlowForecast.savingsRateToDate >= 10
-                    ? t("analytics.cashflow.savingsOk")
-                    : t("analytics.cashflow.savingsLow")}
+                {cashFlowForecast.savingsRateToDate >= 20 ?
+              t("analytics.cashflow.savingsGood") :
+              cashFlowForecast.savingsRateToDate >= 10 ?
+              t("analytics.cashflow.savingsOk") :
+              t("analytics.cashflow.savingsLow")}
               </Text>
             </View>
 
-            {/* Extrapolation info */}
+            {}
             <View className="bg-surface rounded-2xl p-4 border border-border mb-4">
               <Text className="text-foreground font-semibold text-sm mb-3">
                 {t("analytics.cashflow.projection")}
@@ -1329,8 +1602,8 @@ export default function Analytics() {
                 <Text className="text-success text-xs font-semibold">
                   +
                   {cashFlowForecast.extrapolatedIncome.toLocaleString("ro-RO", {
-                    maximumFractionDigits: 0,
-                  })}{" "}
+                  maximumFractionDigits: 0
+                })}{" "}
                   RON
                 </Text>
               </View>
@@ -1341,727 +1614,432 @@ export default function Analytics() {
                 <Text className="text-expense text-xs font-semibold">
                   -
                   {cashFlowForecast.extrapolatedExpenses.toLocaleString(
-                    "ro-RO",
-                    { maximumFractionDigits: 0 },
-                  )}{" "}
+                  "ro-RO",
+                  { maximumFractionDigits: 0 }
+                )}{" "}
                   RON
                 </Text>
               </View>
-              {cashFlowForecast.remainingRecurring > 0 && (
-                <View className="flex-row justify-between">
+              {cashFlowForecast.remainingRecurring > 0 &&
+            <View className="flex-row justify-between">
                   <Text className="text-text-muted text-xs">
                     {t("analytics.cashflow.recurringDue")}
                   </Text>
                   <Text className="text-[#F59E0B] text-xs font-semibold">
                     -
                     {cashFlowForecast.remainingRecurring.toLocaleString(
-                      "ro-RO",
-                      { maximumFractionDigits: 0 },
-                    )}{" "}
+                  "ro-RO",
+                  { maximumFractionDigits: 0 }
+                )}{" "}
                     RON
                   </Text>
                 </View>
-              )}
+            }
             </View>
 
-            {/* Upcoming recurring payments */}
-            {cashFlowForecast.recurringItems.length > 0 && (
-              <View className="bg-surface rounded-2xl border border-border overflow-hidden">
+            {}
+            {cashFlowForecast.recurringItems.length > 0 &&
+          <View className="bg-surface rounded-2xl border border-border overflow-hidden">
                 <View className="px-4 pt-4 pb-2">
                   <Text className="text-foreground font-semibold text-sm">
                     {t("analytics.cashflow.upcomingRecurring")}
                   </Text>
                 </View>
-                {cashFlowForecast.recurringItems.map((item, idx) => (
-                  <View
-                    key={`${item.name}-${idx}`}
-                    className={`flex-row items-center px-4 py-3 ${
-                      idx < cashFlowForecast.recurringItems.length - 1
-                        ? "border-t border-border"
-                        : ""
-                    }`}
-                  >
+                {cashFlowForecast.recurringItems.map((item, idx) =>
+            <View
+              key={`${item.name}-${idx}`}
+              className={`flex-row items-center px-4 py-3 ${
+              idx < cashFlowForecast.recurringItems.length - 1 ?
+              "border-t border-border" :
+              ""}`
+              }>
+              
                     <View
-                      className="w-8 h-8 rounded-full items-center justify-center mr-3"
-                      style={{ backgroundColor: `${item.category.color}18` }}
-                    >
+                className="w-8 h-8 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: `${item.category.color}18` }}>
+                
                       <Ionicons
-                        name={item.category.icon}
-                        size={15}
-                        color={item.category.color}
-                      />
+                  name={item.category.icon}
+                  size={15}
+                  color={item.category.color} />
+                
                     </View>
                     <View className="flex-1">
                       <Text
-                        className="text-foreground text-sm font-medium"
-                        numberOfLines={1}
-                      >
+                  className="text-foreground text-sm font-medium"
+                  numberOfLines={1}>
+                  
                         {item.name}
                       </Text>
                       <Text className="text-text-muted text-[10px] mt-0.5">
                         {t("analytics.recurring.next")}{" "}
                         {new Date(item.nextDate).toLocaleDateString("ro-RO", {
-                          day: "numeric",
-                          month: "short",
-                        })}
+                    day: "numeric",
+                    month: "short"
+                  })}
                       </Text>
                     </View>
                     <Text className="text-expense font-bold text-sm">
                       -
                       {item.amount.toLocaleString("ro-RO", {
-                        minimumFractionDigits: 2,
-                      })}
+                  minimumFractionDigits: 2
+                })}
                     </Text>
                   </View>
-                ))}
-              </View>
             )}
+              </View>
+          }
           </View>
-        )}
+        }
 
-        {/* ══════════ SUB-VIEW: TRANZACȚII ══════════ */}
-        {activeView === "tranzactii" && hasData && (
-          <View className="mx-6 mt-5">
-            {barData.length > 0 && (
-              <>
+        {}
+        {activeView === "tranzactii" && hasData &&
+        <View className="mx-6 mt-5">
+            {barData.length > 0 &&
+          <>
                 <SectionHeader title={t("analytics.dailySpending")} />
                 <View className="bg-surface rounded-2xl p-5 border border-border mb-5">
-                  <BarChart
-                    data={barData}
-                    width={SCREEN_WIDTH - 100}
-                    height={160}
-                    barWidth={barData.length > 15 ? 12 : 20}
-                    spacing={barData.length > 15 ? 6 : 12}
-                    noOfSections={4}
-                    barBorderRadius={6}
-                    yAxisColor="transparent"
-                    xAxisColor={c.chartAxisColor}
-                    yAxisTextStyle={{
-                      color: c.chartAxisTextColor,
-                      fontSize: 10,
-                    }}
-                    xAxisLabelTextStyle={{
-                      color: c.chartAxisTextColor,
-                      fontSize: 9,
-                    }}
-                    hideRules
-                    isAnimated
-                    animationDuration={600}
-                  />
+                  {shouldShowChartSkeleton ?
+              <ChartSkeleton
+                borderColor={c.border}
+                tint={c.card}
+                height={170} /> :
+
+
+              <BarChart
+                data={barData}
+                width={SCREEN_WIDTH - 100}
+                height={160}
+                barWidth={barData.length > 15 ? 12 : 20}
+                spacing={barData.length > 15 ? 6 : 12}
+                noOfSections={4}
+                barBorderRadius={6}
+                yAxisColor="transparent"
+                xAxisColor={c.chartAxisColor}
+                yAxisTextStyle={{
+                  color: c.chartAxisTextColor,
+                  fontSize: 10
+                }}
+                xAxisLabelTextStyle={{
+                  color: c.chartAxisTextColor,
+                  fontSize: 9
+                }}
+                hideRules
+                isAnimated
+                animationDuration={600} />
+
+              }
                 </View>
               </>
-            )}
+          }
             <SectionHeader title={t("analytics.recentTransactions")} />
             <View className="bg-surface rounded-2xl border border-border overflow-hidden">
-              {filteredTx
-                .slice()
-                .sort(
-                  (a, b) => new Date(b.bookingDate) - new Date(a.bookingDate),
-                )
-                .map((tx, idx) => (
-                  <TransactionItem
-                    key={`${tx.connectionId || ""}-${tx.transactionId || idx}`}
-                    tx={tx}
-                    isLast={idx === filteredTx.length - 1}
-                    showCategory
-                  />
-                ))}
+              {filteredTx.
+            slice().
+            sort(
+              (a, b) => new Date(b.bookingDate) - new Date(a.bookingDate)
+            ).
+            map((tx, idx) =>
+            <TransactionItem
+              key={`${tx.connectionId || ""}-${tx.transactionId || idx}`}
+              tx={tx}
+              isLast={idx === filteredTx.length - 1}
+              showCategory />
+
+            )}
             </View>
           </View>
-        )}
+        }
 
-        {/* ══════════ SUB-VIEW: VENITURI ══════════ */}
-        {activeView === "venituri" && (
-          <View className="mx-6 mt-5">
-            {/* Summary card */}
+        {}
+        {activeView === "venituri" &&
+        <View className="mx-6 mt-5">
+            {}
             <View
-              className="rounded-2xl p-5 mb-4"
-              style={{
-                backgroundColor: c.card,
-                borderLeftWidth: 4,
-                borderLeftColor: "#22C55E",
-              }}
-            >
+            className="rounded-2xl p-5 mb-4"
+            style={{
+              backgroundColor: c.card,
+              borderLeftWidth: 4,
+              borderLeftColor: "#22C55E"
+            }}>
+            
               <Text className="text-text-muted text-xs mb-1">
                 {t("analytics.income")} · {PERIODS[selectedPeriod]}
               </Text>
               <Text className="text-success font-bold text-2xl mb-1">
                 +
                 {totalIncome.toLocaleString("ro-RO", {
-                  minimumFractionDigits: 2,
-                })}{" "}
+                minimumFractionDigits: 2
+              })}{" "}
                 RON
               </Text>
-              {monthlyIncomeTrend.filter((m) => m.income > 0).length > 0 && (
-                <Text className="text-text-muted text-xs">
+              {monthlyIncomeTrend.filter((m) => m.income > 0).length > 0 &&
+            <Text className="text-text-muted text-xs">
                   {t("analytics.incomeDetails.avgMonthly")}:{" "}
                   {Math.round(
-                    monthlyIncomeTrend.reduce((s, m) => s + m.income, 0) /
-                      Math.max(
-                        monthlyIncomeTrend.filter((m) => m.income > 0).length,
-                        1,
-                      ),
-                  ).toLocaleString("ro-RO")}{" "}
+                monthlyIncomeTrend.reduce((s, m) => s + m.income, 0) /
+                Math.max(
+                  monthlyIncomeTrend.filter((m) => m.income > 0).length,
+                  1
+                )
+              ).toLocaleString("ro-RO")}{" "}
                   RON
                 </Text>
-              )}
+            }
             </View>
 
-            {/* Monthly income trend bar chart */}
-            {monthlyIncomeTrend.some((m) => m.income > 0) && (
-              <View className="bg-surface rounded-2xl p-5 border border-border mb-4">
+            {}
+            {monthlyIncomeTrend.some((m) => m.income > 0) &&
+          <View className="bg-surface rounded-2xl p-5 border border-border mb-4">
                 <Text className="text-foreground font-semibold text-sm mb-4">
                   {t("analytics.incomeDetails.monthlyTrend")}
                 </Text>
-                <BarChart
-                  data={incomeTrendBarData}
-                  width={SCREEN_WIDTH - 100}
-                  height={160}
-                  barWidth={28}
-                  spacing={14}
-                  noOfSections={4}
-                  barBorderRadius={6}
-                  yAxisColor="transparent"
-                  xAxisColor={c.chartAxisColor}
-                  yAxisTextStyle={{
-                    color: c.chartAxisTextColor,
-                    fontSize: 10,
-                  }}
-                  xAxisLabelTextStyle={{
-                    color: c.chartAxisTextColor,
-                    fontSize: 9,
-                  }}
-                  hideRules
-                  isAnimated
-                  animationDuration={600}
-                />
-              </View>
-            )}
+                {shouldShowChartSkeleton ?
+            <ChartSkeleton
+              borderColor={c.border}
+              tint={c.card}
+              height={170} /> :
 
-            {/* Income transactions */}
-            <SectionHeader
-              title={t("analytics.incomeDetails.incomeTransactions")}
-            />
-            {filteredTx.filter(
-              (tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0,
-            ).length > 0 ? (
-              <View className="bg-surface rounded-2xl border border-border overflow-hidden">
-                {filteredTx
-                  .filter(
-                    (tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0,
-                  )
-                  .sort(
-                    (a, b) =>
-                      new Date(b.bookingDate) - new Date(a.bookingDate),
-                  )
-                  .map((tx, idx, arr) => (
-                    <TransactionItem
-                      key={`income-${tx.connectionId || ""}-${tx.transactionId || idx}`}
-                      tx={tx}
-                      isLast={idx === arr.length - 1}
-                      showCategory
-                    />
-                  ))}
+
+            <BarChart
+              data={incomeTrendBarData}
+              width={SCREEN_WIDTH - 100}
+              height={160}
+              barWidth={28}
+              spacing={14}
+              noOfSections={4}
+              barBorderRadius={6}
+              yAxisColor="transparent"
+              xAxisColor={c.chartAxisColor}
+              yAxisTextStyle={{
+                color: c.chartAxisTextColor,
+                fontSize: 10
+              }}
+              xAxisLabelTextStyle={{
+                color: c.chartAxisTextColor,
+                fontSize: 9
+              }}
+              hideRules
+              isAnimated
+              animationDuration={600} />
+
+            }
               </View>
-            ) : (
-              <View
-                className="rounded-2xl p-5"
-                style={{
-                  borderWidth: 1,
-                  borderStyle: "dashed",
-                  borderColor: c.border,
-                }}
-              >
+          }
+
+            {}
+            <SectionHeader
+            title={t("analytics.incomeDetails.incomeTransactions")} />
+          
+            {filteredTx.filter(
+            (tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0
+          ).length > 0 ?
+          <View className="bg-surface rounded-2xl border border-border overflow-hidden">
+                {filteredTx.
+            filter(
+              (tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0
+            ).
+            sort(
+              (a, b) =>
+              new Date(b.bookingDate) - new Date(a.bookingDate)
+            ).
+            map((tx, idx, arr) =>
+            <TransactionItem
+              key={`income-${tx.connectionId || ""}-${tx.transactionId || idx}`}
+              tx={tx}
+              isLast={idx === arr.length - 1}
+              showCategory />
+
+            )}
+              </View> :
+
+          <View
+            className="rounded-2xl p-5"
+            style={{
+              borderWidth: 1,
+              borderStyle: "dashed",
+              borderColor: c.border
+            }}>
+            
                 <View className="items-center">
                   <Ionicons
-                    name="wallet-outline"
-                    size={32}
-                    color={c.textMuted}
-                    style={{ marginBottom: 8 }}
-                  />
+                name="wallet-outline"
+                size={32}
+                color={c.textMuted}
+                style={{ marginBottom: 8 }} />
+              
                   <Text className="text-text-muted text-sm">
                     {t("analytics.incomeDetails.noIncome")}
                   </Text>
                 </View>
               </View>
-            )}
+          }
           </View>
-        )}
+        }
 
-        {/* ══════════ SUB-VIEW: CHELTUIELI ══════════ */}
-        {activeView === "cheltuieli" && hasData && (
-          <View className="mx-6 mt-5">
-            {/* Summary card */}
+        {}
+        {activeView === "cheltuieli" && hasData &&
+        <View className="mx-6 mt-5">
+            {}
             <View
-              className="rounded-2xl p-5 mb-4"
-              style={{
-                backgroundColor: c.card,
-                borderLeftWidth: 4,
-                borderLeftColor: "#F43F5E",
-              }}
-            >
+            className="rounded-2xl p-5 mb-4"
+            style={{
+              backgroundColor: c.card,
+              borderLeftWidth: 4,
+              borderLeftColor: "#F43F5E"
+            }}>
+            
               <Text className="text-text-muted text-xs mb-1">
                 {t("analytics.expenses")} · {PERIODS[selectedPeriod]}
               </Text>
               <Text className="text-expense font-bold text-2xl mb-1">
                 -
                 {totalExpenses.toLocaleString("ro-RO", {
-                  minimumFractionDigits: 2,
-                })}{" "}
+                minimumFractionDigits: 2
+              })}{" "}
                 RON
               </Text>
-              {spendingInsights && (
-                <Text className="text-text-muted text-xs">
+              {spendingInsights &&
+            <Text className="text-text-muted text-xs">
                   {t("analytics.avgDaily")}:{" "}
                   {spendingInsights.avgDaily.toLocaleString("ro-RO", {
-                    maximumFractionDigits: 0,
-                  })}{" "}
+                maximumFractionDigits: 0
+              })}{" "}
                   RON/{t("analytics.expenseDetails.perDay")}
                 </Text>
-              )}
+            }
             </View>
 
-            {/* Daily bar chart */}
-            {barData.length > 0 && (
-              <View className="bg-surface rounded-2xl p-5 border border-border mb-4">
+            {}
+            {barData.length > 0 &&
+          <View className="bg-surface rounded-2xl p-5 border border-border mb-4">
                 <Text className="text-foreground font-semibold text-sm mb-4">
                   {t("analytics.dailySpending")}
                 </Text>
-                <BarChart
-                  data={barData}
-                  width={SCREEN_WIDTH - 100}
-                  height={160}
-                  barWidth={barData.length > 15 ? 12 : 20}
-                  spacing={barData.length > 15 ? 6 : 12}
-                  noOfSections={4}
-                  barBorderRadius={6}
-                  yAxisColor="transparent"
-                  xAxisColor={c.chartAxisColor}
-                  yAxisTextStyle={{
-                    color: c.chartAxisTextColor,
-                    fontSize: 10,
-                  }}
-                  xAxisLabelTextStyle={{
-                    color: c.chartAxisTextColor,
-                    fontSize: 9,
-                  }}
-                  hideRules
-                  isAnimated
-                  animationDuration={600}
-                />
-              </View>
-            )}
+                {shouldShowChartSkeleton ?
+            <ChartSkeleton
+              borderColor={c.border}
+              tint={c.card}
+              height={170} /> :
 
-            {/* Category breakdown with pie + bars */}
-            {categoryData.length > 0 && (
-              <View className="bg-surface rounded-2xl p-5 border border-border mb-4">
-                <Text className="text-foreground font-semibold text-sm mb-4">
-                  {t("analytics.byCategory")}
-                </Text>
-                <View className="items-center mb-5">
-                  <PieChart
-                    data={pieData}
-                    donut
-                    radius={80}
-                    innerRadius={50}
-                    innerCircleColor={c.chartInnerCircle}
-                    centerLabelComponent={() => (
-                      <View className="items-center">
-                        <Text className="text-foreground text-sm font-bold">
-                          {totalExpenses.toLocaleString("ro-RO", {
-                            maximumFractionDigits: 0,
-                          })}
-                        </Text>
-                        <Text className="text-text-muted text-[10px]">
-                          RON
-                        </Text>
-                      </View>
-                    )}
-                  />
-                </View>
-                {categoryData.map((cat) => (
-                  <View
-                    key={cat.key}
-                    className="flex-row items-center py-2.5 border-t border-border"
-                  >
-                    <View
-                      className="w-7 h-7 rounded-full items-center justify-center mr-2"
-                      style={{ backgroundColor: `${cat.color}18` }}
-                    >
-                      <Ionicons name={cat.icon} size={13} color={cat.color} />
-                    </View>
-                    <View className="flex-1 mr-2">
-                      <View className="flex-row items-center justify-between mb-1">
-                        <Text className="text-foreground text-xs font-medium">
-                          {t(`analytics.categories.${cat.key}`)}
-                        </Text>
-                        <Text className="text-foreground text-xs font-semibold">
-                          {cat.total.toLocaleString("ro-RO", {
-                            maximumFractionDigits: 0,
-                          })}{" "}
-                          RON
-                        </Text>
-                      </View>
-                      <View
-                        style={{
-                          height: 6,
-                          borderRadius: 3,
-                          backgroundColor: c.border,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <View
-                          style={{
-                            height: "100%",
-                            width: `${cat.percentage}%`,
-                            borderRadius: 3,
-                            backgroundColor: cat.color,
-                          }}
-                        />
-                      </View>
-                    </View>
-                    <Text className="text-text-muted text-xs w-9 text-right">
-                      {cat.percentage}%
-                    </Text>
-                  </View>
-                ))}
+
+            <BarChart
+              data={barData}
+              width={SCREEN_WIDTH - 100}
+              height={160}
+              barWidth={barData.length > 15 ? 12 : 20}
+              spacing={barData.length > 15 ? 6 : 12}
+              noOfSections={4}
+              barBorderRadius={6}
+              yAxisColor="transparent"
+              xAxisColor={c.chartAxisColor}
+              yAxisTextStyle={{
+                color: c.chartAxisTextColor,
+                fontSize: 10
+              }}
+              xAxisLabelTextStyle={{
+                color: c.chartAxisTextColor,
+                fontSize: 9
+              }}
+              hideRules
+              isAnimated
+              animationDuration={600} />
+
+            }
               </View>
-            )}
+          }
+
+            {}
+            {categoryData.length > 0 &&
+          <CategoryBreakdownWithPie
+            categoryData={categoryData}
+            pieData={pieData}
+            totalExpenses={totalExpenses}
+            shouldShowChartSkeleton={shouldShowChartSkeleton}
+            setSelectedCategory={setSelectedCategory}
+            c={c}
+            isDark={isDark}
+            t={t} />
+
+          }
           </View>
-        )}
+        }
 
-        {/* ══════════ SUB-VIEW: BUGET VS. ACTUAL ══════════ */}
-        {activeView === "buget" && (
-          <View className="mx-6 mt-5">
-            {budgetVsActualData.length > 0 ? (
-              <>
-                {/* Overall summary card */}
-                {(() => {
-                  const totalLimit = budgetVsActualData.reduce(
-                    (s, b) => s + (b.limit || 0),
-                    0,
-                  );
-                  const totalSpent = budgetVsActualData.reduce(
-                    (s, b) => s + b.spent,
-                    0,
-                  );
-                  const overallPct =
-                    totalLimit > 0
-                      ? Math.min((totalSpent / totalLimit) * 100, 100)
-                      : 0;
-                  const overallStatus =
-                    overallPct >= 100
-                      ? "over"
-                      : overallPct >= 75
-                        ? "warning"
-                        : "ok";
-                  const overallColor =
-                    overallStatus === "over"
-                      ? "#F43F5E"
-                      : overallStatus === "warning"
-                        ? "#F59E0B"
-                        : "#22C55E";
-                  return (
-                    <View
-                      className="rounded-2xl p-5 mb-4"
-                      style={{
-                        backgroundColor: c.card,
-                        borderLeftWidth: 4,
-                        borderLeftColor: "#6366F1",
-                      }}
-                    >
-                      <Text className="text-text-muted text-xs mb-3">
-                        {t("analytics.budgetVsActual.title")}
-                      </Text>
-                      <View className="flex-row justify-between items-end mb-3">
-                        <View>
-                          <Text className="text-text-muted text-[10px] mb-0.5">
-                            {t("analytics.budgetVsActual.totalPlanned")}
-                          </Text>
-                          <Text className="text-foreground font-bold text-xl">
-                            {totalLimit.toLocaleString("ro-RO", {
-                              maximumFractionDigits: 0,
-                            })}{" "}
-                            RON
-                          </Text>
-                        </View>
-                        <View className="items-end">
-                          <Text className="text-text-muted text-[10px] mb-0.5">
-                            {t("analytics.budgetVsActual.totalSpent")}
-                          </Text>
-                          <Text
-                            className="font-bold text-xl"
-                            style={{ color: overallColor }}
-                          >
-                            {totalSpent.toLocaleString("ro-RO", {
-                              maximumFractionDigits: 0,
-                            })}{" "}
-                            RON
-                          </Text>
-                        </View>
-                      </View>
-                      <View
-                        style={{
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: c.border,
-                          overflow: "hidden",
-                          marginBottom: 4,
-                        }}
-                      >
-                        <View
-                          style={{
-                            height: "100%",
-                            width: `${overallPct}%`,
-                            borderRadius: 4,
-                            backgroundColor: overallColor,
-                          }}
-                        />
-                      </View>
-                      <Text style={{ color: c.textMuted, fontSize: 11 }}>
-                        {Math.round(overallPct)}%{" "}
-                        {t("budget.ofTotalBudget")}
-                      </Text>
-                    </View>
-                  );
-                })()}
-
-                {/* Per-category comparison */}
-                <View className="bg-surface rounded-2xl border border-border overflow-hidden">
-                  {/* Legend */}
-                  <View className="flex-row items-center justify-end px-4 pt-4 pb-2 gap-4">
-                    <View className="flex-row items-center gap-1.5">
-                      <View
-                        className="w-3 h-3 rounded-sm"
-                        style={{ backgroundColor: "#94A3B860" }}
-                      />
-                      <Text className="text-text-muted text-xs">
-                        {t("analytics.budgetVsActual.planned")}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center gap-1.5">
-                      <View
-                        className="w-3 h-3 rounded-sm"
-                        style={{ backgroundColor: "#6366F1" }}
-                      />
-                      <Text className="text-text-muted text-xs">
-                        {t("analytics.budgetVsActual.spent")}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {budgetVsActualData.map((item, idx) => {
-                    const limit = item.limit || 0;
-                    const spent = item.spent;
-                    const pct =
-                      limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
-                    const statusColor =
-                      item.status === "over"
-                        ? "#F43F5E"
-                        : item.status === "warning"
-                          ? "#F59E0B"
-                          : "#22C55E";
-                    const barWidth = SCREEN_WIDTH - 48 - 32 - 56;
-                    return (
-                      <View
-                        key={item.key}
-                        className={`px-4 py-3 ${
-                          idx < budgetVsActualData.length - 1
-                            ? "border-b border-border"
-                            : ""
-                        }`}
-                      >
-                        {/* Category row */}
-                        <View className="flex-row items-center mb-2">
-                          <View
-                            className="w-7 h-7 rounded-full items-center justify-center mr-2"
-                            style={{ backgroundColor: `${item.color}18` }}
-                          >
-                            <Ionicons
-                              name={item.icon}
-                              size={13}
-                              color={item.color}
-                            />
-                          </View>
-                          <Text className="text-foreground text-xs font-semibold flex-1">
-                            {t(`analytics.categories.${item.key}`)}
-                          </Text>
-                          <View
-                            className="px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor:
-                                item.status === "over"
-                                  ? "#F43F5E18"
-                                  : item.status === "warning"
-                                    ? "#F59E0B18"
-                                    : "#22C55E18",
-                            }}
-                          >
-                            <Text
-                              className="text-[10px] font-bold"
-                              style={{ color: statusColor }}
-                            >
-                              {item.status === "over"
-                                ? t("analytics.budgetVsActual.overBudget")
-                                : `${item.percentage}%`}
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Planned bar (full width = limit) */}
-                        <View className="flex-row items-center mb-1.5 gap-2">
-                          <View
-                            style={{
-                              width: barWidth,
-                              height: 8,
-                              borderRadius: 4,
-                              backgroundColor: "#94A3B830",
-                            }}
-                          >
-                            <View
-                              style={{
-                                height: "100%",
-                                width: "100%",
-                                borderRadius: 4,
-                                backgroundColor: "#94A3B850",
-                              }}
-                            />
-                          </View>
-                          <Text className="text-text-muted text-[10px]">
-                            {limit.toLocaleString("ro-RO", {
-                              maximumFractionDigits: 0,
-                            })}{" "}
-                            RON
-                          </Text>
-                        </View>
-
-                        {/* Actual bar (proportional to limit) */}
-                        <View className="flex-row items-center gap-2">
-                          <View
-                            style={{
-                              width: barWidth,
-                              height: 8,
-                              borderRadius: 4,
-                              backgroundColor: `${statusColor}20`,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <View
-                              style={{
-                                height: "100%",
-                                width: `${pct}%`,
-                                borderRadius: 4,
-                                backgroundColor: statusColor,
-                              }}
-                            />
-                          </View>
-                          <Text
-                            className="text-[10px] font-semibold"
-                            style={{ color: statusColor }}
-                          >
-                            {spent.toLocaleString("ro-RO", {
-                              maximumFractionDigits: 0,
-                            })}{" "}
-                            RON
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </>
-            ) : (
-              <View
-                className="rounded-2xl p-5"
-                style={{
-                  borderWidth: 1,
-                  borderStyle: "dashed",
-                  borderColor: c.border,
-                }}
-              >
-                <View className="flex-row items-center">
-                  <View className="flex-1 pr-4">
-                    <Text className="text-foreground font-semibold text-sm mb-1">
-                      {t("analytics.budgetVsActual.emptyTitle")}
-                    </Text>
-                    <Text className="text-text-muted text-xs leading-4">
-                      {t("analytics.budgetVsActual.emptyDesc")}
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name="git-compare-outline"
-                    size={36}
-                    color={c.textMuted}
-                  />
-                </View>
-              </View>
-            )}
+        {}
+        {activeView === "buget" &&
+        <View className="mx-6 mt-5">
+            <BudgetVsActualCard
+            budgetVsActualData={budgetVsActualData}
+            c={c}
+            isDark={isDark}
+            t={t} />
+          
           </View>
-        )}
+        }
       </ScrollView>
 
-      {/* ── Category Detail Bottom Sheet ── */}
+      {}
       <BottomSheet
         visible={!!selectedCategory}
-        onClose={() => setSelectedCategory(null)}
-      >
-        {selectedCategory && (
-          <View>
+        onClose={() => setSelectedCategory(null)}>
+        
+        {selectedCategory &&
+        <View>
             <View className="flex-row items-center mb-4">
               <View
-                className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: `${selectedCategory.color}18` }}
-              >
+              className="w-10 h-10 rounded-full items-center justify-center mr-3"
+              style={{ backgroundColor: `${selectedCategory.color}18` }}>
+              
                 <Ionicons
-                  name={selectedCategory.icon}
-                  size={20}
-                  color={selectedCategory.color}
-                />
+                name={selectedCategory.icon}
+                size={20}
+                color={selectedCategory.color} />
+              
               </View>
               <View className="flex-1">
                 <Text className="text-foreground font-bold text-base">
                   {t("analytics.categoryDetails", {
-                    category: t(`analytics.categories.${selectedCategory.key}`),
-                  })}
+                  category: t(`analytics.categories.${selectedCategory.key}`)
+                })}
                 </Text>
                 <Text className="text-text-muted text-xs mt-0.5">
                   {selectedCategory.count} {t("analytics.transactions")} •{" "}
                   {selectedCategory.total.toLocaleString("ro-RO", {
-                    minimumFractionDigits: 2,
-                  })}{" "}
+                  minimumFractionDigits: 2
+                })}{" "}
                   RON
                 </Text>
               </View>
             </View>
             <View
-              style={{ maxHeight: 350 }}
-              className="bg-background rounded-2xl border border-border overflow-hidden"
-            >
-              {categoryTransactions.length === 0 ? (
-                <View className="p-6 items-center">
+            style={{ maxHeight: 350 }}
+            className="bg-background rounded-2xl border border-border overflow-hidden">
+            
+              {categoryTransactions.length === 0 ?
+            <View className="p-6 items-center">
                   <Text className="text-text-muted text-sm">
                     {t("analytics.noTransactionsInCategory")}
                   </Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={categoryTransactions}
-                  keyExtractor={(tx, idx) =>
-                    `${tx.connectionId || ""}-${tx.transactionId || idx}`
-                  }
-                  renderItem={({ item: tx, index }) => (
-                    <TransactionItem
-                      tx={tx}
-                      isLast={index === categoryTransactions.length - 1}
-                    />
-                  )}
-                  showsVerticalScrollIndicator={false}
-                />
-              )}
+                </View> :
+
+            <FlatList
+              data={categoryTransactions}
+              keyExtractor={(tx, idx) =>
+              `${tx.connectionId || ""}-${tx.transactionId || idx}`
+              }
+              renderItem={({ item: tx, index }) =>
+              <TransactionItem
+                tx={tx}
+                isLast={index === categoryTransactions.length - 1} />
+
+              }
+              showsVerticalScrollIndicator={false} />
+
+            }
             </View>
           </View>
-        )}
+        }
       </BottomSheet>
-    </View>
-  );
+    </View>);
+
 }

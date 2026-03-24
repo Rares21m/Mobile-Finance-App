@@ -26,14 +26,14 @@ export default function SignUp() {
   function validate() {
     const newErrors = {};
     if (!name.trim()) newErrors.name = t("auth.errors.nameRequired");
-    if (!email.trim()) newErrors.email = t("auth.errors.emailRequired");
-    else if (!/\S+@\S+\.\S+/.test(email))
-      newErrors.email = t("auth.errors.emailInvalid");
-    if (!password) newErrors.password = t("auth.errors.passwordRequired");
-    else if (password.length < 6)
-      newErrors.password = t("auth.errors.passwordMin");
+    if (!email.trim()) newErrors.email = t("auth.errors.emailRequired");else
+    if (!/\S+@\S+\.\S+/.test(email))
+    newErrors.email = t("auth.errors.emailInvalid");
+    if (!password) newErrors.password = t("auth.errors.passwordRequired");else
+    if (password.length < 6)
+    newErrors.password = t("auth.errors.passwordMin");
     if (password !== confirmPassword)
-      newErrors.confirmPassword = t("auth.errors.passwordMismatch");
+    newErrors.confirmPassword = t("auth.errors.passwordMismatch");
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -45,9 +45,9 @@ export default function SignUp() {
       await register(email.trim().toLowerCase(), password, name.trim());
     } catch (err) {
       const errorCode = err.response?.data?.error;
-      const message = errorCode
-        ? t(getErrorKey(errorCode, "auth.errors.registerError"))
-        : t("auth.errors.registerError");
+      const message = errorCode ?
+      t(getErrorKey(errorCode, "auth.errors.registerError")) :
+      t("auth.errors.registerError");
       showToast(message, "error");
       setLoading(false);
     }
@@ -60,9 +60,9 @@ export default function SignUp() {
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
         className="px-7"
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Header */}
+        keyboardShouldPersistTaps="handled">
+        
+        {}
         <Text className="text-foreground text-3xl font-extrabold text-center mb-2 mt-20">
           {t("auth.createAccount")}
         </Text>
@@ -70,7 +70,7 @@ export default function SignUp() {
           {t("auth.signUpSubtitle")}
         </Text>
 
-        {/* Glass card */}
+        {}
         <GlassCard>
           <GlassInput
             label={t("auth.fullName")}
@@ -78,8 +78,8 @@ export default function SignUp() {
             value={name}
             onChangeText={setName}
             placeholder={t("auth.fullNamePlaceholder")}
-            error={errors.name}
-          />
+            error={errors.name} />
+          
           <GlassInput
             label={t("auth.email")}
             icon="mail-outline"
@@ -88,8 +88,8 @@ export default function SignUp() {
             placeholder={t("auth.emailPlaceholder")}
             error={errors.email}
             keyboardType="email-address"
-            autoCapitalize="none"
-          />
+            autoCapitalize="none" />
+          
           <GlassInput
             label={t("auth.password")}
             icon="lock-closed-outline"
@@ -97,8 +97,8 @@ export default function SignUp() {
             onChangeText={setPassword}
             placeholder={t("auth.passwordPlaceholder")}
             error={errors.password}
-            secureTextEntry
-          />
+            secureTextEntry />
+          
           <GlassInput
             label={t("auth.confirmPassword")}
             icon="lock-closed-outline"
@@ -107,16 +107,16 @@ export default function SignUp() {
             placeholder={t("auth.passwordPlaceholder")}
             error={errors.confirmPassword}
             isLast
-            secureTextEntry
-          />
+            secureTextEntry />
+          
           <GradientButton
             label={t("auth.register")}
             onPress={onRegister}
-            disabled={loading}
-          />
+            disabled={loading} />
+          
         </GlassCard>
 
-        {/* Footer */}
+        {}
         <View className="flex-row justify-center mt-8 mb-10">
           <Text className="text-text-muted">{t("auth.hasAccount")} </Text>
           <Link href="/(auth)/sign-in" asChild>
@@ -128,6 +128,6 @@ export default function SignUp() {
           </Link>
         </View>
       </ScrollView>
-    </AuthBackground>
-  );
+    </AuthBackground>);
+
 }

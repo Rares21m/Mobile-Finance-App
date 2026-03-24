@@ -8,15 +8,15 @@ import en from "./locales/en.json";
 const deviceLanguage = getLocales()[0]?.languageCode || "ro";
 
 i18n.use(initReactI18next).init({
-    resources: {
-        ro: { translation: ro },
-        en: { translation: en },
-    },
-    lng: deviceLanguage,
-    fallbackLng: "ro",
-    interpolation: {
-        escapeValue: false,
-    },
+  resources: {
+    ro: { translation: ro },
+    en: { translation: en }
+  },
+  lng: deviceLanguage,
+  fallbackLng: "ro",
+  interpolation: {
+    escapeValue: false
+  }
 });
 
 export default i18n;

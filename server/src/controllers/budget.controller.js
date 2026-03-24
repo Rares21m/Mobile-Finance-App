@@ -13,30 +13,29 @@
 
 const prisma = require("../config/db");
 const logger = require("../config/logger");
-const { evaluateBadges } = require("../services/badgeService");
 
 const VALID_CATEGORIES = [
-  "food",
-  "transport",
-  "shopping",
-  "utilities",
-  "housing",
-  "entertainment",
-  "health",
-  "other",
-];
+"food",
+"transport",
+"shopping",
+"utilities",
+"housing",
+"entertainment",
+"health",
+"other"];
 
-// ─── Budget Limits ────────────────────────────────────────────────────────────
 
-/**
- * GET /api/budgets/limits
- * Returns all category budget limits for the authenticated user as a flat object.
- * Example response: { limits: { food: 500, transport: 300 } }
- */
+
+
+
+
+
+
+
 async function getLimits(req, res) {
   try {
     const rows = await prisma.budgetLimit.findMany({
-      where: { userId: req.userId },
+      where: { userId: req.userId }
     });
     const limits = {};
     rows.forEach((r) => {
@@ -49,12 +48,12 @@ async function getLimits(req, res) {
   }
 }
 
-/**
- * PUT /api/budgets/limits
- * Body: { limits: { food: 500, transport: 300 } }
- * Upserts all provided category limits. Categories not in the body are left unchanged.
- * Pass amount: 0 or omit a key to remove a category (handled client-side).
- */
+
+
+
+
+
+
 async function upsertLimits(req, res) {
   try {
     const { limits } = req.body;
@@ -62,56 +61,55 @@ async function upsertLimits(req, res) {
       return res.status(400).json({ error: "LIMITS_REQUIRED" });
     }
 
-    // Validate keys
+
     const invalidKeys = Object.keys(limits).filter(
-      (k) => !VALID_CATEGORIES.includes(k),
+      (k) => !VALID_CATEGORIES.includes(k)
     );
     if (invalidKeys.length > 0) {
       return res.status(400).json({ error: "INVALID_CATEGORIES", invalidKeys });
     }
 
-    // Delete all existing limits first, then re-insert (simple bulk upsert)
+
     await prisma.budgetLimit.deleteMany({ where: { userId: req.userId } });
 
-    const rows = Object.entries(limits)
-      .filter(([, amount]) => Number(amount) > 0)
-      .map(([category, amount]) => ({
-        userId: req.userId,
-        category,
-        amount,
-      }));
+    const rows = Object.entries(limits).
+    filter(([, amount]) => Number(amount) > 0).
+    map(([category, amount]) => ({
+      userId: req.userId,
+      category,
+      amount
+    }));
 
     if (rows.length > 0) {
       await prisma.budgetLimit.createMany({ data: rows });
     }
 
-    // Re-fetch and return
+
     const updated = await prisma.budgetLimit.findMany({
-      where: { userId: req.userId },
+      where: { userId: req.userId }
     });
     const result = {};
     updated.forEach((r) => {
       result[r.category] = parseFloat(r.amount);
     });
-    const newBadges = await evaluateBadges(req.userId);
-    res.json({ limits: result, newBadges });
+    res.json({ limits: result });
   } catch (err) {
     logger.error("upsertLimits error:", err);
     res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
   }
 }
 
-// ─── Event Budgets ────────────────────────────────────────────────────────────
 
-/**
- * GET /api/budgets/events
- * Returns all event budgets for the authenticated user.
- */
+
+
+
+
+
 async function getEventBudgets(req, res) {
   try {
     const events = await prisma.eventBudget.findMany({
       where: { userId: req.userId },
-      orderBy: { startDate: "asc" },
+      orderBy: { startDate: "asc" }
     });
     res.json({ events: events.map(formatEvent) });
   } catch (err) {
@@ -120,10 +118,10 @@ async function getEventBudgets(req, res) {
   }
 }
 
-/**
- * POST /api/budgets/events
- * Body: { name, totalLimit, startDate, endDate, categories? }
- */
+
+
+
+
 async function createEventBudget(req, res) {
   try {
     const { name, totalLimit, startDate, endDate, categories } = req.body;
@@ -137,20 +135,19 @@ async function createEventBudget(req, res) {
         totalLimit: parseFloat(totalLimit),
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        categories: JSON.stringify(categories || []),
-      },
+        categories: JSON.stringify(categories || [])
+      }
     });
-    const newBadges = await evaluateBadges(req.userId);
-    res.status(201).json({ event: formatEvent(ev), newBadges });
+    res.status(201).json({ event: formatEvent(ev) });
   } catch (err) {
     logger.error("createEventBudget error:", err);
     res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
   }
 }
 
-/**
- * PUT /api/budgets/events/:id
- */
+
+
+
 async function updateEventBudget(req, res) {
   try {
     const { id } = req.params;
@@ -167,9 +164,9 @@ async function updateEventBudget(req, res) {
         ...(startDate !== undefined && { startDate: new Date(startDate) }),
         ...(endDate !== undefined && { endDate: new Date(endDate) }),
         ...(categories !== undefined && {
-          categories: JSON.stringify(categories),
-        }),
-      },
+          categories: JSON.stringify(categories)
+        })
+      }
     });
     res.json({ event: formatEvent(updated) });
   } catch (err) {
@@ -178,9 +175,9 @@ async function updateEventBudget(req, res) {
   }
 }
 
-/**
- * DELETE /api/budgets/events/:id
- */
+
+
+
 async function deleteEventBudget(req, res) {
   try {
     const { id } = req.params;
@@ -196,7 +193,7 @@ async function deleteEventBudget(req, res) {
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 function formatEvent(ev) {
   return {
@@ -205,7 +202,7 @@ function formatEvent(ev) {
     totalLimit: parseFloat(ev.totalLimit),
     startDate: ev.startDate.toISOString(),
     endDate: ev.endDate.toISOString(),
-    categories: JSON.parse(ev.categories || "[]"),
+    categories: JSON.parse(ev.categories || "[]")
   };
 }
 
@@ -215,5 +212,5 @@ module.exports = {
   getEventBudgets,
   createEventBudget,
   updateEventBudget,
-  deleteEventBudget,
+  deleteEventBudget
 };

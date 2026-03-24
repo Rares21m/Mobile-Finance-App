@@ -12,23 +12,26 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
-} from "react-native";
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View } from
+"react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import TransactionItem from "../components/TransactionItem";
-import { useBadges } from "../context/BadgesContext";
 import { useBankData } from "../context/BankContext";
 import { useTheme } from "../context/ThemeContext";
-import { CATEGORIES, categorizeTransaction } from "../utils/categoryUtils";
+import {
+  CATEGORIES,
+  categorizeTransaction,
+  detectRecurringTransactions } from
+"../utils/categoryUtils";
 
 const TYPE_FILTERS = ["all", "expense", "income"];
 
@@ -37,7 +40,7 @@ const EMPTY_FORM = {
   amount: "",
   date: new Date().toISOString().split("T")[0],
   isExpense: true,
-  category: "other",
+  category: "other"
 };
 
 export default function Transactions() {
@@ -51,9 +54,8 @@ export default function Transactions() {
     addManualTransaction,
     updateManualTransaction,
     deleteManualTransaction,
-    overrideBankTxCategory,
+    overrideBankTxCategory
   } = useBankData();
-  const { triggerEvaluate } = useBadges();
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -64,15 +66,17 @@ export default function Transactions() {
   const [amtMin, setAmtMin] = useState("");
   const [amtMax, setAmtMax] = useState("");
   const [sortBy, setSortBy] = useState("date_desc");
+  const [quickPreset, setQuickPreset] = useState("none");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [showLongPressHint, setShowLongPressHint] = useState(true);
 
-  // Manual transaction modal
+
   const [manualModalOpen, setManualModalOpen] = useState(false);
-  const [editingTx, setEditingTx] = useState(null); // null = add, object = edit
+  const [editingTx, setEditingTx] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
-  // Category override modal
+
   const [catModalTx, setCatModalTx] = useState(null);
 
   function openAddModal() {
@@ -85,16 +89,16 @@ export default function Transactions() {
     setEditingTx(tx);
     setForm({
       description:
-        tx.creditorName ||
-        tx.debtorName ||
-        tx.remittanceInformationUnstructured ||
-        "",
+      tx.creditorName ||
+      tx.debtorName ||
+      tx.remittanceInformationUnstructured ||
+      "",
       amount: Math.abs(
-        parseFloat(tx.transactionAmount?.amount || 0),
+        parseFloat(tx.transactionAmount?.amount || 0)
       ).toString(),
       date: tx.bookingDate || new Date().toISOString().split("T")[0],
       isExpense: parseFloat(tx.transactionAmount?.amount || 0) < 0,
-      category: tx.category || "other",
+      category: tx.category || "other"
     });
     setManualModalOpen(true);
   }
@@ -112,7 +116,7 @@ export default function Transactions() {
           amount: amt,
           date: form.date,
           isExpense: form.isExpense,
-          category: form.category,
+          category: form.category
         });
       } else {
         await addManualTransaction({
@@ -120,9 +124,8 @@ export default function Transactions() {
           amount: amt,
           date: form.date,
           isExpense: form.isExpense,
-          category: form.category,
+          category: form.category
         });
-        triggerEvaluate();
       }
       setManualModalOpen(false);
     } catch (e) {
@@ -134,19 +137,19 @@ export default function Transactions() {
 
   async function handleDeleteManual(tx) {
     Alert.alert(t("transactions.deleteTitle"), t("transactions.deleteDesc"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("common.delete"),
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteManualTransaction(tx.manualId);
-          } catch (e) {
-            Alert.alert(t("common.error"), e.message);
-          }
-        },
-      },
-    ]);
+    { text: t("common.cancel"), style: "cancel" },
+    {
+      text: t("common.delete"),
+      style: "destructive",
+      onPress: async () => {
+        try {
+          await deleteManualTransaction(tx.manualId);
+        } catch (e) {
+          Alert.alert(t("common.error"), e.message);
+        }
+      }
+    }]
+    );
   }
 
   async function handleCategoryOverride(category) {
@@ -163,55 +166,87 @@ export default function Transactions() {
   const handleTxLongPress = useCallback(
     (tx) => {
       if (tx.isManual) {
-        // Long-press on manual tx: edit or delete options
+
         Alert.alert(
           tx.creditorName ||
-            tx.debtorName ||
-            tx.remittanceInformationUnstructured ||
-            t("transactions.manualTx"),
+          tx.debtorName ||
+          tx.remittanceInformationUnstructured ||
+          t("transactions.manualTx"),
           "",
           [
-            {
-              text: t("transactions.editTx"),
-              onPress: () => openEditModal(tx),
-            },
-            {
-              text: t("transactions.editCategory"),
-              onPress: () => setCatModalTx(tx),
-            },
-            {
-              text: t("common.delete"),
-              style: "destructive",
-              onPress: () => handleDeleteManual(tx),
-            },
-            { text: t("common.cancel"), style: "cancel" },
-          ],
+          {
+            text: t("transactions.editTx"),
+            onPress: () => openEditModal(tx)
+          },
+          {
+            text: t("transactions.editCategory"),
+            onPress: () => setCatModalTx(tx)
+          },
+          {
+            text: t("common.delete"),
+            style: "destructive",
+            onPress: () => handleDeleteManual(tx)
+          },
+          { text: t("common.cancel"), style: "cancel" }]
+
         );
       } else {
         setCatModalTx(tx);
       }
     },
-    [t],
+    [t]
   );
 
   const base = useMemo(() => {
     if (!accountId) return transactions;
     return transactions.filter(
-      (tx) => tx.accountId === accountId || tx.resourceId === accountId,
+      (tx) => tx.accountId === accountId || tx.resourceId === accountId
     );
   }, [transactions, accountId]);
 
-  // Apply search + type + category + date + amount filters, then sort newest first
+  const recurringMerchantSet = useMemo(() => {
+    const recurring = detectRecurringTransactions(base);
+    return new Set(recurring.map((item) => item.name.toLowerCase().trim()));
+  }, [base]);
+
+  function formatDateInput(date) {
+    const offsetMs = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - offsetMs).toISOString().split("T")[0];
+  }
+
+  function applyQuickPreset(preset) {
+    const now = new Date();
+
+    if (preset === "today") {
+      setDatePreset("today");
+      setCustomDateFrom("");
+      setCustomDateTo("");
+    } else if (preset === "last7") {
+      const from = new Date();
+      from.setDate(now.getDate() - 6);
+      setDatePreset("custom");
+      setCustomDateFrom(formatDateInput(from));
+      setCustomDateTo(formatDateInput(now));
+    } else if (preset === "thisMonth") {
+      setDatePreset("month");
+      setCustomDateFrom("");
+      setCustomDateTo("");
+    }
+
+    setQuickPreset(preset);
+  }
+
+
   const filtered = useMemo(() => {
     let list = base;
 
     if (typeFilter === "expense") {
       list = list.filter(
-        (tx) => parseFloat(tx.transactionAmount?.amount || 0) < 0,
+        (tx) => parseFloat(tx.transactionAmount?.amount || 0) < 0
       );
     } else if (typeFilter === "income") {
       list = list.filter(
-        (tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0,
+        (tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0
       );
     }
 
@@ -219,7 +254,7 @@ export default function Transactions() {
       list = list.filter((tx) => categorizeTransaction(tx).key === catFilter);
     }
 
-    // Date range filter
+
     if (datePreset !== "all") {
       const now = new Date();
       let fromDate = null;
@@ -233,7 +268,7 @@ export default function Transactions() {
         fromDate = new Date(
           now.getFullYear(),
           now.getMonth(),
-          now.getDate() + diffToMon,
+          now.getDate() + diffToMon
         );
         toDate = now;
       } else if (datePreset === "month") {
@@ -254,7 +289,7 @@ export default function Transactions() {
       });
     }
 
-    // Amount range filter (absolute value)
+
     const minVal = amtMin !== "" ? parseFloat(amtMin) : null;
     const maxVal = amtMax !== "" ? parseFloat(amtMax) : null;
     if (minVal !== null || maxVal !== null) {
@@ -270,13 +305,23 @@ export default function Transactions() {
       const q = search.toLowerCase().trim();
       list = list.filter((tx) => {
         const text = [
-          tx.creditorName || "",
-          tx.debtorName || "",
-          tx.remittanceInformationUnstructured || "",
-        ]
-          .join(" ")
-          .toLowerCase();
+        tx.creditorName || "",
+        tx.debtorName || "",
+        tx.remittanceInformationUnstructured || ""].
+
+        join(" ").
+        toLowerCase();
         return text.includes(q);
+      });
+    }
+
+    if (quickPreset === "manual") {
+      list = list.filter((tx) => tx.isManual);
+    } else if (quickPreset === "recurring") {
+      list = list.filter((tx) => {
+        const merchant =
+        tx.creditorName || tx.remittanceInformationUnstructured || "";
+        return recurringMerchantSet.has(merchant.toLowerCase().trim());
       });
     }
 
@@ -291,51 +336,54 @@ export default function Transactions() {
       return sortBy === "amount_desc" ? amtB - amtA : amtA - amtB;
     });
   }, [
-    base,
-    typeFilter,
-    catFilter,
-    search,
-    datePreset,
-    customDateFrom,
-    customDateTo,
-    amtMin,
-    amtMax,
-    sortBy,
-  ]);
+  base,
+  typeFilter,
+  catFilter,
+  search,
+  datePreset,
+  customDateFrom,
+  customDateTo,
+  amtMin,
+  amtMax,
+  sortBy,
+  quickPreset,
+  recurringMerchantSet]
+  );
 
-  // Count active extra filters for the badge on the filter button
+
   const activeFilterCount =
-    (datePreset !== "all" ? 1 : 0) +
-    (amtMin !== "" || amtMax !== "" ? 1 : 0) +
-    (sortBy !== "date_desc" ? 1 : 0);
+  (datePreset !== "all" ? 1 : 0) + (
+  amtMin !== "" || amtMax !== "" ? 1 : 0) + (
+  sortBy !== "date_desc" ? 1 : 0) + (
+  quickPreset !== "none" ? 1 : 0);
 
-  // Group by date and flatten into a FlatList-friendly array
+
   const flatData = useMemo(() => {
     const items = [];
     let currentLabel = null;
     let groupStart = -1;
     let prevItem = null;
 
-    // First pass: build flat list with isFirst/isLast for section card styling
+
     const dated = filtered.map((tx) => {
       const d = tx.bookingDate || tx.valueDate;
-      const label = d
-        ? new Date(d).toLocaleDateString("ro-RO", {
-            weekday: "short",
-            day: "numeric",
-            month: "short",
-          })
-        : "—";
+      const label = d ?
+      new Date(d).toLocaleDateString("ro-RO", {
+        weekday: "short",
+        day: "numeric",
+        month: "short"
+      }) :
+      "—";
       return { tx, label };
     });
 
     dated.forEach(({ tx, label }, idx) => {
       const isNewSection = label !== currentLabel;
       const isLastInSection =
-        idx === dated.length - 1 || dated[idx + 1].label !== label;
+      idx === dated.length - 1 || dated[idx + 1].label !== label;
 
       if (isNewSection) {
-        // Fix previous item's isLast flag
+
         if (prevItem && prevItem.type === "tx") prevItem.isLast = true;
         items.push({ type: "header", date: label, id: `h-${label}-${idx}` });
         currentLabel = label;
@@ -347,7 +395,7 @@ export default function Transactions() {
         tx,
         isFirst: isNewSection,
         isLast: isLastInSection,
-        id: `tx-${tx.transactionId || idx}`,
+        id: `tx-${tx.transactionId || idx}`
       };
       items.push(item);
       prevItem = item;
@@ -356,7 +404,7 @@ export default function Transactions() {
     return items;
   }, [filtered]);
 
-  // Category chips — only categories that appear in the base (unfiltered) set
+
   const usedCats = useMemo(() => {
     const keys = new Set(base.map((tx) => categorizeTransaction(tx).key));
     return CATEGORIES.filter((cat) => keys.has(cat.key));
@@ -364,7 +412,7 @@ export default function Transactions() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={["top"]}>
-      {/* ── Header ── */}
+      {}
       <View
         style={{
           flexDirection: "row",
@@ -373,14 +421,14 @@ export default function Transactions() {
           paddingVertical: 14,
           backgroundColor: c.surface,
           borderBottomWidth: 0.5,
-          borderBottomColor: c.border,
-        }}
-      >
+          borderBottomColor: c.border
+        }}>
+        
         <Pressable
           onPress={() => router.back()}
           className="active:opacity-60"
-          style={{ marginRight: 14, padding: 2 }}
-        >
+          style={{ marginRight: 14, padding: 2 }}>
+          
           <Ionicons name="arrow-back" size={24} color={c.foreground} />
         </Pressable>
         <Text
@@ -388,57 +436,57 @@ export default function Transactions() {
             color: c.foreground,
             fontSize: 18,
             fontWeight: "700",
-            flex: 1,
-          }}
-        >
+            flex: 1
+          }}>
+          
           {t("transactions.title")}
         </Text>
         <Text style={{ color: c.textMuted, fontSize: 13, marginRight: 12 }}>
           {filtered.length} {t("transactions.count")}
         </Text>
-        {/* Filter button with active badge */}
+        {}
         <Pressable
           onPress={() => setFilterOpen(true)}
           className="active:opacity-70"
-          style={{ padding: 4, position: "relative" }}
-        >
+          style={{ padding: 4, position: "relative" }}>
+          
           <Ionicons
             name="options-outline"
             size={22}
-            color={activeFilterCount > 0 ? c.primary : c.foreground}
-          />
-          {activeFilterCount > 0 && (
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                width: 14,
-                height: 14,
-                borderRadius: 7,
-                backgroundColor: c.primary,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            color={activeFilterCount > 0 ? c.primary : c.foreground} />
+          
+          {activeFilterCount > 0 &&
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              width: 14,
+              height: 14,
+              borderRadius: 7,
+              backgroundColor: c.primary,
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+            
               <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>
                 {activeFilterCount}
               </Text>
             </View>
-          )}
+          }
         </Pressable>
       </View>
 
-      {/* ── Search bar ── */}
+      {}
       <View
         style={{
           paddingHorizontal: 16,
           paddingVertical: 10,
           backgroundColor: c.surface,
           borderBottomWidth: 0.5,
-          borderBottomColor: c.border,
-        }}
-      >
+          borderBottomColor: c.border
+        }}>
+        
         <View
           style={{
             flexDirection: "row",
@@ -448,156 +496,251 @@ export default function Transactions() {
             borderWidth: 1,
             borderColor: c.border,
             paddingHorizontal: 12,
-            paddingVertical: Platform.OS === "ios" ? 10 : 6,
-          }}
-        >
+            paddingVertical: Platform.OS === "ios" ? 10 : 6
+          }}>
+          
           <Ionicons
             name="search-outline"
             size={18}
             color={c.textMuted}
-            style={{ marginRight: 8 }}
-          />
+            style={{ marginRight: 8 }} />
+          
           <TextInput
             style={{ flex: 1, color: c.foreground, fontSize: 15 }}
             placeholder={t("transactions.searchPlaceholder")}
             placeholderTextColor={c.textMuted}
             value={search}
             onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {search.length > 0 && (
-            <Pressable
-              onPress={() => setSearch("")}
-              className="active:opacity-60"
-            >
+            returnKeyType="search" />
+          
+          {search.length > 0 &&
+          <Pressable
+            onPress={() => setSearch("")}
+            className="active:opacity-60">
+            
               <Ionicons name="close-circle" size={18} color={c.textMuted} />
             </Pressable>
-          )}
+          }
         </View>
       </View>
 
-      {/* ── Filters ── */}
+      {}
       <View
         style={{
           backgroundColor: c.surface,
           borderBottomWidth: 0.5,
-          borderBottomColor: c.border,
-        }}
-      >
-        {/* Type pills */}
+          borderBottomColor: c.border
+        }}>
+        
+        {}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingVertical: 10,
-            gap: 8,
-          }}
-        >
-          {TYPE_FILTERS.map((f) => (
-            <Pressable
-              key={f}
-              onPress={() => setTypeFilter(f)}
-              className="active:opacity-80"
-              style={{
-                paddingHorizontal: 18,
-                paddingVertical: 7,
-                borderRadius: 20,
-                backgroundColor: typeFilter === f ? c.primary : c.card,
-                borderWidth: 1,
-                borderColor: typeFilter === f ? c.primary : c.border,
-              }}
-            >
+            gap: 8
+          }}>
+          
+          {TYPE_FILTERS.map((f) =>
+          <Pressable
+            key={f}
+            onPress={() => setTypeFilter(f)}
+            className="active:opacity-80"
+            style={{
+              paddingHorizontal: 18,
+              paddingVertical: 7,
+              borderRadius: 20,
+              backgroundColor: typeFilter === f ? c.primary : c.card,
+              borderWidth: 1,
+              borderColor: typeFilter === f ? c.primary : c.border
+            }}>
+            
               <Text
-                style={{
-                  color: typeFilter === f ? "white" : c.textMuted,
-                  fontWeight: "600",
-                  fontSize: 13,
-                }}
-              >
+              style={{
+                color: typeFilter === f ? "white" : c.textMuted,
+                fontWeight: "600",
+                fontSize: 13
+              }}>
+              
                 {t(`transactions.type.${f}`)}
               </Text>
             </Pressable>
-          ))}
+          )}
         </ScrollView>
 
-        {/* Category chips */}
-        {usedCats.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 16,
-              paddingBottom: 10,
-              gap: 8,
-            }}
-          >
-            <Pressable
-              onPress={() => setCatFilter(null)}
-              className="active:opacity-80"
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 6,
-                borderRadius: 20,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 5,
-                backgroundColor: !catFilter ? c.primary + "18" : c.card,
-                borderWidth: 1,
-                borderColor: !catFilter ? c.primary : c.border,
-              }}
-            >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 10,
+            gap: 8,
+            alignItems: "center"
+          }}>
+          
+          <Text
+            style={{
+              color: c.textMuted,
+              fontSize: 11,
+              fontWeight: "700",
+              textTransform: "uppercase",
+              marginRight: 4
+            }}>
+            
+            {t("transactions.quickPresetsLabel")}
+          </Text>
+          {[
+          "today",
+          "last7",
+          "thisMonth",
+          "manual",
+          "recurring"].
+          map((preset) =>
+          <Pressable
+            key={preset}
+            onPress={() => applyQuickPreset(preset)}
+            className="active:opacity-80"
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+              borderRadius: 20,
+              backgroundColor: quickPreset === preset ? c.primary : c.card,
+              borderWidth: 1,
+              borderColor: quickPreset === preset ? c.primary : c.border
+            }}>
+            
               <Text
-                style={{
-                  color: !catFilter ? c.primary : c.textMuted,
-                  fontWeight: "600",
-                  fontSize: 13,
-                }}
-              >
+              style={{
+                color: quickPreset === preset ? "#fff" : c.textMuted,
+                fontWeight: "600",
+                fontSize: 12
+              }}>
+              
+                {t(`transactions.quickPresets.${preset}`)}
+              </Text>
+            </Pressable>
+          )}
+        </ScrollView>
+
+        {}
+        {usedCats.length > 0 &&
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 10,
+            gap: 8
+          }}>
+          
+            <Pressable
+            onPress={() => setCatFilter(null)}
+            className="active:opacity-80"
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+              borderRadius: 20,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              backgroundColor: !catFilter ? c.primary + "18" : c.card,
+              borderWidth: 1,
+              borderColor: !catFilter ? c.primary : c.border
+            }}>
+            
+              <Text
+              style={{
+                color: !catFilter ? c.primary : c.textMuted,
+                fontWeight: "600",
+                fontSize: 13
+              }}>
+              
                 {t("transactions.allCategories")}
               </Text>
             </Pressable>
-            {usedCats.map((cat) => (
-              <Pressable
-                key={cat.key}
-                onPress={() =>
-                  setCatFilter(catFilter === cat.key ? null : cat.key)
-                }
-                className="active:opacity-80"
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 6,
-                  borderRadius: 20,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 5,
-                  backgroundColor:
-                    catFilter === cat.key ? cat.color + "18" : c.card,
-                  borderWidth: 1,
-                  borderColor: catFilter === cat.key ? cat.color : c.border,
-                }}
-              >
+            {usedCats.map((cat) =>
+          <Pressable
+            key={cat.key}
+            onPress={() =>
+            setCatFilter(catFilter === cat.key ? null : cat.key)
+            }
+            className="active:opacity-80"
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+              borderRadius: 20,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              backgroundColor:
+              catFilter === cat.key ? cat.color + "18" : c.card,
+              borderWidth: 1,
+              borderColor: catFilter === cat.key ? cat.color : c.border
+            }}>
+            
                 <Ionicons
-                  name={cat.icon}
-                  size={14}
-                  color={catFilter === cat.key ? cat.color : c.textMuted}
-                />
+              name={cat.icon}
+              size={14}
+              color={catFilter === cat.key ? cat.color : c.textMuted} />
+            
                 <Text
-                  style={{
-                    color: catFilter === cat.key ? cat.color : c.textMuted,
-                    fontWeight: "600",
-                    fontSize: 13,
-                  }}
-                >
+              style={{
+                color: catFilter === cat.key ? cat.color : c.textMuted,
+                fontWeight: "600",
+                fontSize: 13
+              }}>
+              
                   {t(`analytics.categories.${cat.key}`)}
                 </Text>
               </Pressable>
-            ))}
+          )}
           </ScrollView>
-        )}
+        }
       </View>
 
-      {/* ── Transaction list ── */}
+      {showLongPressHint &&
+      <View
+        style={{
+          marginHorizontal: 16,
+          marginTop: 10,
+          marginBottom: 2,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          backgroundColor: `${c.primary}12`,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: `${c.primary}35`,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10
+        }}>
+        
+          <Ionicons name="information-circle" size={18} color={c.primary} />
+          <View style={{ flex: 1 }}>
+            <Text
+            style={{
+              color: c.foreground,
+              fontSize: 12,
+              fontWeight: "700",
+              marginBottom: 2
+            }}>
+            
+              {t("transactions.longPressHintTitle")}
+            </Text>
+            <Text style={{ color: c.textMuted, fontSize: 12 }}>
+              {t("transactions.longPressHintBody")}
+            </Text>
+          </View>
+          <Pressable onPress={() => setShowLongPressHint(false)}>
+            <Text style={{ color: c.primary, fontSize: 12, fontWeight: "700" }}>
+              {t("transactions.dismissHint")}
+            </Text>
+          </Pressable>
+        </View>
+      }
+
+      {}
       <FlatList
         data={flatData}
         keyExtractor={(item) => item.id}
@@ -609,22 +752,22 @@ export default function Transactions() {
                 style={{
                   paddingHorizontal: 20,
                   paddingTop: 16,
-                  paddingBottom: 6,
-                }}
-              >
+                  paddingBottom: 6
+                }}>
+                
                 <Text
                   style={{
                     color: c.textMuted,
                     fontSize: 11,
                     fontWeight: "700",
                     letterSpacing: 0.6,
-                    textTransform: "uppercase",
-                  }}
-                >
+                    textTransform: "uppercase"
+                  }}>
+                  
                   {item.date}
                 </Text>
-              </View>
-            );
+              </View>);
+
           }
 
           return (
@@ -641,48 +784,48 @@ export default function Transactions() {
                 borderWidth: 1,
                 borderColor: c.border,
                 borderTopWidth: item.isFirst ? 1 : 0,
-                borderBottomWidth: item.isLast ? 1 : 0,
-              }}
-            >
+                borderBottomWidth: item.isLast ? 1 : 0
+              }}>
+              
               <TransactionItem
                 tx={item.tx}
                 isLast={item.isLast}
                 showCategory
-                onLongPress={() => handleTxLongPress(item.tx)}
-              />
-            </View>
-          );
+                onLongPress={() => handleTxLongPress(item.tx)} />
+              
+            </View>);
+
         }}
         ListEmptyComponent={
-          <View style={{ paddingTop: 80, alignItems: "center" }}>
+        <View style={{ paddingTop: 80, alignItems: "center" }}>
             <Ionicons
-              name="receipt-outline"
-              size={52}
-              color={c.textMuted + "50"}
-            />
+            name="receipt-outline"
+            size={52}
+            color={c.textMuted + "50"} />
+          
             <Text style={{ color: c.textMuted, fontSize: 15, marginTop: 14 }}>
-              {search.length > 0
-                ? t("transactions.noResults")
-                : t("transactions.empty")}
+              {search.length > 0 ?
+            t("transactions.noResults") :
+            t("transactions.empty")}
             </Text>
           </View>
-        }
-      />
+        } />
+      
 
-      {/* ── Filter Panel Modal ── */}
+      {}
       <Modal
         visible={filterOpen}
         transparent
         animationType="slide"
-        onRequestClose={() => setFilterOpen(false)}
-      >
+        onRequestClose={() => setFilterOpen(false)}>
+        
         <View
           style={{
             flex: 1,
             backgroundColor: "#00000088",
-            justifyContent: "flex-end",
-          }}
-        >
+            justifyContent: "flex-end"
+          }}>
+          
           <View
             style={{
               backgroundColor: c.surface,
@@ -691,37 +834,37 @@ export default function Transactions() {
               paddingHorizontal: 20,
               paddingTop: 16,
               paddingBottom: Platform.OS === "ios" ? 48 : 32,
-              maxHeight: "82%",
-            }}
-          >
-            {/* Handle bar */}
+              maxHeight: "82%"
+            }}>
+            
+            {}
             <View style={{ alignItems: "center", marginBottom: 16 }}>
               <View
                 style={{
                   width: 40,
                   height: 4,
                   borderRadius: 2,
-                  backgroundColor: c.border,
-                }}
-              />
+                  backgroundColor: c.border
+                }} />
+              
             </View>
 
-            {/* Header row */}
+            {}
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                marginBottom: 20,
-              }}
-            >
+                marginBottom: 20
+              }}>
+              
               <Text
                 style={{
                   color: c.foreground,
                   fontWeight: "700",
                   fontSize: 17,
-                  flex: 1,
-                }}
-              >
+                  flex: 1
+                }}>
+                
                 {t("transactions.filters")}
               </Text>
               <Pressable
@@ -732,33 +875,34 @@ export default function Transactions() {
                   setAmtMin("");
                   setAmtMax("");
                   setSortBy("date_desc");
+                  setQuickPreset("none");
                 }}
-                className="active:opacity-70"
-              >
+                className="active:opacity-70">
+                
                 <Text
                   style={{
                     color: c.primary,
                     fontSize: 14,
                     fontWeight: "600",
-                    marginRight: 16,
-                  }}
-                >
+                    marginRight: 16
+                  }}>
+                  
                   {t("transactions.resetFilters")}
                 </Text>
               </Pressable>
               <Pressable
                 onPress={() => setFilterOpen(false)}
-                className="active:opacity-70"
-              >
+                className="active:opacity-70">
+                
                 <Ionicons name="close" size={22} color={c.textMuted} />
               </Pressable>
             </View>
 
             <ScrollView
               showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {/* ── Sort by ── */}
+              keyboardShouldPersistTaps="handled">
+              
+              {}
               <Text
                 style={{
                   color: c.textMuted,
@@ -766,9 +910,9 @@ export default function Transactions() {
                   fontWeight: "700",
                   letterSpacing: 0.6,
                   textTransform: "uppercase",
-                  marginBottom: 12,
-                }}
-              >
+                  marginBottom: 12
+                }}>
+                
                 {t("transactions.sortBy")}
               </Text>
               <View
@@ -776,39 +920,39 @@ export default function Transactions() {
                   flexDirection: "row",
                   flexWrap: "wrap",
                   gap: 8,
-                  marginBottom: 20,
-                }}
-              >
+                  marginBottom: 20
+                }}>
+                
                 {["date_desc", "date_asc", "amount_desc", "amount_asc"].map(
-                  (opt) => (
-                    <Pressable
-                      key={opt}
-                      onPress={() => setSortBy(opt)}
-                      className="active:opacity-80"
-                      style={{
-                        paddingHorizontal: 14,
-                        paddingVertical: 7,
-                        borderRadius: 20,
-                        backgroundColor: sortBy === opt ? c.primary : c.card,
-                        borderWidth: 1,
-                        borderColor: sortBy === opt ? c.primary : c.border,
-                      }}
-                    >
+                  (opt) =>
+                  <Pressable
+                    key={opt}
+                    onPress={() => setSortBy(opt)}
+                    className="active:opacity-80"
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 7,
+                      borderRadius: 20,
+                      backgroundColor: sortBy === opt ? c.primary : c.card,
+                      borderWidth: 1,
+                      borderColor: sortBy === opt ? c.primary : c.border
+                    }}>
+                    
                       <Text
-                        style={{
-                          color: sortBy === opt ? "#fff" : c.textMuted,
-                          fontSize: 13,
-                          fontWeight: "600",
-                        }}
-                      >
+                      style={{
+                        color: sortBy === opt ? "#fff" : c.textMuted,
+                        fontSize: 13,
+                        fontWeight: "600"
+                      }}>
+                      
                         {t(`transactions.sortOptions.${opt}`)}
                       </Text>
                     </Pressable>
-                  ),
+
                 )}
               </View>
 
-              {/* ── Date range ── */}
+              {}
               <Text
                 style={{
                   color: c.textMuted,
@@ -816,9 +960,9 @@ export default function Transactions() {
                   fontWeight: "700",
                   letterSpacing: 0.6,
                   textTransform: "uppercase",
-                  marginBottom: 12,
-                }}
-              >
+                  marginBottom: 12
+                }}>
+                
                 {t("transactions.dateRange")}
               </Text>
               <View
@@ -826,109 +970,109 @@ export default function Transactions() {
                   flexDirection: "row",
                   flexWrap: "wrap",
                   gap: 8,
-                  marginBottom: 16,
-                }}
-              >
+                  marginBottom: 16
+                }}>
+                
                 {["all", "today", "week", "month", "lastMonth", "custom"].map(
-                  (preset) => (
-                    <Pressable
-                      key={preset}
-                      onPress={() => setDatePreset(preset)}
-                      className="active:opacity-80"
-                      style={{
-                        paddingHorizontal: 14,
-                        paddingVertical: 7,
-                        borderRadius: 20,
-                        backgroundColor:
-                          datePreset === preset ? c.primary : c.card,
-                        borderWidth: 1,
-                        borderColor:
-                          datePreset === preset ? c.primary : c.border,
-                      }}
-                    >
+                  (preset) =>
+                  <Pressable
+                    key={preset}
+                    onPress={() => setDatePreset(preset)}
+                    className="active:opacity-80"
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 7,
+                      borderRadius: 20,
+                      backgroundColor:
+                      datePreset === preset ? c.primary : c.card,
+                      borderWidth: 1,
+                      borderColor:
+                      datePreset === preset ? c.primary : c.border
+                    }}>
+                    
                       <Text
-                        style={{
-                          color: datePreset === preset ? "#fff" : c.textMuted,
-                          fontSize: 13,
-                          fontWeight: "600",
-                        }}
-                      >
+                      style={{
+                        color: datePreset === preset ? "#fff" : c.textMuted,
+                        fontSize: 13,
+                        fontWeight: "600"
+                      }}>
+                      
                         {t(`transactions.datePresets.${preset}`)}
                       </Text>
                     </Pressable>
-                  ),
+
                 )}
               </View>
 
-              {/* Custom date inputs */}
-              {datePreset === "custom" && (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    gap: 10,
-                    marginBottom: 20,
-                  }}
-                >
+              {}
+              {datePreset === "custom" &&
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 10,
+                  marginBottom: 20
+                }}>
+                
                   <View style={{ flex: 1 }}>
                     <Text
-                      style={{
-                        color: c.textMuted,
-                        fontSize: 12,
-                        marginBottom: 6,
-                      }}
-                    >
+                    style={{
+                      color: c.textMuted,
+                      fontSize: 12,
+                      marginBottom: 6
+                    }}>
+                    
                       {t("transactions.from")}
                     </Text>
                     <TextInput
-                      style={{
-                        backgroundColor: c.card,
-                        borderRadius: 10,
-                        borderWidth: 1,
-                        borderColor: c.border,
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        color: c.foreground,
-                        fontSize: 14,
-                      }}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor={c.textMuted}
-                      value={customDateFrom}
-                      onChangeText={setCustomDateFrom}
-                      keyboardType="numbers-and-punctuation"
-                    />
+                    style={{
+                      backgroundColor: c.card,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      color: c.foreground,
+                      fontSize: 14
+                    }}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={c.textMuted}
+                    value={customDateFrom}
+                    onChangeText={setCustomDateFrom}
+                    keyboardType="numbers-and-punctuation" />
+                  
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text
-                      style={{
-                        color: c.textMuted,
-                        fontSize: 12,
-                        marginBottom: 6,
-                      }}
-                    >
+                    style={{
+                      color: c.textMuted,
+                      fontSize: 12,
+                      marginBottom: 6
+                    }}>
+                    
                       {t("transactions.to")}
                     </Text>
                     <TextInput
-                      style={{
-                        backgroundColor: c.card,
-                        borderRadius: 10,
-                        borderWidth: 1,
-                        borderColor: c.border,
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        color: c.foreground,
-                        fontSize: 14,
-                      }}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor={c.textMuted}
-                      value={customDateTo}
-                      onChangeText={setCustomDateTo}
-                      keyboardType="numbers-and-punctuation"
-                    />
+                    style={{
+                      backgroundColor: c.card,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      color: c.foreground,
+                      fontSize: 14
+                    }}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={c.textMuted}
+                    value={customDateTo}
+                    onChangeText={setCustomDateTo}
+                    keyboardType="numbers-and-punctuation" />
+                  
                   </View>
                 </View>
-              )}
+              }
 
-              {/* ── Amount range ── */}
+              {}
               <Text
                 style={{
                   color: c.textMuted,
@@ -936,9 +1080,9 @@ export default function Transactions() {
                   fontWeight: "700",
                   letterSpacing: 0.6,
                   textTransform: "uppercase",
-                  marginBottom: 12,
-                }}
-              >
+                  marginBottom: 12
+                }}>
+                
                 {t("transactions.amountRange")}
               </Text>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
@@ -947,9 +1091,9 @@ export default function Transactions() {
                     style={{
                       color: c.textMuted,
                       fontSize: 12,
-                      marginBottom: 6,
-                    }}
-                  >
+                      marginBottom: 6
+                    }}>
+                    
                     {t("transactions.minAmount")}
                   </Text>
                   <TextInput
@@ -961,23 +1105,23 @@ export default function Transactions() {
                       paddingHorizontal: 12,
                       paddingVertical: 8,
                       color: c.foreground,
-                      fontSize: 14,
+                      fontSize: 14
                     }}
                     placeholder="0"
                     placeholderTextColor={c.textMuted}
                     value={amtMin}
                     onChangeText={(v) => setAmtMin(v.replace(/[^0-9.]/g, ""))}
-                    keyboardType="decimal-pad"
-                  />
+                    keyboardType="decimal-pad" />
+                  
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
                       color: c.textMuted,
                       fontSize: 12,
-                      marginBottom: 6,
-                    }}
-                  >
+                      marginBottom: 6
+                    }}>
+                    
                     {t("transactions.maxAmount")}
                   </Text>
                   <TextInput
@@ -989,19 +1133,19 @@ export default function Transactions() {
                       paddingHorizontal: 12,
                       paddingVertical: 8,
                       color: c.foreground,
-                      fontSize: 14,
+                      fontSize: 14
                     }}
                     placeholder="∞"
                     placeholderTextColor={c.textMuted}
                     value={amtMax}
                     onChangeText={(v) => setAmtMax(v.replace(/[^0-9.]/g, ""))}
-                    keyboardType="decimal-pad"
-                  />
+                    keyboardType="decimal-pad" />
+                  
                 </View>
               </View>
             </ScrollView>
 
-            {/* Apply button */}
+            {}
             <Pressable
               onPress={() => setFilterOpen(false)}
               className="active:opacity-80"
@@ -1010,24 +1154,24 @@ export default function Transactions() {
                 borderRadius: 14,
                 paddingVertical: 14,
                 alignItems: "center",
-                marginTop: 8,
-              }}
-            >
+                marginTop: 8
+              }}>
+              
               <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
-                {activeFilterCount > 0
-                  ? t("transactions.activeFilters", {
-                      count: activeFilterCount,
-                    }) +
-                    " — " +
-                    t("transactions.applyFilters")
-                  : t("transactions.applyFilters")}
+                {activeFilterCount > 0 ?
+                t("transactions.activeFilters", {
+                  count: activeFilterCount
+                }) +
+                " — " +
+                t("transactions.applyFilters") :
+                t("transactions.applyFilters")}
               </Text>
             </Pressable>
           </View>
         </View>
       </Modal>
 
-      {/* ── FAB: Add Manual Transaction ── */}
+      {}
       <Pressable
         onPress={openAddModal}
         className="active:opacity-80"
@@ -1045,27 +1189,27 @@ export default function Transactions() {
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.3,
           shadowRadius: 8,
-          elevation: 8,
-        }}
-      >
+          elevation: 8
+        }}>
+        
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
 
-      {/* ── Manual Transaction Modal ── */}
+      {}
       <Modal
         visible={manualModalOpen}
         transparent
         animationType="slide"
-        onRequestClose={() => setManualModalOpen(false)}
-      >
+        onRequestClose={() => setManualModalOpen(false)}>
+        
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{
             flex: 1,
             backgroundColor: "#00000088",
-            justifyContent: "flex-end",
-          }}
-        >
+            justifyContent: "flex-end"
+          }}>
+          
           <View
             style={{
               backgroundColor: c.surface,
@@ -1074,92 +1218,92 @@ export default function Transactions() {
               paddingHorizontal: 20,
               paddingTop: 16,
               paddingBottom: Platform.OS === "ios" ? 48 : 32,
-              maxHeight: "90%",
-            }}
-          >
+              maxHeight: "90%"
+            }}>
+            
             <View style={{ alignItems: "center", marginBottom: 12 }}>
               <View
                 style={{
                   width: 40,
                   height: 4,
                   borderRadius: 2,
-                  backgroundColor: c.border,
-                }}
-              />
+                  backgroundColor: c.border
+                }} />
+              
             </View>
 
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                marginBottom: 20,
-              }}
-            >
+                marginBottom: 20
+              }}>
+              
               <Text
                 style={{
                   color: c.foreground,
                   fontWeight: "700",
                   fontSize: 17,
-                  flex: 1,
-                }}
-              >
+                  flex: 1
+                }}>
+                
                 {editingTx ? t("transactions.editTx") : t("transactions.addTx")}
               </Text>
               <Pressable
                 onPress={() => setManualModalOpen(false)}
-                className="active:opacity-70"
-              >
+                className="active:opacity-70">
+                
                 <Ionicons name="close" size={22} color={c.textMuted} />
               </Pressable>
             </View>
 
             <ScrollView
               showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {/* Expense / Income toggle */}
+              keyboardShouldPersistTaps="handled">
+              
+              {}
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 18 }}>
-                {[true, false].map((isExp) => (
-                  <Pressable
-                    key={String(isExp)}
-                    onPress={() => setForm((f) => ({ ...f, isExpense: isExp }))}
-                    className="active:opacity-80"
-                    style={{
-                      flex: 1,
-                      paddingVertical: 10,
-                      borderRadius: 12,
-                      alignItems: "center",
-                      backgroundColor:
-                        form.isExpense === isExp ? c.primary : c.card,
-                      borderWidth: 1,
-                      borderColor:
-                        form.isExpense === isExp ? c.primary : c.border,
-                    }}
-                  >
+                {[true, false].map((isExp) =>
+                <Pressable
+                  key={String(isExp)}
+                  onPress={() => setForm((f) => ({ ...f, isExpense: isExp }))}
+                  className="active:opacity-80"
+                  style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    backgroundColor:
+                    form.isExpense === isExp ? c.primary : c.card,
+                    borderWidth: 1,
+                    borderColor:
+                    form.isExpense === isExp ? c.primary : c.border
+                  }}>
+                  
                     <Text
-                      style={{
-                        color: form.isExpense === isExp ? "#fff" : c.textMuted,
-                        fontWeight: "700",
-                        fontSize: 14,
-                      }}
-                    >
-                      {isExp
-                        ? t("transactions.type.expense")
-                        : t("transactions.type.income")}
+                    style={{
+                      color: form.isExpense === isExp ? "#fff" : c.textMuted,
+                      fontWeight: "700",
+                      fontSize: 14
+                    }}>
+                    
+                      {isExp ?
+                    t("transactions.type.expense") :
+                    t("transactions.type.income")}
                     </Text>
                   </Pressable>
-                ))}
+                )}
               </View>
 
-              {/* Description */}
+              {}
               <Text
                 style={{
                   color: c.textMuted,
                   fontSize: 12,
                   fontWeight: "600",
-                  marginBottom: 6,
-                }}
-              >
+                  marginBottom: 6
+                }}>
+                
                 {t("transactions.description")}
               </Text>
               <TextInput
@@ -1172,23 +1316,23 @@ export default function Transactions() {
                   paddingVertical: 10,
                   color: c.foreground,
                   fontSize: 15,
-                  marginBottom: 14,
+                  marginBottom: 14
                 }}
                 placeholder={t("transactions.descriptionPlaceholder")}
                 placeholderTextColor={c.textMuted}
                 value={form.description}
-                onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
-              />
+                onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} />
+              
 
-              {/* Amount */}
+              {}
               <Text
                 style={{
                   color: c.textMuted,
                   fontSize: 12,
                   fontWeight: "600",
-                  marginBottom: 6,
-                }}
-              >
+                  marginBottom: 6
+                }}>
+                
                 {t("transactions.amount")} (RON)
               </Text>
               <TextInput
@@ -1201,26 +1345,26 @@ export default function Transactions() {
                   paddingVertical: 10,
                   color: c.foreground,
                   fontSize: 15,
-                  marginBottom: 14,
+                  marginBottom: 14
                 }}
                 placeholder="0.00"
                 placeholderTextColor={c.textMuted}
                 value={form.amount}
                 onChangeText={(v) =>
-                  setForm((f) => ({ ...f, amount: v.replace(/[^0-9.]/g, "") }))
+                setForm((f) => ({ ...f, amount: v.replace(/[^0-9.]/g, "") }))
                 }
-                keyboardType="decimal-pad"
-              />
+                keyboardType="decimal-pad" />
+              
 
-              {/* Date */}
+              {}
               <Text
                 style={{
                   color: c.textMuted,
                   fontSize: 12,
                   fontWeight: "600",
-                  marginBottom: 6,
-                }}
-              >
+                  marginBottom: 6
+                }}>
+                
                 {t("transactions.dateRange")}
               </Text>
               <TextInput
@@ -1233,71 +1377,71 @@ export default function Transactions() {
                   paddingVertical: 10,
                   color: c.foreground,
                   fontSize: 15,
-                  marginBottom: 14,
+                  marginBottom: 14
                 }}
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor={c.textMuted}
                 value={form.date}
                 onChangeText={(v) => setForm((f) => ({ ...f, date: v }))}
-                keyboardType="numbers-and-punctuation"
-              />
+                keyboardType="numbers-and-punctuation" />
+              
 
-              {/* Category */}
+              {}
               <Text
                 style={{
                   color: c.textMuted,
                   fontSize: 12,
                   fontWeight: "600",
-                  marginBottom: 10,
-                }}
-              >
+                  marginBottom: 10
+                }}>
+                
                 {t("transactions.category")}
               </Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingBottom: 16 }}
-              >
-                {CATEGORIES.map((cat) => (
-                  <Pressable
-                    key={cat.key}
-                    onPress={() =>
-                      setForm((f) => ({ ...f, category: cat.key }))
-                    }
-                    className="active:opacity-80"
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 5,
-                      backgroundColor:
-                        form.category === cat.key ? cat.color + "22" : c.card,
-                      borderWidth: 1.5,
-                      borderColor:
-                        form.category === cat.key ? cat.color : c.border,
-                    }}
-                  >
+                contentContainerStyle={{ gap: 8, paddingBottom: 16 }}>
+                
+                {CATEGORIES.map((cat) =>
+                <Pressable
+                  key={cat.key}
+                  onPress={() =>
+                  setForm((f) => ({ ...f, category: cat.key }))
+                  }
+                  className="active:opacity-80"
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 5,
+                    backgroundColor:
+                    form.category === cat.key ? cat.color + "22" : c.card,
+                    borderWidth: 1.5,
+                    borderColor:
+                    form.category === cat.key ? cat.color : c.border
+                  }}>
+                  
                     <Ionicons
-                      name={cat.icon}
-                      size={15}
-                      color={
-                        form.category === cat.key ? cat.color : c.textMuted
-                      }
-                    />
+                    name={cat.icon}
+                    size={15}
+                    color={
+                    form.category === cat.key ? cat.color : c.textMuted
+                    } />
+                  
                     <Text
-                      style={{
-                        color:
-                          form.category === cat.key ? cat.color : c.textMuted,
-                        fontWeight: "600",
-                        fontSize: 13,
-                      }}
-                    >
+                    style={{
+                      color:
+                      form.category === cat.key ? cat.color : c.textMuted,
+                      fontWeight: "600",
+                      fontSize: 13
+                    }}>
+                    
                       {t(`analytics.categories.${cat.key}`)}
                     </Text>
                   </Pressable>
-                ))}
+                )}
               </ScrollView>
             </ScrollView>
 
@@ -1307,15 +1451,15 @@ export default function Transactions() {
               className="active:opacity-80"
               style={{
                 backgroundColor:
-                  saving || !form.description.trim() || !form.amount
-                    ? c.border
-                    : c.primary,
+                saving || !form.description.trim() || !form.amount ?
+                c.border :
+                c.primary,
                 borderRadius: 14,
                 paddingVertical: 14,
                 alignItems: "center",
-                marginTop: 8,
-              }}
-            >
+                marginTop: 8
+              }}>
+              
               <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
                 {saving ? t("common.loading") : t("common.save")}
               </Text>
@@ -1324,20 +1468,20 @@ export default function Transactions() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── Category Override Modal ── */}
+      {}
       <Modal
         visible={!!catModalTx}
         transparent
         animationType="slide"
-        onRequestClose={() => setCatModalTx(null)}
-      >
+        onRequestClose={() => setCatModalTx(null)}>
+        
         <View
           style={{
             flex: 1,
             backgroundColor: "#00000088",
-            justifyContent: "flex-end",
-          }}
-        >
+            justifyContent: "flex-end"
+          }}>
+          
           <View
             style={{
               backgroundColor: c.surface,
@@ -1345,48 +1489,48 @@ export default function Transactions() {
               borderTopRightRadius: 28,
               paddingHorizontal: 20,
               paddingTop: 16,
-              paddingBottom: Platform.OS === "ios" ? 48 : 32,
-            }}
-          >
+              paddingBottom: Platform.OS === "ios" ? 48 : 32
+            }}>
+            
             <View style={{ alignItems: "center", marginBottom: 12 }}>
               <View
                 style={{
                   width: 40,
                   height: 4,
                   borderRadius: 2,
-                  backgroundColor: c.border,
-                }}
-              />
+                  backgroundColor: c.border
+                }} />
+              
             </View>
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                marginBottom: 18,
-              }}
-            >
+                marginBottom: 18
+              }}>
+              
               <Text
                 style={{
                   color: c.foreground,
                   fontWeight: "700",
                   fontSize: 17,
-                  flex: 1,
-                }}
-              >
+                  flex: 1
+                }}>
+                
                 {t("transactions.editCategory")}
               </Text>
               <Pressable
                 onPress={() => setCatModalTx(null)}
-                className="active:opacity-70"
-              >
+                className="active:opacity-70">
+                
                 <Ionicons name="close" size={22} color={c.textMuted} />
               </Pressable>
             </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
               {CATEGORIES.map((cat) => {
-                const currentKey = catModalTx
-                  ? categorizeTransaction(catModalTx).key
-                  : null;
+                const currentKey = catModalTx ?
+                categorizeTransaction(catModalTx).key :
+                null;
                 const isCurrent = cat.key === currentKey;
                 return (
                   <Pressable
@@ -1402,30 +1546,30 @@ export default function Transactions() {
                       gap: 6,
                       backgroundColor: isCurrent ? cat.color + "22" : c.card,
                       borderWidth: 1.5,
-                      borderColor: isCurrent ? cat.color : c.border,
-                    }}
-                  >
+                      borderColor: isCurrent ? cat.color : c.border
+                    }}>
+                    
                     <Ionicons
                       name={cat.icon}
                       size={16}
-                      color={isCurrent ? cat.color : c.textMuted}
-                    />
+                      color={isCurrent ? cat.color : c.textMuted} />
+                    
                     <Text
                       style={{
                         color: isCurrent ? cat.color : c.foreground,
                         fontWeight: "600",
-                        fontSize: 14,
-                      }}
-                    >
+                        fontSize: 14
+                      }}>
+                      
                       {t(`analytics.categories.${cat.key}`)}
                     </Text>
-                  </Pressable>
-                );
+                  </Pressable>);
+
               })}
             </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
-  );
+    </SafeAreaView>);
+
 }

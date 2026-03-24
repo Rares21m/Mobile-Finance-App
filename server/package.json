@@ -8,7 +8,12 @@
         "start": "node src/index.js",
         "db:migrate": "npx prisma migrate dev",
         "db:studio": "npx prisma studio",
-        "db:generate": "npx prisma generate"
+        "db:generate": "npx prisma generate",
+        "db:backfill": "node scripts/backfill-data-accuracy.js",
+        "db:seed:load": "node scripts/seed-load-analytics.js",
+        "test:aggregation": "node scripts/aggregation-snapshots.js",
+        "test:parity": "node scripts/parity-integration.js",
+        "profile:analytics": "node scripts/profile-analytics.js"
     },
     "dependencies": {
         "@google/generative-ai": "^0.24.1",
@@ -16,6 +21,7 @@
         "axios": "^1.7.0",
         "bcrypt": "^5.1.1",
         "cors": "^2.8.5",
+        "csv-parse": "^6.2.0",
         "dotenv": "^16.6.1",
         "express": "^4.21.0",
         "express-rate-limit": "^8.3.1",

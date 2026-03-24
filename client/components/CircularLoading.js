@@ -11,12 +11,12 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../context/ThemeContext";
 
 const ICONS = [
-  { name: "wallet", color: "#10B981" },
-  { name: "card", color: "#6366F1" },
-  { name: "cash-outline", color: "#22C55E" },
-  { name: "trending-up", color: "#F59E0B" },
-  { name: "business", color: "#818CF8" },
-];
+{ name: "wallet", color: "#10B981" },
+{ name: "card", color: "#6366F1" },
+{ name: "cash-outline", color: "#22C55E" },
+{ name: "trending-up", color: "#F59E0B" },
+{ name: "business", color: "#818CF8" }];
+
 
 export default function CircularLoading() {
   const { t } = useTranslation();
@@ -29,12 +29,12 @@ export default function CircularLoading() {
       Animated.timing(rotateAnim, {
         toValue: 1,
         duration: 2400,
-        useNativeDriver: true,
+        useNativeDriver: true
       })
     ).start();
   }, []);
 
-  const angleStep = (2 * Math.PI) / ICONS.length;
+  const angleStep = 2 * Math.PI / ICONS.length;
   const radius = 60;
 
   return (
@@ -46,15 +46,15 @@ export default function CircularLoading() {
           justifyContent: "center",
           alignItems: "center",
           transform: [
-            {
-              rotate: rotateAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: ["0deg", "360deg"],
-              }),
-            },
-          ],
-        }}
-      >
+          {
+            rotate: rotateAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: ["0deg", "360deg"]
+            })
+          }]
+
+        }}>
+        
         {ICONS.map((icon, idx) => {
           const angle = idx * angleStep;
           return (
@@ -69,33 +69,33 @@ export default function CircularLoading() {
                 borderRadius: 10,
                 backgroundColor: `${icon.color}15`,
                 alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+                justifyContent: "center"
+              }}>
+              
               <Ionicons
                 name={icon.name}
                 size={20}
-                color={icon.color}
-              />
-            </View>
-          );
+                color={icon.color} />
+              
+            </View>);
+
         })}
       </Animated.View>
       <Text style={[styles.text, { color: c.textMuted }]}>{t("auth.syncingData")}</Text>
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
   text: {
     marginTop: 32,
     fontSize: 14,
     fontWeight: "500",
-    letterSpacing: 0.3,
-  },
+    letterSpacing: 0.3
+  }
 });

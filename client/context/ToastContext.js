@@ -5,12 +5,12 @@
  */
 
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useRef,
-    useState,
-} from "react";
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useState } from
+"react";
 
 const ToastContext = createContext(null);
 
@@ -21,11 +21,11 @@ export function useToast() {
 }
 
 export function ToastProvider({ children }) {
-  const [toast, setToast] = useState(null); // { message, type: 'success'|'error'|'info' }
+  const [toast, setToast] = useState(null);
   const timerRef = useRef(null);
 
   const showToast = useCallback((message, type = "info") => {
-    // Clear any existing timer
+
     if (timerRef.current) clearTimeout(timerRef.current);
 
     setToast({ message, type });
@@ -43,6 +43,6 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ showToast, hideToast, toast }}>
       {children}
-    </ToastContext.Provider>
-  );
+    </ToastContext.Provider>);
+
 }

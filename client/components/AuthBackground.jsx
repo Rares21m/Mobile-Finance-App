@@ -10,60 +10,60 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useTheme } from "../context/ThemeContext";
 
-/**
- * Shared background layout for all auth screens (sign-in, sign-up, welcome).
- * Provides the gradient background, decorative circles, and optional back button.
- *
- * @param {ReactNode} children       - Screen content
- * @param {boolean}   [showBack]     - Show back button (default: true)
- */
-export default function AuthBackground({ children, showBack = true }) {
-    const { theme } = useTheme();
-    const c = theme.colors;
-    return (
-        <LinearGradient
-            colors={c.authBgGradient}
-            style={{ flex: 1 }}
-        >
-            {/* Decorative shapes */}
-            <View
-                style={{
-                    position: "absolute",
-                    top: -100,
-                    right: -80,
-                    width: 260,
-                    height: 260,
-                    borderRadius: 130,
-                    backgroundColor: c.authDecorCircle1,
-                }}
-            />
-            <View
-                style={{
-                    position: "absolute",
-                    bottom: 140,
-                    left: -70,
-                    width: 220,
-                    height: 220,
-                    borderRadius: 110,
-                    backgroundColor: c.authDecorCircle2,
-                }}
-            />
 
-            {/* Back button */}
-            {showBack && (
-                <Pressable
-                    className="absolute top-14 left-5 z-10 w-10 h-10 rounded-full bg-foreground/5 items-center justify-center active:opacity-70"
-                    onPress={() => router.back()}
-                >
+
+
+
+
+
+
+export default function AuthBackground({ children, showBack = true }) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  return (
+    <LinearGradient
+      colors={c.authBgGradient}
+      style={{ flex: 1 }}>
+      
+            {}
+            <View
+        style={{
+          position: "absolute",
+          top: -100,
+          right: -80,
+          width: 260,
+          height: 260,
+          borderRadius: 130,
+          backgroundColor: c.authDecorCircle1
+        }} />
+      
+            <View
+        style={{
+          position: "absolute",
+          bottom: 140,
+          left: -70,
+          width: 220,
+          height: 220,
+          borderRadius: 110,
+          backgroundColor: c.authDecorCircle2
+        }} />
+      
+
+            {}
+            {showBack &&
+      <Pressable
+        className="absolute top-14 left-5 z-10 w-10 h-10 rounded-full bg-foreground/5 items-center justify-center active:opacity-70"
+        onPress={() => router.back()}>
+        
                     <Ionicons
-                        name="chevron-back"
-                        size={22}
-                        color={c.textMuted}
-                    />
+          name="chevron-back"
+          size={22}
+          color={c.textMuted} />
+        
                 </Pressable>
-            )}
+      }
 
             {children}
-        </LinearGradient>
-    );
+        </LinearGradient>);
+
 }

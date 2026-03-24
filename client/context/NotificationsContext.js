@@ -9,12 +9,12 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useState,
-} from "react";
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState } from
+"react";
 
 export const INBOX_KEY = "notifications_inbox_v1";
 export const MAX_INBOX_SIZE = 50;
@@ -24,22 +24,22 @@ const NotificationsContext = createContext(null);
 export function useNotifications() {
   const ctx = useContext(NotificationsContext);
   if (!ctx)
-    throw new Error(
-      "useNotifications must be used within NotificationsProvider",
-    );
+  throw new Error(
+    "useNotifications must be used within NotificationsProvider"
+  );
   return ctx;
 }
 
 export function NotificationsProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
 
-  // Load persisted notifications on mount
+
   const reload = useCallback(async () => {
     try {
       const raw = await AsyncStorage.getItem(INBOX_KEY);
       if (raw) setNotifications(JSON.parse(raw));
     } catch {
-      // corrupted storage — start fresh
+
     }
   }, []);
 
@@ -51,7 +51,7 @@ export function NotificationsProvider({ children }) {
 
   const markAsRead = useCallback((id) => {
     setNotifications((prev) => {
-      const updated = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      const updated = prev.map((n) => n.id === id ? { ...n, read: true } : n);
       AsyncStorage.setItem(INBOX_KEY, JSON.stringify(updated)).catch(() => {});
       return updated;
     });
@@ -78,10 +78,10 @@ export function NotificationsProvider({ children }) {
         reload,
         markAsRead,
         markAllAsRead,
-        clearAll,
-      }}
-    >
+        clearAll
+      }}>
+      
       {children}
-    </NotificationsContext.Provider>
-  );
+    </NotificationsContext.Provider>);
+
 }

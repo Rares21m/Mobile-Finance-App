@@ -4,13 +4,13 @@
  */
 
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
-} from "react";
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState } from
+"react";
 import api from "../services/api";
 import { useAuth } from "./AuthContext";
 
@@ -27,7 +27,7 @@ export function GoalsProvider({ children }) {
   const [goals, setGoals] = useState([]);
   const [goalsLoaded, setGoalsLoaded] = useState(false);
 
-  // Fetch goals from server whenever user logs in
+
   useEffect(() => {
     if (!token) {
       setGoals([]);
@@ -35,11 +35,11 @@ export function GoalsProvider({ children }) {
       return;
     }
     setGoalsLoaded(false);
-    api
-      .get("/goals")
-      .then((res) => setGoals(res.data.goals || []))
-      .catch(() => {})
-      .finally(() => setGoalsLoaded(true));
+    api.
+    get("/goals").
+    then((res) => setGoals(res.data.goals || [])).
+    catch(() => {}).
+    finally(() => setGoalsLoaded(true));
   }, [token]);
 
   const createGoal = useCallback(async (data) => {
@@ -52,7 +52,7 @@ export function GoalsProvider({ children }) {
   const updateGoal = useCallback(async (id, data) => {
     const res = await api.put(`/goals/${id}`, data);
     const updated = res.data.goal;
-    setGoals((prev) => prev.map((g) => (g.id === id ? updated : g)));
+    setGoals((prev) => prev.map((g) => g.id === id ? updated : g));
     return updated;
   }, []);
 
@@ -63,10 +63,10 @@ export function GoalsProvider({ children }) {
 
   const value = useMemo(
     () => ({ goals, goalsLoaded, createGoal, updateGoal, deleteGoal }),
-    [goals, goalsLoaded, createGoal, updateGoal, deleteGoal],
+    [goals, goalsLoaded, createGoal, updateGoal, deleteGoal]
   );
 
   return (
-    <GoalsContext.Provider value={value}>{children}</GoalsContext.Provider>
-  );
+    <GoalsContext.Provider value={value}>{children}</GoalsContext.Provider>);
+
 }

@@ -21,47 +21,69 @@ import { useOnboarding } from "../context/OnboardingContext";
 import { useTheme } from "../context/ThemeContext";
 import { CATEGORIES } from "../utils/categoryUtils";
 
-// ─── Data definitions ─────────────────────────────────────────────────────────
+
 
 const GOALS = [
-  { key: "savings", icon: "wallet-outline", color: "#10B981" },
-  { key: "expense_control", icon: "bar-chart-outline", color: "#6366F1" },
-  { key: "investment", icon: "trending-up-outline", color: "#F59E0B" },
-  { key: "debt_freedom", icon: "shield-checkmark-outline", color: "#EF4444" },
-];
+{ key: "savings", icon: "wallet-outline", color: "#10B981" },
+{ key: "expense_control", icon: "bar-chart-outline", color: "#6366F1" },
+{ key: "investment", icon: "trending-up-outline", color: "#F59E0B" },
+{ key: "debt_freedom", icon: "shield-checkmark-outline", color: "#EF4444" }];
+
 
 const INCOME_RANGES = [
-  { key: "under_1500", label: "< 1 500 RON", midpoint: 1200 },
-  { key: "1500_3000", label: "1 500 – 3 000 RON", midpoint: 2250 },
-  { key: "3000_6000", label: "3 000 – 6 000 RON", midpoint: 4500 },
-  { key: "over_6000", label: "> 6 000 RON", midpoint: 8000 },
-];
+{ key: "under_1500", label: "< 1 500 RON", midpoint: 1200 },
+{ key: "1500_3000", label: "1 500 – 3 000 RON", midpoint: 2250 },
+{ key: "3000_6000", label: "3 000 – 6 000 RON", midpoint: 4500 },
+{ key: "over_6000", label: "> 6 000 RON", midpoint: 8000 }];
+
 
 const PRIORITY_CATEGORIES = [
-  { key: "food", icon: "restaurant", color: "#F59E0B" },
-  { key: "transport", icon: "car", color: "#3B82F6" },
-  { key: "shopping", icon: "bag-handle", color: "#EC4899" },
-  { key: "utilities", icon: "flash", color: "#8B5CF6" },
-  { key: "housing", icon: "home", color: "#14B8A6" },
-  { key: "entertainment", icon: "game-controller", color: "#F97316" },
-  { key: "health", icon: "medkit", color: "#EF4444" },
-  { key: "other", icon: "ellipsis-horizontal", color: "#6B7280" },
-];
+{ key: "food", icon: "restaurant", color: "#F59E0B" },
+{ key: "transport", icon: "car", color: "#3B82F6" },
+{ key: "shopping", icon: "bag-handle", color: "#EC4899" },
+{ key: "utilities", icon: "flash", color: "#8B5CF6" },
+{ key: "housing", icon: "home", color: "#14B8A6" },
+{ key: "entertainment", icon: "game-controller", color: "#F97316" },
+{ key: "health", icon: "medkit", color: "#EF4444" },
+{ key: "other", icon: "ellipsis-horizontal", color: "#6B7280" }];
 
-const NEEDS_CATEGORIES = [
-  "food",
-  "transport",
-  "utilities",
-  "housing",
-  "health",
-];
-const WANTS_CATEGORIES = ["shopping", "entertainment", "other"];
 
-// ─── OptionCard ───────────────────────────────────────────────────────────────
+const ALLOWED_GOALS = new Set(GOALS.map((g) => g.key));
+const ALLOWED_INCOME_RANGES = new Set(INCOME_RANGES.map((r) => r.key));
+const ALLOWED_PRIORITY_CATEGORIES = new Set(PRIORITY_CATEGORIES.map((c) => c.key));
+
+function sanitizeOnboardingPayload(goal, incomeRange, priorityCategories) {
+  if (!ALLOWED_GOALS.has(goal) || !ALLOWED_INCOME_RANGES.has(incomeRange)) {
+    return null;
+  }
+
+  const normalizedCategories = Array.from(
+    new Set(
+      (priorityCategories || []).filter((key) =>
+      ALLOWED_PRIORITY_CATEGORIES.has(key)
+      )
+    )
+  );
+
+  if (normalizedCategories.length === 0) {
+    return null;
+  }
+
+  return {
+    goal,
+    incomeRange,
+    priorityCategories: normalizedCategories
+  };
+}
+
+
 function OptionCard({ label, sublabel, icon, color, selected, onPress, c }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
       style={{
         backgroundColor: selected ? `${color}18` : c.card,
         borderRadius: 16,
@@ -70,9 +92,9 @@ function OptionCard({ label, sublabel, icon, color, selected, onPress, c }) {
         padding: 16,
         marginBottom: 10,
         flexDirection: "row",
-        alignItems: "center",
-      }}
-    >
+        alignItems: "center"
+      }}>
+      
       <View
         style={{
           width: 44,
@@ -81,31 +103,34 @@ function OptionCard({ label, sublabel, icon, color, selected, onPress, c }) {
           backgroundColor: `${color}18`,
           alignItems: "center",
           justifyContent: "center",
-          marginRight: 14,
-        }}
-      >
+          marginRight: 14
+        }}>
+        
         <Ionicons name={icon} size={22} color={color} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: c.foreground, fontWeight: "600", fontSize: 15 }}>
           {label}
         </Text>
-        {sublabel ? (
-          <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 2 }}>
+        {sublabel ?
+        <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 2 }}>
             {sublabel}
-          </Text>
-        ) : null}
+          </Text> :
+        null}
       </View>
       {selected && <Ionicons name="checkmark-circle" size={22} color={color} />}
-    </Pressable>
-  );
+    </Pressable>);
+
 }
 
-// ─── CategoryChip (multi-select) ─────────────────────────────────────────────
+
 function CategoryChip({ label, icon, color, selected, onPress, c }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
       style={{
         backgroundColor: selected ? `${color}18` : c.card,
         borderRadius: 12,
@@ -117,31 +142,31 @@ function CategoryChip({ label, icon, color, selected, onPress, c }) {
         alignItems: "center",
         margin: 4,
         minWidth: "44%",
-        flex: 1,
-      }}
-    >
+        flex: 1
+      }}>
+      
       <Ionicons
         name={icon}
         size={16}
         color={color}
-        style={{ marginRight: 6 }}
-      />
+        style={{ marginRight: 6 }} />
+      
       <Text
         style={{
           color: selected ? color : c.textMuted,
           fontSize: 13,
           fontWeight: selected ? "600" : "400",
-          flex: 1,
-        }}
-      >
+          flex: 1
+        }}>
+        
         {label}
       </Text>
       {selected && <Ionicons name="checkmark" size={14} color={color} />}
-    </Pressable>
-  );
+    </Pressable>);
+
 }
 
-// ─── Progress dots ────────────────────────────────────────────────────────────
+
 function ProgressDots({ current, total, c }) {
   return (
     <View
@@ -149,25 +174,51 @@ function ProgressDots({ current, total, c }) {
         flexDirection: "row",
         justifyContent: "center",
         gap: 8,
-        marginBottom: 32,
-      }}
-    >
-      {Array.from({ length: total }).map((_, i) => (
-        <View
-          key={i}
-          style={{
-            width: i === current ? 24 : 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: i <= current ? "#10B981" : c.border,
-          }}
-        />
-      ))}
-    </View>
-  );
+        marginBottom: 32
+      }}>
+      
+      {Array.from({ length: total }).map((_, i) =>
+      <View
+        key={i}
+        style={{
+          width: i === current ? 24 : 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: i <= current ? "#10B981" : c.border
+        }} />
+
+      )}
+    </View>);
+
 }
 
-// ─── Income Preview Card (50/30/20) ──────────────────────────────────────────
+function StepHint({ text, c }) {
+  return (
+    <View
+      style={{
+        backgroundColor: `${"#10B981"}12`,
+        borderWidth: 1,
+        borderColor: `${"#10B981"}30`,
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 16,
+        flexDirection: "row",
+        alignItems: "center"
+      }}>
+      
+      <Ionicons
+        name="information-circle-outline"
+        size={16}
+        color="#10B981"
+        style={{ marginRight: 8 }} />
+      
+      <Text style={{ color: c.textMuted, fontSize: 12, flex: 1 }}>{text}</Text>
+    </View>);
+
+}
+
+
 function IncomePreviewCard({ incomeRange, c, t }) {
   const range = INCOME_RANGES.find((r) => r.key === incomeRange);
   if (!range) return null;
@@ -185,61 +236,61 @@ function IncomePreviewCard({ incomeRange, c, t }) {
         borderWidth: 1,
         borderColor: `${"#10B981"}30`,
         padding: 16,
-        marginTop: 16,
-      }}
-    >
+        marginTop: 16
+      }}>
+      
       <View
-        style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
-      >
+        style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+        
         <Ionicons
           name="sparkles"
           size={16}
           color="#10B981"
-          style={{ marginRight: 6 }}
-        />
+          style={{ marginRight: 6 }} />
+        
         <Text style={{ color: "#10B981", fontWeight: "700", fontSize: 13 }}>
           {t("onboarding.step2.preview.label")}
         </Text>
       </View>
       {[
-        {
-          label: t("onboarding.step2.preview.needs"),
-          amount: needs,
-          color: "#6366F1",
-          icon: "home-outline",
-        },
-        {
-          label: t("onboarding.step2.preview.wants"),
-          amount: wants,
-          color: "#F59E0B",
-          icon: "heart-outline",
-        },
-        {
-          label: t("onboarding.step2.preview.savings"),
-          amount: savings,
-          color: "#10B981",
-          icon: "trending-up-outline",
-        },
-      ].map((row) => (
-        <View
-          key={row.label}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingVertical: 6,
-          }}
-        >
+      {
+        label: t("onboarding.step2.preview.needs"),
+        amount: needs,
+        color: "#6366F1",
+        icon: "home-outline"
+      },
+      {
+        label: t("onboarding.step2.preview.wants"),
+        amount: wants,
+        color: "#F59E0B",
+        icon: "heart-outline"
+      },
+      {
+        label: t("onboarding.step2.preview.savings"),
+        amount: savings,
+        color: "#10B981",
+        icon: "trending-up-outline"
+      }].
+      map((row) =>
+      <View
+        key={row.label}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 6
+        }}>
+        
           <View
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              backgroundColor: `${row.color}18`,
-              alignItems: "center",
-              justifyContent: "center",
-              marginRight: 10,
-            }}
-          >
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            backgroundColor: `${row.color}18`,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 10
+          }}>
+          
             <Ionicons name={row.icon} size={14} color={row.color} />
           </View>
           <Text style={{ color: c.textMuted, fontSize: 13, flex: 1 }}>
@@ -249,16 +300,16 @@ function IncomePreviewCard({ incomeRange, c, t }) {
             {row.amount.toLocaleString("ro-RO")} RON
           </Text>
         </View>
-      ))}
-    </View>
-  );
+      )}
+    </View>);
+
 }
 
-// ─── Budget Plan Row (used in step 4) ─────────────────────────────────────────
+
 function BudgetPlanRow({ catKey, amount, type, c, t }) {
   const cat = CATEGORIES.find((x) => x.key === catKey) || {
     icon: "ellipsis-horizontal",
-    color: "#6B7280",
+    color: "#6B7280"
   };
   return (
     <View
@@ -267,9 +318,9 @@ function BudgetPlanRow({ catKey, amount, type, c, t }) {
         alignItems: "center",
         paddingVertical: 9,
         borderBottomWidth: 0.5,
-        borderBottomColor: c.border,
-      }}
-    >
+        borderBottomColor: c.border
+      }}>
+      
       <View
         style={{
           width: 32,
@@ -278,9 +329,9 @@ function BudgetPlanRow({ catKey, amount, type, c, t }) {
           backgroundColor: `${cat.color}18`,
           alignItems: "center",
           justifyContent: "center",
-          marginRight: 10,
-        }}
-      >
+          marginRight: 10
+        }}>
+        
         <Ionicons name={cat.icon} size={16} color={cat.color} />
       </View>
       <Text style={{ color: c.foreground, fontSize: 14, flex: 1 }}>
@@ -294,19 +345,19 @@ function BudgetPlanRow({ catKey, amount, type, c, t }) {
           backgroundColor: type === "need" ? "#6366F120" : "#F59E0B20",
           paddingHorizontal: 6,
           paddingVertical: 2,
-          borderRadius: 6,
-        }}
-      >
+          borderRadius: 6
+        }}>
+        
         {type === "need" ? t("budget.needsLabel") : t("budget.wantsLabel")}
       </Text>
       <Text style={{ color: c.foreground, fontWeight: "700", fontSize: 14 }}>
         {Math.round(amount)} RON
       </Text>
-    </View>
-  );
+    </View>);
+
 }
 
-// ─── Main wizard ──────────────────────────────────────────────────────────────
+
 export default function Onboarding() {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -322,11 +373,13 @@ export default function Onboarding() {
   const [incomeRange, setIncomeRange] = useState(null);
   const [priorityCategories, setPriorityCategories] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
-  // ── helpers ──────────────────────────────────────────────────────────────
+
   function toggleCategory(key) {
+    setValidationError("");
     setPriorityCategories((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
   }
 
@@ -334,32 +387,49 @@ export default function Onboarding() {
     if (step === 0) return !!goal;
     if (step === 1) return !!incomeRange;
     if (step === 2) return priorityCategories.length > 0;
-    if (step === 3) return true; // step 4 always allows continuing
+    if (step === 3) return true;
     return false;
   }
 
-  // Compute suggestions for step 4
+
   function getSuggestions() {
-    const profile = { goal, incomeRange, priorityCategories };
-    return getSuggestedBudgets(profile);
+    const profile = sanitizeOnboardingPayload(
+      goal,
+      incomeRange,
+      priorityCategories
+    );
+    return profile ? getSuggestedBudgets(profile) : [];
   }
 
   async function finishWithPlan(acceptPlan) {
     if (saving) return;
+
+    const strictPayload = sanitizeOnboardingPayload(
+      goal,
+      incomeRange,
+      priorityCategories
+    );
+
+    if (!strictPayload) {
+      setValidationError(t("onboarding.validationError"));
+      return;
+    }
+
+    setValidationError("");
     setSaving(true);
     if (acceptPlan) {
-      const suggestions = getSuggestions();
+      const suggestions = getSuggestedBudgets(strictPayload);
       if (suggestions.length > 0) {
         applySuggestedBudgets(suggestions);
       }
     }
-    await saveProfile({ goal, incomeRange, priorityCategories });
+    await saveProfile(strictPayload);
     router.replace("/(tabs)");
   }
 
-  // ── Step content ─────────────────────────────────────────────────────────
+
   function renderStep() {
-    // ── Step 1: Goal ──────────────────────────────────────────────────────
+
     if (step === 0) {
       return (
         <>
@@ -369,9 +439,9 @@ export default function Onboarding() {
               fontSize: 24,
               fontWeight: "800",
               textAlign: "center",
-              marginBottom: 8,
-            }}
-          >
+              marginBottom: 8
+            }}>
+            
             {t("onboarding.step1.title")}
           </Text>
           <Text
@@ -379,28 +449,32 @@ export default function Onboarding() {
               color: c.textMuted,
               fontSize: 14,
               textAlign: "center",
-              marginBottom: 28,
-            }}
-          >
+              marginBottom: 28
+            }}>
+            
             {t("onboarding.step1.subtitle")}
           </Text>
-          {GOALS.map((g) => (
-            <OptionCard
-              key={g.key}
-              label={t(`onboarding.goals.${g.key}.label`)}
-              sublabel={t(`onboarding.goals.${g.key}.sublabel`)}
-              icon={g.icon}
-              color={g.color}
-              selected={goal === g.key}
-              onPress={() => setGoal(g.key)}
-              c={c}
-            />
-          ))}
-        </>
-      );
+          <StepHint text={t("onboarding.step1.why")} c={c} />
+          {GOALS.map((g) =>
+          <OptionCard
+            key={g.key}
+            label={t(`onboarding.goals.${g.key}.label`)}
+            sublabel={t(`onboarding.goals.${g.key}.sublabel`)}
+            icon={g.icon}
+            color={g.color}
+            selected={goal === g.key}
+            onPress={() => {
+              setValidationError("");
+              setGoal(g.key);
+            }}
+            c={c} />
+
+          )}
+        </>);
+
     }
 
-    // ── Step 2: Income + 50/30/20 preview ────────────────────────────────
+
     if (step === 1) {
       return (
         <>
@@ -410,9 +484,9 @@ export default function Onboarding() {
               fontSize: 24,
               fontWeight: "800",
               textAlign: "center",
-              marginBottom: 8,
-            }}
-          >
+              marginBottom: 8
+            }}>
+            
             {t("onboarding.step2.title")}
           </Text>
           <Text
@@ -420,31 +494,35 @@ export default function Onboarding() {
               color: c.textMuted,
               fontSize: 14,
               textAlign: "center",
-              marginBottom: 28,
-            }}
-          >
+              marginBottom: 28
+            }}>
+            
             {t("onboarding.step2.subtitle")}
           </Text>
-          {INCOME_RANGES.map((r) => (
-            <OptionCard
-              key={r.key}
-              label={r.label}
-              icon="cash-outline"
-              color="#10B981"
-              selected={incomeRange === r.key}
-              onPress={() => setIncomeRange(r.key)}
-              c={c}
-            />
-          ))}
-          {/* Live 50/30/20 preview */}
-          {incomeRange && (
-            <IncomePreviewCard incomeRange={incomeRange} c={c} t={t} />
+          <StepHint text={t("onboarding.step2.why")} c={c} />
+          {INCOME_RANGES.map((r) =>
+          <OptionCard
+            key={r.key}
+            label={r.label}
+            icon="cash-outline"
+            color="#10B981"
+            selected={incomeRange === r.key}
+            onPress={() => {
+              setValidationError("");
+              setIncomeRange(r.key);
+            }}
+            c={c} />
+
           )}
-        </>
-      );
+          {}
+          {incomeRange &&
+          <IncomePreviewCard incomeRange={incomeRange} c={c} t={t} />
+          }
+        </>);
+
     }
 
-    // ── Step 3: Priority categories ───────────────────────────────────────
+
     if (step === 2) {
       return (
         <>
@@ -454,9 +532,9 @@ export default function Onboarding() {
               fontSize: 24,
               fontWeight: "800",
               textAlign: "center",
-              marginBottom: 8,
-            }}
-          >
+              marginBottom: 8
+            }}>
+            
             {t("onboarding.step3.title")}
           </Text>
           <Text
@@ -464,41 +542,42 @@ export default function Onboarding() {
               color: c.textMuted,
               fontSize: 14,
               textAlign: "center",
-              marginBottom: 28,
-            }}
-          >
+              marginBottom: 28
+            }}>
+            
             {t("onboarding.step3.subtitle")}
           </Text>
+          <StepHint text={t("onboarding.step3.why")} c={c} />
           <View style={{ flexDirection: "row", flexWrap: "wrap", margin: -4 }}>
-            {PRIORITY_CATEGORIES.map((cat) => (
-              <CategoryChip
-                key={cat.key}
-                label={t(`analytics.categories.${cat.key}`)}
-                icon={cat.icon}
-                color={cat.color}
-                selected={priorityCategories.includes(cat.key)}
-                onPress={() => toggleCategory(cat.key)}
-                c={c}
-              />
-            ))}
+            {PRIORITY_CATEGORIES.map((cat) =>
+            <CategoryChip
+              key={cat.key}
+              label={t(`analytics.categories.${cat.key}`)}
+              icon={cat.icon}
+              color={cat.color}
+              selected={priorityCategories.includes(cat.key)}
+              onPress={() => toggleCategory(cat.key)}
+              c={c} />
+
+            )}
           </View>
-          {priorityCategories.length === 0 && (
-            <Text
-              style={{
-                color: c.textMuted,
-                fontSize: 12,
-                textAlign: "center",
-                marginTop: 12,
-              }}
-            >
+          {priorityCategories.length === 0 &&
+          <Text
+            style={{
+              color: c.textMuted,
+              fontSize: 12,
+              textAlign: "center",
+              marginTop: 12
+            }}>
+            
               {t("onboarding.step3.hint")}
             </Text>
-          )}
-        </>
-      );
+          }
+        </>);
+
     }
 
-    // ── Step 4: Budget plan summary ───────────────────────────────────────
+
     if (step === 3) {
       const suggestions = getSuggestions();
       const range = INCOME_RANGES.find((r) => r.key === incomeRange);
@@ -513,9 +592,9 @@ export default function Onboarding() {
               fontSize: 24,
               fontWeight: "800",
               textAlign: "center",
-              marginBottom: 8,
-            }}
-          >
+              marginBottom: 8
+            }}>
+            
             {t("onboarding.step4.title")}
           </Text>
           <Text
@@ -523,98 +602,99 @@ export default function Onboarding() {
               color: c.textMuted,
               fontSize: 14,
               textAlign: "center",
-              marginBottom: 24,
-            }}
-          >
+              marginBottom: 24
+            }}>
+            
             {t("onboarding.step4.subtitle")}
           </Text>
+          <StepHint text={t("onboarding.step4.why")} c={c} />
 
-          {suggestions.length === 0 ? (
-            <Text
-              style={{ color: c.textMuted, textAlign: "center", fontSize: 14 }}
-            >
+          {suggestions.length === 0 ?
+          <Text
+            style={{ color: c.textMuted, textAlign: "center", fontSize: 14 }}>
+            
               {t("onboarding.step4.noSuggestions")}
-            </Text>
-          ) : (
-            <>
-              {/* Budget rows */}
+            </Text> :
+
+          <>
+              {}
               <View
-                style={{
-                  backgroundColor: c.card,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  padding: 16,
-                  marginBottom: 12,
-                }}
-              >
-                {suggestions.map((s) => (
-                  <BudgetPlanRow
-                    key={s.key}
-                    catKey={s.key}
-                    amount={s.suggestedLimit}
-                    type={s.type}
-                    c={c}
-                    t={t}
-                  />
-                ))}
+              style={{
+                backgroundColor: c.card,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: c.border,
+                padding: 16,
+                marginBottom: 12
+              }}>
+              
+                {suggestions.map((s) =>
+              <BudgetPlanRow
+                key={s.key}
+                catKey={s.key}
+                amount={s.suggestedLimit}
+                type={s.type}
+                c={c}
+                t={t} />
+
+              )}
               </View>
 
-              {/* Savings note */}
+              {}
               <View
-                style={{
-                  backgroundColor: "#10B98110",
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: "#10B98130",
-                  padding: 14,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
+              style={{
+                backgroundColor: "#10B98110",
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: "#10B98130",
+                padding: 14,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10
+              }}>
+              
                 <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: "#10B98120",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: "#10B98120",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                
                   <Ionicons
-                    name="trending-up-outline"
-                    size={18}
-                    color="#10B981"
-                  />
+                  name="trending-up-outline"
+                  size={18}
+                  color="#10B981" />
+                
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text
-                    style={{
-                      color: "#10B981",
-                      fontWeight: "700",
-                      fontSize: 13,
-                    }}
-                  >
+                  style={{
+                    color: "#10B981",
+                    fontWeight: "700",
+                    fontSize: 13
+                  }}>
+                  
                     {t("onboarding.step4.savingsNote")} —{" "}
                     {savingsAmount.toLocaleString("ro-RO")} RON
                   </Text>
                   <Text
-                    style={{ color: c.textMuted, fontSize: 11, marginTop: 2 }}
-                  >
+                  style={{ color: c.textMuted, fontSize: 11, marginTop: 2 }}>
+                  
                     {t("onboarding.step4.savingsDesc")}
                   </Text>
                 </View>
               </View>
             </>
-          )}
-        </>
-      );
+          }
+        </>);
+
     }
   }
 
-  // ── Step 4 has custom action buttons ─────────────────────────────────────
+
   const isLastStep = step === TOTAL_STEPS - 1;
 
   return (
@@ -624,12 +704,12 @@ export default function Onboarding() {
           flexGrow: 1,
           paddingHorizontal: 24,
           paddingTop: 64,
-          paddingBottom: 40,
+          paddingBottom: 40
         }}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Logo / badge */}
+        showsVerticalScrollIndicator={false}>
+        
+        {}
         <View style={{ alignItems: "center", marginBottom: 32 }}>
           <LinearGradient
             colors={["#10B981", "#6366F1"]}
@@ -640,9 +720,9 @@ export default function Onboarding() {
               height: 60,
               borderRadius: 20,
               alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+              justifyContent: "center"
+            }}>
+            
             <Ionicons name="sparkles" size={28} color="#fff" />
           </LinearGradient>
           <Text style={{ color: c.textMuted, fontSize: 13, marginTop: 10 }}>
@@ -650,44 +730,55 @@ export default function Onboarding() {
           </Text>
         </View>
 
-        {/* Progress */}
+        {}
         <ProgressDots current={step} total={TOTAL_STEPS} c={c} />
 
-        {/* Step content */}
+        {}
         {renderStep()}
 
-        {/* Navigation buttons */}
+        {}
         <View style={{ marginTop: 28, gap: 12 }}>
-          {isLastStep ? (
-            // Step 4: single CTA — Accept Plan
-            <>
+          {!!validationError &&
+          <Text style={{ color: "#F87171", fontSize: 12, textAlign: "center" }}>
+              {validationError}
+            </Text>
+          }
+          {isLastStep ?
+
+          <>
               <GradientButton
-                onPress={() => finishWithPlan(true)}
-                disabled={saving}
-                label={t("onboarding.step4.accept")}
-              />
-            </>
-          ) : (
-            <>
+              onPress={() => finishWithPlan(true)}
+              disabled={saving}
+              label={t("onboarding.step4.accept")} />
+            
+            </> :
+
+          <>
               <GradientButton
-                onPress={() => setStep((s) => s + 1)}
-                disabled={!canAdvance() || saving}
-                label={t("onboarding.next")}
-              />
-              {step > 0 && (
-                <Pressable
-                  onPress={() => setStep((s) => s - 1)}
-                  style={{ alignItems: "center", paddingVertical: 8 }}
-                >
+              onPress={() => {
+                setValidationError("");
+                setStep((s) => s + 1);
+              }}
+              disabled={!canAdvance() || saving}
+              label={t("onboarding.next")} />
+            
+              {step > 0 &&
+            <Pressable
+              onPress={() => {
+                setValidationError("");
+                setStep((s) => s - 1);
+              }}
+              style={{ alignItems: "center", paddingVertical: 8 }}>
+              
                   <Text style={{ color: c.textMuted, fontSize: 14 }}>
                     {t("onboarding.back")}
                   </Text>
                 </Pressable>
-              )}
+            }
             </>
-          )}
+          }
         </View>
       </ScrollView>
-    </AuthBackground>
-  );
+    </AuthBackground>);
+
 }

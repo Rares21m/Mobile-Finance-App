@@ -8,7 +8,11 @@
     "delete": "Delete",
     "confirm": "Confirm",
     "currency": "RON",
-    "noData": "No data available"
+    "noData": "No data available",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "older": "Older",
+    "view": "View"
   },
   "auth": {
     "welcomeTitle1": "All your finances",
@@ -65,6 +69,9 @@
     "transaction": "Transaction",
     "seeAll": "See all",
     "quickActions": "Quick actions",
+    "actionCenter": {
+      "title": "Action center"
+    },
     "transfer": "Transfer",
     "pay": "Pay",
     "request": "Request",
@@ -140,6 +147,34 @@
       "accept": "Accept adjustments",
       "remindLater": "Remind me in 3 days",
       "dismiss": "No thanks"
+    },
+    "reentry": {
+      "title": "Welcome back after {{days}} days",
+      "body3": "Take one quick action today to get your budget rhythm back.",
+      "body7": "A weekly reset helps prevent overspending surprises later in the month.",
+      "body14": "Let's restart with one clear action, then review trends and recurring bills.",
+      "cta": "Resume with best action"
+    },
+    "bestNextAction": {
+      "title": "Best next action this week",
+      "fallbackTitle": "Review your latest transactions",
+      "fallbackBody": "Start with one quick check to keep spending on track."
+    },
+    "weeklyDigest": {
+      "title": "Weekly digest",
+      "subtitle": "Your last 7 days at a glance",
+      "subtitleA": "Your last 7 days at a glance",
+      "subtitleB": "Your weekly money pulse in one minute",
+      "expenses": "Spent: {{amount}} RON",
+      "income": "Income: {{amount}} RON",
+      "trendUp": "Spending is up by {{pct}}% vs previous week",
+      "trendDown": "Spending is down by {{pct}}% vs previous week",
+      "noBaseline": "No previous-week baseline yet",
+      "topCategory": "Top category: {{category}}",
+      "defaultAction": "Review latest transactions",
+      "defaultActionA": "Review latest transactions",
+      "defaultActionB": "Take the fastest win for this week",
+      "inboxBody": "This week: {{expenses}} RON spent. {{trend}}"
     }
   },
   "accounts": {
@@ -167,6 +202,12 @@
     "disconnectSuccess": "{{bank}} disconnected successfully",
     "disconnectError": "Could not disconnect the bank. Please try again.",
     "notConnected": "Not connected",
+    "healthDegraded": "Connection degraded",
+    "healthExpired": "Session expired",
+    "connectionWarning": "Connection status needs attention",
+    "lastSync": "Last sync: {{time}}",
+    "lastSyncUnknown": "not available",
+    "dataMayBeOutdated": "Data may be outdated",
     "connectNow": "Connect now",
     "whyConnect": "Why connect?",
     "benefitBalances": "Real-time balances",
@@ -180,17 +221,54 @@
   "analytics": {
     "title": "Analytics",
     "subtitle": "Analyze your spending",
-    "thisMonth": "Current month",
-    "lastMonth": "Last month",
-    "threeMonths": "90 days",
+    "period": "Period",
+    "thisMonth": "This Month",
+    "lastMonth": "Last Month",
+    "threeMonths": "3 Months",
     "totalExpenses": "Total expenses",
     "income": "Income",
     "expenses": "Expenses",
-    "noData": "No data available",
-    "noDataDesc": "Connect a bank account to see detailed analytics.",
-    "recentTransactions": "Recent transactions",
+    "noData": "No transactions",
+    "noDataDesc": "We couldn't find any transactions for the selected period.",
+    "syncingData": "Syncing data...",
+    "syncingHint": "Updating from bank",
+    "loadingCharts": "Loading charts...",
+    "activeViews": {
+      "past": "Past",
+      "present": "Present",
+      "future": "Future"
+    },
+    "past": {
+      "exportReport": "Download PDF Report"
+    },
+    "present": {
+      "safeToSpendTitle": "Safe to Spend",
+      "dailyLimit": "Daily limit",
+      "daysLeft": "Days left",
+      "projectedIncomeHint": "Based on projected income"
+    },
+    "future": {
+      "forecast": "Financial Forecast (AI)",
+      "upcomingBills": "Upcoming Recurring Payments",
+      "goalProjection": "Goal Projections",
+      "today": "Today",
+      "endOfMonth": "End of Month Forecast",
+      "estimatedBalance": "Estimated balance",
+      "aiInsightTitle": "Your AI Insight",
+      "trendSlope": "Daily trend",
+      "netChange": "Projected evolution",
+      "insights": {
+        "stable": "Everything looks stable. Keep your current habits to stay in the safe zone.",
+        "warning": "Careful! Your trend suggests a balance drop. Try reducing non-essential spending.",
+        "positive": "Excellent! The forecast shows a healthy growth in your savings this month."
+      },
+      "volatility": "Volatility",
+      "volatilityLow": "Low",
+      "volatilityHigh": "High"
+    },
+    "recentTransactions": "Recent Transactions",
     "transaction": "Transaction",
-    "byCategory": "By category",
+    "byCategory": "Spending by Category",
     "dailySpending": "Daily spending",
     "transactions": "transactions",
     "categoryDetails": "Transactions - {{category}}",
@@ -200,7 +278,7 @@
     "vsLastMonth": "vs. last month",
     "spendingInsights": "Spending insights",
     "noTransactionsInCategory": "No transactions in this category",
-    "quickAccess": "Explore",
+
     "fab": {
       "categorii": "Categories",
       "recurente": "Recurring",
@@ -278,6 +356,33 @@
       "transfer": "Transfers",
       "salary": "Salary",
       "other": "Other"
+    },
+    "health": {
+      "title": "Financial Health",
+      "savings": "Savings",
+      "budget": "Budget",
+      "diversity": "Diversity",
+      "trend": "Trend"
+    },
+    "smart": {
+      "netPositive": "You saved {{amount}} RON this month",
+      "netNegative": "You spent {{amount}} RON above income",
+      "spendingDown": "Spending is down {{pct}}% vs. last month",
+      "spendingUp": "Spending is up {{pct}}% vs. last month",
+      "topCategory": "Top: {{category}} — {{amount}} RON ({{pct}}%)",
+      "savingsRate": "Savings rate: {{pct}}%"
+    },
+    "anomaly": {
+      "spike": "{{category}}: +{{pct}}% vs. last month",
+      "budgetBurst": "{{category}}: budget exceeded by {{pct}}%",
+      "goodSavings": "Excellent! Saving {{pct}}% of income",
+      "spendingDown": "Spending down {{pct}}% this month!"
+    },
+    "trend": {
+      "title": "Monthly Trend",
+      "bestMonth": "Best month",
+      "worstMonth": "Worst month",
+      "avgSavings": "Avg savings"
     }
   },
   "advisor": {
@@ -291,8 +396,21 @@
     "suggestion2": "Analyze this month's spending",
     "suggestion3": "What subscriptions do I have?",
     "suggestion4": "What are my biggest expenses?",
+    "followUpTitle": "Follow-up actions",
+    "followUpAccept": "Remind me tomorrow",
+    "followUpAccepted": "Reminder set",
+    "followUpReminderTitle": "Advisor follow-up",
+    "followUpReminderBody": "Reminder: {{body}}",
+    "retry": "Retry last question",
+    "inputA11y": "Advisor message input",
+    "sendA11y": "Send advisor message",
+    "retryA11y": "Retry the last failed advisor question",
+    "replyReceivedA11y": "Advisor reply received",
+    "suggestionA11y": "Use suggestion: {{suggestion}}",
     "errorNotConfigured": "⚠️ The AI service is not configured yet. Please set the GEMINI_API_KEY on the server.",
     "errorQuota": "⚠️ AI quota exceeded. Enable the Generative Language API in Google Cloud Console for your project.",
+    "errorTimeout": "⚠️ The advisor request timed out. Please try again.",
+    "errorNetwork": "⚠️ Network issue detected. Check your connection and retry.",
     "errorGeneric": "⚠️ Something went wrong. Please try again later."
   },
   "profile": {
@@ -313,10 +431,26 @@
     "version": "v1.0.0",
     "logout": "Sign out",
     "sectionAccount": "Account",
+    "sectionSecurity": "Security",
     "sectionPreferences": "Preferences",
     "sectionOther": "Other",
-    "achievements": "Your Achievements",
-    "badgesUnlocked": "badges unlocked",
+    "sectionSupport": "Support",
+    "quickActions": "Quick settings",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "themeDarkDesc": "Dark background, easy on the eyes",
+    "themeLightDesc": "Bright, clean interface",
+    "a11yAvatar": "Edit profile photo",
+    "a11yEditProfile": "Edit profile information",
+    "a11ySecurity": "Open security settings",
+    "a11yBiometricSwitch": "Toggle biometric login",
+    "a11yNotificationsSwitch": "Toggle notifications",
+    "a11yLanguage": "Change language",
+    "a11yTheme": "Change theme",
+    "a11yHelp": "Open help and support",
+    "a11yTerms": "Open terms and conditions",
+    "a11yAbout": "Open app information",
+    "a11yLogout": "Sign out from account",
     "editProfileTitle": "Edit profile",
     "namePlaceholder": "Your name",
     "emailPlaceholder": "Email address",
@@ -458,6 +592,17 @@
       "income": "Income"
     },
     "filters": "Filters",
+    "quickPresetsLabel": "Quick presets",
+    "quickPresets": {
+      "today": "Today",
+      "last7": "7 days",
+      "thisMonth": "Month",
+      "manual": "Manual",
+      "recurring": "Recurring"
+    },
+    "longPressHintTitle": "Quick tip",
+    "longPressHintBody": "Long-press a transaction to recategorize, edit or delete it.",
+    "dismissHint": "Got it",
     "dateRange": "Date range",
     "amountRange": "Amount range (RON)",
     "from": "From",
@@ -525,11 +670,13 @@
     "finish": "Get started",
     "step1": {
       "title": "What's your main goal?",
-      "subtitle": "We'll personalise the app and your AI advisor around this."
+      "subtitle": "We'll personalise the app and your AI advisor around this.",
+      "why": "This keeps recommendations focused on your most important outcome."
     },
     "step2": {
       "title": "Monthly income range",
       "subtitle": "Approximate is fine — this helps us suggest realistic budgets.",
+      "why": "We use your range only for estimates, never for exact salary tracking.",
       "preview": {
         "label": "Your estimated plan (50/30/20)",
         "needs": "Necessities (50%)",
@@ -540,17 +687,20 @@
     "step3": {
       "title": "What matters most?",
       "subtitle": "Pick the spending areas you want to keep an eye on.",
+      "why": "These categories are prioritized in alerts, budgets and advisor tips.",
       "hint": "Select at least one category to continue."
     },
     "step4": {
       "title": "Your financial plan",
       "subtitle": "Based on your answers, here's your personalised budget plan.",
+      "why": "You can always adjust this plan later from Budget settings.",
       "savingsNote": "Recommended savings (20%)",
       "savingsDesc": "This is the amount you could set aside each month.",
       "accept": "Accept plan",
       "skip": "Customise later",
       "noSuggestions": "Select categories in the previous step to see your plan."
     },
+    "validationError": "Please complete all onboarding fields to continue.",
     "goals": {
       "savings": {
         "label": "Build savings",
@@ -588,6 +738,9 @@
   "inbox": {
     "title": "Notifications",
     "emptyTitle": "No notifications yet",
-    "emptyDesc": "Budget alerts, earned badges and monthly check-ins will appear here."
+    "emptyDesc": "Budget alerts and monthly check-ins will appear here.",
+    "new": "New",
+    "read": "Read",
+    "unreadSuffix": "unread"
   }
 }

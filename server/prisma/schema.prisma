@@ -24,7 +24,8 @@ model User {
   savingsGoals                 SavingsGoal[]
   manualTransactions           ManualTransaction[]
   transactionCategoryOverrides TransactionCategoryOverride[]
-  userBadges                   UserBadge[]
+  idempotencyKeys              IdempotencyKey[]
+  monthlyTransactionSummaries  MonthlyTransactionSummary[]
 }
 
 model BudgetLimit {
@@ -94,30 +95,40 @@ model Transaction {
   bankConnectionId String
   bankConnection   BankConnection @relation(fields: [bankConnectionId], references: [id], onDelete: Cascade)
   transactionId    String?
+  canonicalId      String?
   amount           Decimal
   currency         String         @default("RON")
+  sourceLabel      String         @default("synced")
   creditorName     String?
   debtorName       String?
+  merchantNormalized String?
+  inferredCategory String?
   bookingDate      DateTime?
   valueDate        DateTime?
+  normalizedBookingDate DateTime?
+  normalizedValueDate   DateTime?
   remittanceInfo   String?
+  payloadHash      String?
+  syncBatchId      String?
+  isDuplicate      Boolean        @default(false)
+  duplicateOfId    String?
+  duplicateOf      Transaction?   @relation("TransactionDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates       Transaction[]  @relation("TransactionDuplicates")
   category         String?
   createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([bankConnectionId])
-  @@index([bookingDate])
+  @@index([bookingDate(sort: Desc)])
+  @@index([bankConnectionId, bookingDate(sort: Desc)])
+  @@index([bankConnectionId, valueDate(sort: Desc)])
+  @@index([canonicalId])
+  @@index([merchantNormalized])
+  @@index([isDuplicate, canonicalId])
+  @@unique([bankConnectionId, canonicalId])
 }
 
-model UserBadge {
-  id       String   @id @default(uuid())
-  userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badgeId  String
-  earnedAt DateTime @default(now())
 
-  @@unique([userId, badgeId])
-  @@index([userId])
-}
 
 model ManualTransaction {
   id          String   @id @default(uuid())
@@ -133,6 +144,7 @@ model ManualTransaction {
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, date(sort: Desc)])
   @@index([date])
 }
 
@@ -147,4 +159,45 @@ model TransactionCategoryOverride {
 
   @@unique([userId, transactionId])
   @@index([userId])
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model IdempotencyKey {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint       String
+  key            String
+  requestHash    String
+  responseStatus Int?
+  responseBody   Json?
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  @@unique([userId, endpoint, key])
+  @@index([expiresAt])
+}
+
+model MonthlyTransactionSummary {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthStart    DateTime
+  currency      String   @default("RON")
+  incomeTotal   Decimal  @default(0)
+  expenseTotal  Decimal  @default(0)
+  netTotal      Decimal  @default(0)
+  transactionCount Int   @default(0)
+  manualCount   Int      @default(0)
+  syncedCount   Int      @default(0)
+  inferredCount Int      @default(0)
+  cachedCount   Int      @default(0)
+  topCategory   String?
+  topMerchant   String?
+  sourceUpdatedAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, monthStart, currency])
+  @@index([userId, monthStart(sort: Desc)])
 }

@@ -1,21 +1,21 @@
 const crypto = require('crypto');
 
-// In-memory store for our mock authorization codes
+
 const mockAuthCodes = new Map();
 
-/**
- * Handle GET /api/brd/oauth/authorize
- * Serves a mock HTML page simulating the BRD Login/Consent flow.
- */
+
+
+
+
 exports.renderAuthorizePage = (req, res) => {
   const { redirect_uri, client_id, state, code_challenge, code_challenge_method } = req.query;
 
-  // Validate required OAuth2 PKCE parameters
+
   if (!redirect_uri || !client_id || !state || !code_challenge) {
     return res.status(400).send('Missing required OAuth2 parameters');
   }
 
-  // HTML content simulating the bank's login and consent screen
+
   const html = `
     <!DOCTYPE html>
     <html lang="ro">
@@ -67,70 +67,70 @@ exports.renderAuthorizePage = (req, res) => {
   res.send(html);
 };
 
-/**
- * Handle POST /api/brd/oauth/authorize
- * Receives the user's choice from the HTML form and redirects back to the app protocol with a mock code.
- */
+
+
+
+
 exports.handleAuthorizeSubmit = (req, res) => {
   console.log('WebView POST /authorize body:', req.body);
   const { redirect_uri, state, code_challenge, code_challenge_method, action } = req.body;
 
   if (action === 'deny') {
-    // Redirect back with error
+
     return res.redirect(`${redirect_uri}?error=access_denied&state=${state}`);
   }
 
   if (action === 'approve') {
-    // Generate a mock authorization code
+
     const authCode = crypto.randomBytes(16).toString('hex');
 
-    // Store it alongside the challenge to verify later in /token (PKCE)
+
     mockAuthCodes.set(authCode, { code_challenge, code_challenge_method });
 
-    // Cleanup old codes after 5 minutes to prevent memory leaks in dev
+
     setTimeout(() => {
       mockAuthCodes.delete(authCode);
     }, 5 * 60 * 1000);
 
-    // Redirect back to the App using the deep link protocol
+
     return res.redirect(`${redirect_uri}?code=${authCode}&state=${state}`);
   }
 
   res.status(400).send('Invalid action');
 };
 
-/**
- * Handle POST /api/brd/oauth/token
- * Receives the authorization_code and code_verifier back from the backend/app 
- * and issues mock access and refresh tokens.
- */
+
+
+
+
+
 exports.exchangeToken = (req, res) => {
   const { grant_type, code, redirect_uri, client_id, code_verifier } = req.body;
 
   if (grant_type === 'authorization_code') {
-    // Validate the code
+
     const codeData = mockAuthCodes.get(code);
     if (!codeData) {
       return res.status(400).json({ error: 'invalid_grant', error_description: 'Invalid or expired authorization code' });
     }
 
-    // Validate PKCE
+
     if (code_verifier && codeData.code_challenge) {
-      // In a real implementation we would base64url(sha256(code_verifier)) and check if it equals code_challenge.
-      // For this mock we just ensure both are present.
+
+
     }
 
-    // Code is valid, mark as used
+
     mockAuthCodes.delete(code);
 
-    // Issue mock tokens
+
     const access_token = 'brd_mock_access_' + crypto.randomBytes(16).toString('hex');
     const refresh_token = 'brd_mock_refresh_' + crypto.randomBytes(16).toString('hex');
 
     return res.json({
       access_token,
       token_type: 'Bearer',
-      expires_in: 3600, // 1 hour
+      expires_in: 3600,
       refresh_token,
       scope: 'AIS'
     });
@@ -142,12 +142,12 @@ exports.exchangeToken = (req, res) => {
       return res.status(400).json({ error: 'invalid_grant' });
     }
 
-    // Issue new mock access token
+
     const access_token = 'brd_mock_access_' + crypto.randomBytes(16).toString('hex');
     return res.json({
       access_token,
       token_type: 'Bearer',
-      expires_in: 3600 // 1 hour
+      expires_in: 3600
     });
   }
 

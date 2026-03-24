@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
 
-  // On startup, check whether we have a saved token
+
   useEffect(() => {
     async function loadToken() {
       let savedToken = null;
@@ -38,9 +38,9 @@ export function AuthProvider({ children }) {
       } catch (err) {
         console.error("Error loading token:", err);
       } finally {
-        await SplashScreen.hideAsync(); // ascunde splash nativ imediat → apare CircularLoading
-        await new Promise((resolve) => setTimeout(resolve, 3000)); // CircularLoading stă 3s
-        // Setăm token-ul DUPĂ delay, ca redirect-ul să nu se întâmple prematur
+        await SplashScreen.hideAsync();
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
         if (savedToken && savedUser) {
           setToken(savedToken);
           setUser(JSON.parse(savedUser));
@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
     loadToken();
   }, []);
 
-  // Check biometric availability once on mount
+
   useEffect(() => {
     async function checkBiometrics() {
       try {
@@ -85,7 +85,7 @@ export function AuthProvider({ children }) {
     const response = await api.post("/auth/register", {
       email,
       password,
-      name,
+      name
     });
     const { token: jwt, user: userData } = response.data;
 
@@ -113,18 +113,18 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
-  // Prompts biometric to confirm identity, then stores credentials securely
+
   async function enableBiometric(email, password) {
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage:
-        "Confirmă identitatea pentru a activa autentificarea biometrică",
+      "Confirmă identitatea pentru a activa autentificarea biometrică",
       cancelLabel: "Anulează",
-      disableDeviceFallback: false,
+      disableDeviceFallback: false
     });
     if (!result.success) return false;
     await SecureStore.setItemAsync(
       "biometric_credentials",
-      JSON.stringify({ email, password }),
+      JSON.stringify({ email, password })
     );
     await AsyncStorage.setItem("biometric_enabled", "true");
     setBiometricEnabled(true);
@@ -137,18 +137,18 @@ export function AuthProvider({ children }) {
     setBiometricEnabled(false);
   }
 
-  // Prompts biometric then logs in using stored credentials
+
   async function loginWithBiometric() {
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: "Autentificare biometrică",
       cancelLabel: "Anulează",
-      disableDeviceFallback: false,
+      disableDeviceFallback: false
     });
     if (!result.success) {
       const err = new Error(
-        result.error === "user_cancel"
-          ? "BIOMETRIC_CANCELLED"
-          : "BIOMETRIC_FAILED",
+        result.error === "user_cancel" ?
+        "BIOMETRIC_CANCELLED" :
+        "BIOMETRIC_FAILED"
       );
       err.code = err.message;
       throw err;
@@ -177,10 +177,10 @@ export function AuthProvider({ children }) {
         updateUser,
         enableBiometric,
         disableBiometric,
-        loginWithBiometric,
-      }}
-    >
+        loginWithBiometric
+      }}>
+      
       {children}
-    </AuthContext.Provider>
-  );
+    </AuthContext.Provider>);
+
 }

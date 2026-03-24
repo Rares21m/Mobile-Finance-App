@@ -10,16 +10,15 @@
 
 const prisma = require("../config/db");
 const logger = require("../config/logger");
-const { evaluateBadges } = require("../services/badgeService");
 
-/**
- * GET /api/goals
- */
+
+
+
 async function getGoals(req, res) {
   try {
     const goals = await prisma.savingsGoal.findMany({
       where: { userId: req.userId },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "asc" }
     });
     res.json({ goals: goals.map(formatGoal) });
   } catch (err) {
@@ -28,10 +27,10 @@ async function getGoals(req, res) {
   }
 }
 
-/**
- * POST /api/goals
- * Body: { name, targetAmount, savedAmount?, deadline?, icon?, color? }
- */
+
+
+
+
 async function createGoal(req, res) {
   try {
     const { name, targetAmount, savedAmount, deadline, icon, color } = req.body;
@@ -49,21 +48,20 @@ async function createGoal(req, res) {
         savedAmount: savedAmount ? parseFloat(savedAmount) : 0,
         deadline: deadline ? new Date(deadline) : null,
         icon: icon || "star-outline",
-        color: color || "#10B981",
-      },
+        color: color || "#10B981"
+      }
     });
-    const newBadges = await evaluateBadges(req.userId);
-    res.status(201).json({ goal: formatGoal(goal), newBadges });
+    res.status(201).json({ goal: formatGoal(goal) });
   } catch (err) {
     logger.error("createGoal error:", err);
     res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
   }
 }
 
-/**
- * PUT /api/goals/:id
- * Body: partial fields to update
- */
+
+
+
+
 async function updateGoal(req, res) {
   try {
     const { id } = req.params;
@@ -77,29 +75,28 @@ async function updateGoal(req, res) {
       data: {
         ...(name !== undefined && { name }),
         ...(targetAmount !== undefined && {
-          targetAmount: parseFloat(targetAmount),
+          targetAmount: parseFloat(targetAmount)
         }),
         ...(savedAmount !== undefined && {
-          savedAmount: parseFloat(savedAmount),
+          savedAmount: parseFloat(savedAmount)
         }),
         ...(deadline !== undefined && {
-          deadline: deadline ? new Date(deadline) : null,
+          deadline: deadline ? new Date(deadline) : null
         }),
         ...(icon !== undefined && { icon }),
-        ...(color !== undefined && { color }),
-      },
+        ...(color !== undefined && { color })
+      }
     });
-    const newBadges = await evaluateBadges(req.userId);
-    res.json({ goal: formatGoal(updated), newBadges });
+    res.json({ goal: formatGoal(updated) });
   } catch (err) {
     logger.error("updateGoal error:", err);
     res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
   }
 }
 
-/**
- * DELETE /api/goals/:id
- */
+
+
+
 async function deleteGoal(req, res) {
   try {
     const { id } = req.params;
@@ -124,7 +121,7 @@ function formatGoal(g) {
     deadline: g.deadline ? g.deadline.toISOString() : null,
     icon: g.icon,
     color: g.color,
-    createdAt: g.createdAt.toISOString(),
+    createdAt: g.createdAt.toISOString()
   };
 }
 

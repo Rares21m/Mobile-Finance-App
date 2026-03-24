@@ -20,7 +20,7 @@ export default function StatusBadge({
   variant = "neutral",
   icon,
   size = "md",
-  style,
+  style
 }) {
   const { theme, tokens } = useTheme();
   const c = theme.colors;
@@ -31,13 +31,13 @@ export default function StatusBadge({
     error: { text: c.expense, bg: withAlpha(c.expense, 0.14), border: withAlpha(c.expense, 0.3), icon: "close-circle" },
     info: { text: c.info, bg: withAlpha(c.info, 0.14), border: withAlpha(c.info, 0.3), icon: "information-circle" },
     trust: { text: c.trust, bg: withAlpha(c.trust, 0.14), border: withAlpha(c.trust, 0.3), icon: "shield-checkmark" },
-    neutral: { text: c.neutral, bg: withAlpha(c.border, 0.35), border: withAlpha(c.border, 0.65), icon: "ellipse" },
+    neutral: { text: c.neutral, bg: withAlpha(c.border, 0.35), border: withAlpha(c.border, 0.65), icon: "ellipse" }
   };
 
   const SIZE_MAP = {
     sm: { py: 4, px: 8, text: tokens.typography.sizes.xs, icon: 12 },
     md: { py: 6, px: 10, text: tokens.typography.sizes.xs, icon: 13 },
-    lg: { py: 8, px: 12, text: tokens.typography.sizes.sm, icon: 14 },
+    lg: { py: 8, px: 12, text: tokens.typography.sizes.sm, icon: 14 }
   };
 
   const palette = PALETTE[variant] || PALETTE.neutral;
@@ -47,25 +47,25 @@ export default function StatusBadge({
   return (
     <View
       style={[
-        {
-          alignSelf: "flex-start",
-          flexDirection: "row",
-          alignItems: "center",
-          gap: tokens.spacing.xs,
-          paddingVertical: sizing.py,
-          paddingHorizontal: sizing.px,
-          borderRadius: tokens.radius.pill,
-          backgroundColor: palette.bg,
-          borderWidth: 1,
-          borderColor: palette.border,
-        },
-        style,
-      ]}
-    >
+      {
+        alignSelf: "flex-start",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: tokens.spacing.xs,
+        paddingVertical: sizing.py,
+        paddingHorizontal: sizing.px,
+        borderRadius: tokens.radius.pill,
+        backgroundColor: palette.bg,
+        borderWidth: 1,
+        borderColor: palette.border
+      },
+      style]
+      }>
+      
       <Ionicons name={iconName} size={sizing.icon} color={palette.text} />
       <Text style={{ color: palette.text, fontSize: sizing.text, fontWeight: "600" }}>
         {label}
       </Text>
-    </View>
-  );
+    </View>);
+
 }

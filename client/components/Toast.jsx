@@ -35,52 +35,52 @@ export default function Toast() {
       icon: "checkmark-circle",
       color: c.success,
       bg: withAlpha(c.success, 0.12),
-      border: withAlpha(c.success, 0.3),
+      border: withAlpha(c.success, 0.3)
     },
     error: {
       icon: "close-circle",
       color: c.expense,
       bg: withAlpha(c.expense, 0.12),
-      border: withAlpha(c.expense, 0.3),
+      border: withAlpha(c.expense, 0.3)
     },
     info: {
       icon: "information-circle",
       color: c.accent,
       bg: withAlpha(c.accent, 0.12),
-      border: withAlpha(c.accent, 0.3),
-    },
+      border: withAlpha(c.accent, 0.3)
+    }
   };
 
   useEffect(() => {
     if (toast) {
-      // Slide in
+
       Animated.parallel([
-        Animated.spring(translateY, {
-          toValue: 0,
-          tension: 80,
-          friction: 12,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: tokens.motion.fast,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      Animated.spring(translateY, {
+        toValue: 0,
+        tension: 80,
+        friction: 12,
+        useNativeDriver: true
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: tokens.motion.fast,
+        useNativeDriver: true
+      })]
+      ).start();
     } else {
-      // Slide out
+
       Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: -120,
-          duration: tokens.motion.normal,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: tokens.motion.fast,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      Animated.timing(translateY, {
+        toValue: -120,
+        duration: tokens.motion.normal,
+        useNativeDriver: true
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: tokens.motion.fast,
+        useNativeDriver: true
+      })]
+      ).start();
     }
   }, [toast, tokens.motion.fast, tokens.motion.normal]);
 
@@ -97,9 +97,9 @@ export default function Toast() {
         right: 16,
         zIndex: 9999,
         transform: [{ translateY }],
-        opacity,
-      }}
-    >
+        opacity
+      }}>
+      
       <Pressable onPress={hideToast}>
         <View
           style={{
@@ -116,9 +116,9 @@ export default function Toast() {
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.12,
             shadowRadius: 12,
-            elevation: 6,
-          }}
-        >
+            elevation: 6
+          }}>
+          
           <Ionicons name={cfg.icon} size={20} color={cfg.color} />
           <Text
             style={{
@@ -126,13 +126,13 @@ export default function Toast() {
               color: cfg.color,
               fontSize: 14,
               fontWeight: "500",
-              lineHeight: 20,
-            }}
-          >
+              lineHeight: 20
+            }}>
+            
             {toast?.message}
           </Text>
         </View>
       </Pressable>
-    </Animated.View>
-  );
+    </Animated.View>);
+
 }

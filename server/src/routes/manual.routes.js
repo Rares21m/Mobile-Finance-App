@@ -6,20 +6,25 @@ const {
   updateManual,
   deleteManual,
   upsertCategoryOverride,
-  deleteCategoryOverride,
+  deleteCategoryOverride
 } = require("../controllers/manual.controller");
+const { withIdempotency } = require("../middleware/idempotency");
 
 const router = Router();
 router.use(authMiddleware);
 
-// Manual transactions
-router.get("/", listManual);
-router.post("/", createManual);
-router.patch("/:id", updateManual);
-router.delete("/:id", deleteManual);
 
-// Category overrides (PUT before DELETE to avoid route conflict with :id)
-router.put("/category-override", upsertCategoryOverride);
+router.get("/", listManual);
+router.post("/", withIdempotency("manual:create"), createManual);
+router.patch("/:id", withIdempotency("manual:update"), updateManual);
+router.delete("/:id", withIdempotency("manual:delete"), deleteManual);
+
+
+router.put(
+  "/category-override",
+  withIdempotency("manual:category-override"),
+  upsertCategoryOverride
+);
 router.delete("/category-override/:transactionId", deleteCategoryOverride);
 
 module.exports = router;

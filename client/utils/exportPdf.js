@@ -8,7 +8,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { categorizeTransaction } from "./categoryUtils";
 
-// ─── Category emoji map ────────────────────────────────────────────────────────
+
 const CAT_EMOJI = {
   food: "🍽️",
   transport: "🚗",
@@ -19,29 +19,29 @@ const CAT_EMOJI = {
   health: "💊",
   transfer: "💸",
   salary: "💼",
-  other: "●",
+  other: "●"
 };
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (n) =>
-  Number(n).toLocaleString("ro-RO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 
-/**
- * Generate and share a PDF financial report.
- *
- * @param {object} params
- * @param {Array}   params.filteredTx        Transactions in the selected period
- * @param {Array}   params.categoryData       getCategoryBreakdown() result
- * @param {number}  params.totalIncome        Income total
- * @param {number}  params.totalExpenses      Expenses total
- * @param {object}  params.spendingInsights   spendingInsights memo (can be null)
- * @param {Array}   params.budgetSummary      getBudgetSummary() result (can be [])
- * @param {string}  params.periodLabel        Human-readable period label
- * @param {object}  params.labels             Pre-translated label strings
- */
+const fmt = (n) =>
+Number(n).toLocaleString("ro-RO", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export async function exportFinancialReport({
   filteredTx,
   categoryData,
@@ -50,7 +50,7 @@ export async function exportFinancialReport({
   spendingInsights,
   budgetSummary,
   periodLabel,
-  labels,
+  labels
 }) {
   const now = new Date();
   const generatedAt = now.toLocaleDateString("ro-RO", {
@@ -58,19 +58,19 @@ export async function exportFinancialReport({
     month: "long",
     year: "numeric",
     hour: "2-digit",
-    minute: "2-digit",
+    minute: "2-digit"
   });
 
   const net = totalIncome - totalExpenses;
   const savingsRate =
-    totalIncome > 0 ? ((net / totalIncome) * 100).toFixed(1) : "0.0";
+  totalIncome > 0 ? (net / totalIncome * 100).toFixed(1) : "0.0";
 
-  // ── Category rows ──────────────────────────────────────────────────────────
-  const categoryRows = categoryData
-    .map((cat) => {
-      const emoji = CAT_EMOJI[cat.key] || "●";
-      const barPct = Math.min(cat.percentage, 100);
-      return `
+
+  const categoryRows = categoryData.
+  map((cat) => {
+    const emoji = CAT_EMOJI[cat.key] || "●";
+    const barPct = Math.min(cat.percentage, 100);
+    return `
         <tr>
           <td style="padding:10px 8px;border-bottom:1px solid #f0f0f0;">
             ${emoji} <strong>${labels.categories?.[cat.key] || cat.key}</strong>
@@ -88,25 +88,25 @@ export async function exportFinancialReport({
             ${cat.count}
           </td>
         </tr>`;
-    })
-    .join("");
+  }).
+  join("");
 
-  // ── Budget section ─────────────────────────────────────────────────────────
+
   let budgetSection = "";
   const activeBudgets = (budgetSummary || []).filter((b) => b.limit);
   if (activeBudgets.length > 0) {
-    const budgetRows = activeBudgets
-      .map((b) => {
-        const pct = Math.min(b.percentage, 100);
-        const statusColor =
-          b.status === "over"
-            ? "#F43F5E"
-            : b.status === "warning"
-              ? "#F59E0B"
-              : "#22C55E";
-        const emoji = CAT_EMOJI[b.key] || "●";
-        const remaining = Math.max(b.limit - b.spent, 0);
-        return `
+    const budgetRows = activeBudgets.
+    map((b) => {
+      const pct = Math.min(b.percentage, 100);
+      const statusColor =
+      b.status === "over" ?
+      "#F43F5E" :
+      b.status === "warning" ?
+      "#F59E0B" :
+      "#22C55E";
+      const emoji = CAT_EMOJI[b.key] || "●";
+      const remaining = Math.max(b.limit - b.spent, 0);
+      return `
           <tr>
             <td style="padding:10px 8px;border-bottom:1px solid #f0f0f0;">
               ${emoji} ${labels.categories?.[b.key] || b.key}
@@ -121,8 +121,8 @@ export async function exportFinancialReport({
               <span style="font-size:11px;color:${statusColor};font-weight:600;">${b.percentage}%</span>
             </td>
           </tr>`;
-      })
-      .join("");
+    }).
+    join("");
 
     budgetSection = `
       <div style="margin-top:28px;">
@@ -142,23 +142,23 @@ export async function exportFinancialReport({
       </div>`;
   }
 
-  // ── Transaction rows ───────────────────────────────────────────────────────
+
   const txSorted = [...filteredTx].sort(
-    (a, b) => new Date(b.bookingDate) - new Date(a.bookingDate),
+    (a, b) => new Date(b.bookingDate) - new Date(a.bookingDate)
   );
 
-  const txRows = txSorted
-    .map((tx) => {
-      const amount = parseFloat(tx.transactionAmount?.amount || 0);
-      const isExpense = amount < 0;
-      const cat = categorizeTransaction(tx);
-      const emoji = CAT_EMOJI[cat.key] || "●";
-      const merchant =
-        (isExpense ? tx.creditorName : tx.debtorName) ||
-        tx.remittanceInformationUnstructured ||
-        "—";
-      const date = tx.bookingDate || tx.valueDate || "";
-      return `
+  const txRows = txSorted.
+  map((tx) => {
+    const amount = parseFloat(tx.transactionAmount?.amount || 0);
+    const isExpense = amount < 0;
+    const cat = categorizeTransaction(tx);
+    const emoji = CAT_EMOJI[cat.key] || "●";
+    const merchant =
+    (isExpense ? tx.creditorName : tx.debtorName) ||
+    tx.remittanceInformationUnstructured ||
+    "—";
+    const date = tx.bookingDate || tx.valueDate || "";
+    return `
         <tr>
           <td style="padding:7px 6px;border-bottom:1px solid #f5f5f5;font-size:12px;color:#666;white-space:nowrap;">${date}</td>
           <td style="padding:7px 6px;border-bottom:1px solid #f5f5f5;font-size:12px;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${merchant}</td>
@@ -166,10 +166,10 @@ export async function exportFinancialReport({
           <td style="padding:7px 6px;border-bottom:1px solid #f5f5f5;font-size:12px;text-align:right;font-weight:600;white-space:nowrap;color:${isExpense ? "#E11D48" : "#16a34a"};">${isExpense ? "−" : "+"}${fmt(Math.abs(amount))}</td>
           <td style="padding:7px 6px;border-bottom:1px solid #f5f5f5;font-size:11px;color:#aaa;">RON</td>
         </tr>`;
-    })
-    .join("");
+  }).
+  join("");
 
-  // ── Full HTML ──────────────────────────────────────────────────────────────
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -236,32 +236,32 @@ export async function exportFinancialReport({
 
   <!-- Spending insights -->
   ${
-    spendingInsights
-      ? `<div class="insights">
+  spendingInsights ?
+  `<div class="insights">
     <div class="ib">
       <div class="t">${labels.avgDaily || "Daily avg"}</div>
       <div class="v">${spendingInsights.avgDaily.toFixed(0)} RON</div>
     </div>
     ${
-      spendingInsights.topMerchant
-        ? `<div class="ib">
+  spendingInsights.topMerchant ?
+  `<div class="ib">
       <div class="t">${labels.topMerchant || "Top merchant"}</div>
       <div class="v">${spendingInsights.topMerchant}</div>
-    </div>`
-        : ""
-    }
+    </div>` :
+  ""}
     <div class="ib">
-      <div class="t">${labels.savingsRate || "Savings rate"}</div>
+      <div class="t">${
+  labels.savingsRate || "Savings rate"}</div>
       <div class="v" style="color:${net >= 0 ? "#16a34a" : "#e11d48"}">${savingsRate}%</div>
     </div>
-  </div>`
-      : ""
-  }
+  </div>` :
+  ""}
 
   <!-- Category breakdown -->
   ${
-    categoryData.length > 0
-      ? `<div style="margin-bottom:28px;">
+
+  categoryData.length > 0 ?
+  `<div style="margin-bottom:28px;">
     <h2>${labels.byCategory || "By category"}</h2>
     <table>
       <thead><tr>
@@ -272,17 +272,17 @@ export async function exportFinancialReport({
       </tr></thead>
       <tbody>${categoryRows}</tbody>
     </table>
-  </div>`
-      : ""
-  }
+  </div>` :
+  ""}
 
   <!-- Budget summary -->
-  ${budgetSection}
+  ${
+  budgetSection}
 
   <!-- Transactions -->
   ${
-    txSorted.length > 0
-      ? `<div style="margin-top:28px;">
+  txSorted.length > 0 ?
+  `<div style="margin-top:28px;">
     <h2>${labels.transactionsTitle || "Transactions"} (${txSorted.length})</h2>
     <table>
       <thead><tr>
@@ -294,11 +294,11 @@ export async function exportFinancialReport({
       </tr></thead>
       <tbody>${txRows}</tbody>
     </table>
-  </div>`
-      : ""
-  }
+  </div>` :
+  ""}
 
-  <div class="footer">Novence Financial Report &bull; ${generatedAt}</div>
+  <div class="footer">Novence Financial Report &bull; ${
+  generatedAt}</div>
 </body>
 </html>`;
 
@@ -306,6 +306,6 @@ export async function exportFinancialReport({
   await Sharing.shareAsync(uri, {
     mimeType: "application/pdf",
     dialogTitle: "Novence Report",
-    UTI: "com.adobe.pdf",
+    UTI: "com.adobe.pdf"
   });
 }

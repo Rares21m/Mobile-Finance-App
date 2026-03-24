@@ -57,9 +57,9 @@ export function ThemeProvider({ children }) {
 
   return (
     <ThemeContext.Provider
-      value={{ theme, tokens: DESIGN_TOKENS, isDark, themeMode, setTheme, toggleTheme }}
-    >
+      value={{ theme, tokens: DESIGN_TOKENS, isDark, themeMode, setTheme, toggleTheme }}>
+      
       {children}
-    </ThemeContext.Provider>
-  );
+    </ThemeContext.Provider>);
+
 }

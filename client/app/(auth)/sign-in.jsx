@@ -22,7 +22,7 @@ export default function SignIn() {
     biometricEnabled,
     biometricAvailable,
     enableBiometric,
-    loginWithBiometric,
+    loginWithBiometric
   } = useAuth();
   const { showToast } = useToast();
   const [email, setEmail] = useState("");
@@ -32,12 +32,12 @@ export default function SignIn() {
 
   function validate() {
     const newErrors = {};
-    if (!email.trim()) newErrors.email = t("auth.errors.emailRequired");
-    else if (!/\S+@\S+\.\S+/.test(email))
-      newErrors.email = t("auth.errors.emailInvalid");
-    if (!password) newErrors.password = t("auth.errors.passwordRequired");
-    else if (password.length < 6)
-      newErrors.password = t("auth.errors.passwordMin");
+    if (!email.trim()) newErrors.email = t("auth.errors.emailRequired");else
+    if (!/\S+@\S+\.\S+/.test(email))
+    newErrors.email = t("auth.errors.emailInvalid");
+    if (!password) newErrors.password = t("auth.errors.passwordRequired");else
+    if (password.length < 6)
+    newErrors.password = t("auth.errors.passwordMin");
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -48,25 +48,25 @@ export default function SignIn() {
     try {
       const minDelay = new Promise((resolve) => setTimeout(resolve, 2000));
       await Promise.all([
-        login(email.trim().toLowerCase(), password),
-        minDelay,
-      ]);
-      // Offer to enable biometric login after first successful password login
+      login(email.trim().toLowerCase(), password),
+      minDelay]
+      );
+
       if (biometricAvailable && !biometricEnabled) {
         Alert.alert(t("auth.biometricEnable"), t("auth.biometricEnableDesc"), [
-          { text: t("auth.biometricEnableLater"), style: "cancel" },
-          {
-            text: t("auth.biometricEnableYes"),
-            onPress: () =>
-              enableBiometric(email.trim().toLowerCase(), password),
-          },
-        ]);
+        { text: t("auth.biometricEnableLater"), style: "cancel" },
+        {
+          text: t("auth.biometricEnableYes"),
+          onPress: () =>
+          enableBiometric(email.trim().toLowerCase(), password)
+        }]
+        );
       }
     } catch (err) {
       const errorCode = err.response?.data?.error;
-      const message = errorCode
-        ? t(getErrorKey(errorCode, "auth.errors.loginError"))
-        : t("auth.errors.loginError");
+      const message = errorCode ?
+      t(getErrorKey(errorCode, "auth.errors.loginError")) :
+      t("auth.errors.loginError");
       showToast(message, "error");
       setLoading(false);
     }
@@ -88,7 +88,7 @@ export default function SignIn() {
   return (
     <AuthBackground>
       <View className="flex-1 justify-center px-7">
-        {/* Header */}
+        {}
         <Text className="text-foreground text-3xl font-extrabold text-center mb-2">
           {t("auth.welcomeBack")}
         </Text>
@@ -96,7 +96,7 @@ export default function SignIn() {
           {t("auth.signInSubtitle")}
         </Text>
 
-        {/* Glass card */}
+        {}
         <GlassCard>
           <GlassInput
             label={t("auth.email")}
@@ -106,8 +106,8 @@ export default function SignIn() {
             placeholder={t("auth.emailPlaceholder")}
             error={errors.email}
             keyboardType="email-address"
-            autoCapitalize="none"
-          />
+            autoCapitalize="none" />
+          
           <GlassInput
             label={t("auth.password")}
             icon="lock-closed-outline"
@@ -116,29 +116,29 @@ export default function SignIn() {
             placeholder={t("auth.passwordPlaceholder")}
             error={errors.password}
             isLast
-            secureTextEntry
-          />
+            secureTextEntry />
+          
           <GradientButton
             label={t("auth.login")}
             onPress={onLogin}
-            disabled={loading}
-          />
+            disabled={loading} />
+          
         </GlassCard>
 
-        {/* Biometric login button */}
-        {biometricAvailable && biometricEnabled && (
-          <Pressable
-            onPress={onBiometricLogin}
-            className="mt-5 flex-row items-center justify-center gap-2 active:opacity-70"
-          >
+        {}
+        {biometricAvailable && biometricEnabled &&
+        <Pressable
+          onPress={onBiometricLogin}
+          className="mt-5 flex-row items-center justify-center gap-2 active:opacity-70">
+          
             <Ionicons name="finger-print-outline" size={22} color={theme.colors.primary} />
             <Text className="text-primary font-semibold text-base">
               {t("auth.biometricLogin")}
             </Text>
           </Pressable>
-        )}
+        }
 
-        {/* Footer */}
+        {}
         <View className="flex-row justify-center mt-8">
           <Text className="text-text-muted">{t("auth.noAccount")} </Text>
           <Link href="/(auth)/sign-up" asChild>
@@ -150,6 +150,6 @@ export default function SignIn() {
           </Link>
         </View>
       </View>
-    </AuthBackground>
-  );
+    </AuthBackground>);
+
 }

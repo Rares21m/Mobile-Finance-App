@@ -23,7 +23,7 @@ export async function setItemAsync(key, value, options = {}) {
     try {
       localStorage.setItem(key, value);
     } catch {
-      // ignore
+
     }
     return;
   }
@@ -35,7 +35,7 @@ export async function deleteItemAsync(key) {
     try {
       localStorage.removeItem(key);
     } catch {
-      // ignore
+
     }
     return;
   }

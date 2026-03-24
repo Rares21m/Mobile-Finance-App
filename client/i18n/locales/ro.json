@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "loading": "Se încarcă...",
     "error": "Eroare",
@@ -8,7 +8,11 @@
     "delete": "Șterge",
     "confirm": "Confirmă",
     "currency": "RON",
-    "noData": "Nu există date"
+    "noData": "Nu există date",
+    "today": "Azi",
+    "yesterday": "Ieri",
+    "older": "Mai vechi",
+    "view": "Vezi"
   },
   "auth": {
     "welcomeTitle1": "Toate finanțele tale",
@@ -65,6 +69,9 @@
     "transaction": "Tranzacție",
     "seeAll": "Vezi toate",
     "quickActions": "Acțiuni rapide",
+    "actionCenter": {
+      "title": "Centru de acțiuni"
+    },
     "transfer": "Transfer",
     "pay": "Plată",
     "request": "Cerere",
@@ -140,6 +147,34 @@
       "accept": "Acceptă ajustările",
       "remindLater": "Amintește-mi în 3 zile",
       "dismiss": "Nu, mulțumesc"
+    },
+    "reentry": {
+      "title": "Bine ai revenit după {{days}} zile",
+      "body3": "Fă o acțiune rapidă azi ca să revii în ritmul bugetului.",
+      "body7": "Un reset săptămânal te ajută să eviți surprizele de overspend spre final de lună.",
+      "body14": "Reîncepem cu o singură acțiune clară, apoi verificăm trendurile și plățile recurente.",
+      "cta": "Continuă cu cea mai bună acțiune"
+    },
+    "bestNextAction": {
+      "title": "Cea mai bună acțiune săptămâna asta",
+      "fallbackTitle": "Revizuiește tranzacțiile recente",
+      "fallbackBody": "Începe cu un check rapid ca să rămâi pe direcția bugetului."
+    },
+    "weeklyDigest": {
+      "title": "Digest săptămânal",
+      "subtitle": "Ultimele 7 zile, pe scurt",
+      "subtitleA": "Ultimele 7 zile, pe scurt",
+      "subtitleB": "Pulsul financiar săptămânal, într-un minut",
+      "expenses": "Cheltuit: {{amount}} RON",
+      "income": "Venituri: {{amount}} RON",
+      "trendUp": "Cheltuielile sunt cu {{pct}}% peste săptămâna trecută",
+      "trendDown": "Cheltuielile sunt cu {{pct}}% sub săptămâna trecută",
+      "noBaseline": "Nu există încă un baseline pentru săptămâna anterioară",
+      "topCategory": "Categoria principală: {{category}}",
+      "defaultAction": "Revizuiește tranzacțiile recente",
+      "defaultActionA": "Revizuiește tranzacțiile recente",
+      "defaultActionB": "Alege cel mai rapid câștig săptămâna asta",
+      "inboxBody": "Săptămâna asta: {{expenses}} RON cheltuiți. {{trend}}"
     }
   },
   "accounts": {
@@ -167,6 +202,12 @@
     "disconnectSuccess": "{{bank}} deconectat cu succes",
     "disconnectError": "Nu s-a putut deconecta banca. Încearcă din nou.",
     "notConnected": "Neconectat",
+    "healthDegraded": "Conexiune degradată",
+    "healthExpired": "Sesiune expirată",
+    "connectionWarning": "Starea conexiunii necesită atenție",
+    "lastSync": "Ultima sincronizare: {{time}}",
+    "lastSyncUnknown": "indisponibilă",
+    "dataMayBeOutdated": "Datele pot fi neactualizate",
     "connectNow": "Conectează acum",
     "whyConnect": "De ce să conectezi?",
     "benefitBalances": "Solduri în timp real",
@@ -180,17 +221,54 @@
   "analytics": {
     "title": "Statistici",
     "subtitle": "Analizează-ți cheltuielile",
-    "thisMonth": "Luna curentă",
+    "period": "Perioada",
+    "thisMonth": "Luna aceasta",
     "lastMonth": "Luna trecută",
-    "threeMonths": "90 zile",
+    "threeMonths": "3 luni",
+    "syncingData": "Sincronizăm datele...",
+    "syncingHint": "Se actualizează de la bancă",
+    "quickAccess": "Acces Rapid",
+    "recentTransactions": "Tranzacții recente",
+    "noData": "Nicio tranzacție",
+    "noDataDesc": "Nu am găsit tranzacții pentru perioada selectată.",
+    "loadingCharts": "Se încarcă datele...",
+    "byCategory": "Cheltuieli pe categorii",
+    "activeViews": {
+      "past": "Trecut",
+      "present": "Prezent",
+      "future": "Viitor"
+    },
+    "past": {
+      "exportReport": "Descarcă Raport PDF"
+    },
+    "present": {
+      "safeToSpendTitle": "Disponibil imediat",
+      "dailyLimit": "Limită pe zi",
+      "daysLeft": "Zile rămase",
+      "projectedIncomeHint": "Calculat pe baza veniturilor estimate"
+    },
+    "future": {
+      "forecast": "Prognoză Financiară (AI)",
+      "upcomingBills": "Plăți Recurente Viitoare",
+      "goalProjection": "Proiecție Obiective",
+      "endOfMonth": "Prognoză final de lună",
+      "estimatedBalance": "Sold estimat",
+      "aiInsightTitle": "Sfatul tău AI",
+      "trendSlope": "Trend zilnic",
+      "netChange": "Evoluție prognozată",
+      "insights": {
+        "stable": "Situația pare stabilă. Menține-ți obiceiurile curente pentru a rămâne în zona de siguranță.",
+        "warning": "Atenție! Trendul tău sugerează o scădere a soldului. Încearcă să reduci cheltuielile neesențiale.",
+        "positive": "Excelent! Prognoza arată o creștere sănătoasă a economiilor tale luna aceasta."
+      },
+      "volatility": "Volatilitate",
+      "volatilityLow": "Scăzută",
+      "volatilityHigh": "Ridicată"
+    },
     "totalExpenses": "Total cheltuieli",
     "income": "Venituri",
     "expenses": "Cheltuieli",
-    "noData": "Nu există date",
-    "noDataDesc": "Conectează un cont bancar pentru a vedea statistici detaliate.",
-    "recentTransactions": "Tranzacții recente",
     "transaction": "Tranzacție",
-    "byCategory": "Pe categorii",
     "dailySpending": "Cheltuieli zilnice",
     "transactions": "tranzacții",
     "categoryDetails": "Tranzacții - {{category}}",
@@ -200,7 +278,7 @@
     "vsLastMonth": "vs. luna trecută",
     "spendingInsights": "Analiza cheltuielilor",
     "noTransactionsInCategory": "Nu sunt tranzacții în această categorie",
-    "quickAccess": "Explorează",
+
     "fab": {
       "categorii": "Categorii",
       "recurente": "Recurente",
@@ -278,6 +356,33 @@
       "transfer": "Transferuri",
       "salary": "Salariu",
       "other": "Altele"
+    },
+    "health": {
+      "title": "Sănătate Financiară",
+      "savings": "Economii",
+      "budget": "Buget",
+      "diversity": "Diversitate",
+      "trend": "Trend"
+    },
+    "smart": {
+      "netPositive": "Ai economisit {{amount}} RON luna aceasta",
+      "netNegative": "Ai cheltuit {{amount}} RON peste venituri",
+      "spendingDown": "Cheltuielile au scăzut cu {{pct}}% față de luna trecută",
+      "spendingUp": "Cheltuielile au crescut cu {{pct}}% față de luna trecută",
+      "topCategory": "Top: {{category}} — {{amount}} RON ({{pct}}%)",
+      "savingsRate": "Rata de economisire: {{pct}}%"
+    },
+    "anomaly": {
+      "spike": "{{category}}: +{{pct}}% față de luna trecută",
+      "budgetBurst": "{{category}}: buget depășit cu {{pct}}%",
+      "goodSavings": "Excelent! Economisești {{pct}}% din venit",
+      "spendingDown": "Cheltuieli cu {{pct}}% mai mici luna asta!"
+    },
+    "trend": {
+      "title": "Trend Lunar",
+      "bestMonth": "Cea mai bună",
+      "worstMonth": "Cea mai slabă",
+      "avgSavings": "Economii medii"
     }
   },
   "advisor": {
@@ -291,8 +396,21 @@
     "suggestion2": "Analizează cheltuielile lunii",
     "suggestion3": "Ce abonamente am?",
     "suggestion4": "Care sunt cele mai mari cheltuieli ale mele?",
+    "followUpTitle": "Acțiuni de follow-up",
+    "followUpAccept": "Amintește-mi mâine",
+    "followUpAccepted": "Reminder setat",
+    "followUpReminderTitle": "Follow-up consilier",
+    "followUpReminderBody": "Reminder: {{body}}",
+    "retry": "Reîncearcă ultima întrebare",
+    "inputA11y": "Câmp mesaj pentru consilier",
+    "sendA11y": "Trimite mesaj către consilier",
+    "retryA11y": "Reîncearcă ultima întrebare eșuată către consilier",
+    "replyReceivedA11y": "Răspunsul consilierului a fost primit",
+    "suggestionA11y": "Folosește sugestia: {{suggestion}}",
     "errorNotConfigured": "⚠️ Serviciul AI nu este configurat. Te rog setează GEMINI_API_KEY pe server.",
     "errorQuota": "⚠️ Cota AI depășită. Activează Generative Language API din Google Cloud Console pentru proiectul tău.",
+    "errorTimeout": "⚠️ Cererea către consilier a expirat. Încearcă din nou.",
+    "errorNetwork": "⚠️ Problemă de rețea. Verifică conexiunea și reîncearcă.",
     "errorGeneric": "⚠️ Ceva nu a mers bine. Te rog încearcă din nou mai târziu."
   },
   "profile": {
@@ -313,10 +431,26 @@
     "version": "v1.0.0",
     "logout": "Deconectare",
     "sectionAccount": "Cont",
+    "sectionSecurity": "Securitate",
     "sectionPreferences": "Preferințe",
     "sectionOther": "Altele",
-    "achievements": "Realizările Tale",
-    "badgesUnlocked": "realizări deblocate",
+    "sectionSupport": "Suport",
+    "quickActions": "Setări rapide",
+    "themeDark": "Întunecată",
+    "themeLight": "Luminoasă",
+    "themeDarkDesc": "Fundal închis, mai comod pentru ochi",
+    "themeLightDesc": "Interfață luminoasă și clară",
+    "a11yAvatar": "Editează fotografia de profil",
+    "a11yEditProfile": "Editează informațiile de profil",
+    "a11ySecurity": "Deschide setările de securitate",
+    "a11yBiometricSwitch": "Activează sau dezactivează autentificarea biometrică",
+    "a11yNotificationsSwitch": "Activează sau dezactivează notificările",
+    "a11yLanguage": "Schimbă limba aplicației",
+    "a11yTheme": "Schimbă tema aplicației",
+    "a11yHelp": "Deschide ajutor și suport",
+    "a11yTerms": "Deschide termenii și condițiile",
+    "a11yAbout": "Deschide informațiile aplicației",
+    "a11yLogout": "Deconectează-te din cont",
     "editProfileTitle": "Editează profilul",
     "namePlaceholder": "Numele tău",
     "emailPlaceholder": "Adresa de email",
@@ -458,6 +592,17 @@
       "income": "Venituri"
     },
     "filters": "Filtre",
+    "quickPresetsLabel": "Preset-uri rapide",
+    "quickPresets": {
+      "today": "Azi",
+      "last7": "7 zile",
+      "thisMonth": "Luna",
+      "manual": "Manuale",
+      "recurring": "Recurente"
+    },
+    "longPressHintTitle": "Hint rapid",
+    "longPressHintBody": "Ține apăsat pe o tranzacție pentru recategorizare, editare sau ștergere.",
+    "dismissHint": "Am înțeles",
     "dateRange": "Interval de date",
     "amountRange": "Interval sumă (RON)",
     "from": "De la",
@@ -525,11 +670,13 @@
     "finish": "Hai să începem",
     "step1": {
       "title": "Care e scopul tău principal?",
-      "subtitle": "Vom personaliza aplicația și consilierul AI în jurul acestuia."
+      "subtitle": "Vom personaliza aplicația și consilierul AI în jurul acestuia.",
+      "why": "Astfel recomandările rămân concentrate pe rezultatul tău principal."
     },
     "step2": {
       "title": "Venitul lunar aproximativ",
       "subtitle": "O estimare e suficientă — ne ajută să sugerăm bugete realiste.",
+      "why": "Folosim intervalul doar pentru estimări, nu pentru urmărirea salariului exact.",
       "preview": {
         "label": "Planul tău estimat (50/30/20)",
         "needs": "Necesități (50%)",
@@ -540,17 +687,20 @@
     "step3": {
       "title": "Ce contează cel mai mult?",
       "subtitle": "Alege categoriile de cheltuieli pe care vrei să le urmărești.",
+      "why": "Aceste categorii primesc prioritate în alerte, bugete și sfaturi AI.",
       "hint": "Selectează cel puțin o categorie pentru a continua."
     },
     "step4": {
       "title": "Planul tău financiar",
       "subtitle": "Pe baza răspunsurilor tale, ți-am pregătit un buget personalizat.",
+      "why": "Poți ajusta oricând acest plan mai târziu din tab-ul Buget.",
       "savingsNote": "Economii recomandate (20%)",
       "savingsDesc": "Aceștia sunt banii pe care îi poți pune deoparte lunar.",
       "accept": "Acceptă planul",
       "skip": "Personalizează mai târziu",
       "noSuggestions": "Selectează categorii la pasul anterior pentru a vedea planul."
     },
+    "validationError": "Completează toate câmpurile onboarding pentru a continua.",
     "goals": {
       "savings": {
         "label": "Economisire",
@@ -588,6 +738,9 @@
   "inbox": {
     "title": "Notificări",
     "emptyTitle": "Nicio notificare încă",
-    "emptyDesc": "Alertele de buget, badge-urile câștigate și rezumatele lunare vor apărea aici."
+    "emptyDesc": "Alertele de buget și rezumatele lunare vor apărea aici.",
+    "new": "Nou",
+    "read": "Citit",
+    "unreadSuffix": "necitite"
   }
 }
