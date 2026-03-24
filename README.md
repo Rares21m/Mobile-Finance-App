@@ -110,7 +110,4 @@ Dezvoltarea aplicației Novence abordează mai multe provocări specifice ingine
 2. **Normalizarea Datelor:** Procesarea informațiilor "murdare" venite de la bănci (nume de comercianți netratate, date de tranzacții fluctuante) pentru a obține statistici clare și unificate.
 3. **UI/UX Mobil:** Crearea unei interfețe fluide prin gestionarea eficientă a redării graficelor complexe și a fluxurilor financiare, direct pe dispozitiv.
 
----
 
-## Licență
-Acest proiect este dezvoltat exclusiv cu scop educativ, ca proiect de Licență. Orice utilizare comercială este interzisă.
