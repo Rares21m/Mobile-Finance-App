@@ -82,7 +82,7 @@ export default function Toast() {
       })]
       ).start();
     }
-  }, [toast, tokens.motion.fast, tokens.motion.normal]);
+  }, [toast, opacity, translateY, tokens.motion.fast, tokens.motion.normal]);
 
   if (!toast && opacity._value === 0) return null;
 

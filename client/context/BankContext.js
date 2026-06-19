@@ -26,6 +26,10 @@ function isBtSessionExpired(err) {
 
 }
 
+function isSandboxUnavailable(code) {
+  return code === "BT_SANDBOX_UNAVAILABLE" || code === "BRD_SANDBOX_UNAVAILABLE";
+}
+
 
 
 
@@ -131,7 +135,7 @@ export function BankProvider({ children }) {
             }));
           } else {
             if (__DEV__)
-            console.error(
+            console.warn(
               "Error loading connection:",
               conn.id,
               connErr.response?.data || connErr.message
@@ -140,7 +144,7 @@ export function BankProvider({ children }) {
         }
       }
     } catch (err) {
-      if (__DEV__) console.error("Error refreshing bank data:", err);
+      if (__DEV__) console.warn("Error refreshing bank data:", err);
     } finally {
       setLoading(false);
       isRefreshing.current = false;
@@ -156,7 +160,9 @@ export function BankProvider({ children }) {
 
 
       let endpoint = "";
-      if (bankName.toLowerCase() === "brd") {
+      if (bankName === "DEMO_BANK") {
+        endpoint = `/demo-bank/connection-data/${connectionId}`;
+      } else if (bankName.toLowerCase() === "brd") {
         endpoint = `/brd/connection-data/${connectionId}`;
       } else {
         endpoint = `/bt/connection-data/${connectionId}`;
@@ -185,7 +191,7 @@ export function BankProvider({ children }) {
         rawTransactions.forEach((tx) =>
         Object.keys(tx).forEach((k) => allKeys.add(k))
         );
-        console.log(`BT: ${rawTransactions.length} transactions, keys:`, [
+        console.log(`${bankName}: ${rawTransactions.length} transactions, keys:`, [
         ...allKeys]
         );
       }
@@ -206,7 +212,7 @@ export function BankProvider({ children }) {
           isDebit = true;
         } else if (amount < 0) {
           isDebit = true;
-        } else if (tx.debtorAccount?.iban === userIban || tx.debtorAccount?.iban) {
+        } else if (userIban && tx.debtorAccount?.iban === userIban) {
           isDebit = true;
         } else if (
         tx.proprietaryBankTransactionCode === "DEBIT" ||
@@ -316,15 +322,26 @@ export function BankProvider({ children }) {
       if (
       code === "BT_TIMEOUT" ||
       code === "BRD_TIMEOUT" ||
+      isSandboxUnavailable(code) ||
       code === "BANKING_PROVIDER_DEGRADED" ||
       code === "BT_RATE_LIMITED" ||
       code === "BRD_RATE_LIMITED")
       {
+        const healthState = isSandboxUnavailable(code) ?
+        "sandbox_unavailable" :
+        "degraded";
+
+        setConnections((prev) => {
+          const exists = prev.some((c) => c.id === connectionId);
+          if (exists) return prev;
+          return [...prev, { id: connectionId, bankName, status: "active" }];
+        });
+
         setTrustByConnection((prev) => ({
           ...prev,
           [connectionId]: {
             lastSyncAt: prev[connectionId]?.lastSyncAt || null,
-            healthState: "degraded",
+            healthState,
             dataMayBeOutdated: true,
             bankName
           }
@@ -334,7 +351,7 @@ export function BankProvider({ children }) {
 
       if (!isBtSessionExpired(err)) {
         if (__DEV__)
-        console.error(
+        console.warn(
           "Error adding connection (details):",
           err.response?.data || err.message
         );
@@ -344,14 +361,20 @@ export function BankProvider({ children }) {
   }
 
   async function removeConnection(bankName) {
-    await api.delete(`/bt/connections/${bankName}`);
+    const normalizedBankName = bankName.toUpperCase();
+    const endpoint =
+    normalizedBankName === "DEMO_BANK" ?
+    `/demo-bank/connections/${normalizedBankName}` :
+    `/bt/connections/${normalizedBankName}`;
+
+    await api.delete(endpoint);
 
     const removedIds = connections.
-    filter((c) => c.bankName === bankName.toUpperCase()).
+    filter((c) => c.bankName === normalizedBankName).
     map((c) => c.id);
 
     setConnections((prev) =>
-    prev.filter((c) => c.bankName !== bankName.toUpperCase())
+    prev.filter((c) => c.bankName !== normalizedBankName)
     );
     setAccounts((prev) =>
     prev.filter((acc) => !removedIds.includes(acc.connectionId))
@@ -430,7 +453,7 @@ export function BankProvider({ children }) {
   }
 
   function getRecentTransactions(limit = 10) {
-    return transactions.
+    return [...transactions].
     sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate)).
     slice(0, limit);
   }

@@ -47,6 +47,7 @@ async function wait(ms) {
 function buildProviderError(error) {
   const status = error.response?.status;
   const retryAfterSeconds = parseRetryAfterSeconds(error.response?.headers?.["retry-after"]);
+  const url = error.config?.url || null;
 
   if (status === 401) {
     return Object.assign(new Error("BT_UNAUTHORIZED"), {
@@ -71,6 +72,19 @@ function buildProviderError(error) {
     });
   }
 
+  if (status === 404) {
+    return Object.assign(new Error("BT_ENDPOINT_NOT_FOUND"), {
+      status: 404,
+      code: "BT_ENDPOINT_NOT_FOUND",
+      details: {
+        provider: "BT",
+        status,
+        url
+      },
+      originalError: error
+    });
+  }
+
   if (["ECONNABORTED", "ETIMEDOUT"].includes(error.code)) {
     return Object.assign(new Error("BT_TIMEOUT"), {
       status: 504,
@@ -88,7 +102,8 @@ function buildProviderError(error) {
     code: "BT_PROVIDER_ERROR",
     details: {
       provider: "BT",
-      status: status || null
+      status: status || null,
+      url
     },
     originalError: error
   });
@@ -158,10 +173,37 @@ function generateCodeChallenge(verifier) {
 
 
 
-async function registerOAuthClient() {
+async function getOAuthMetadata(metadataUrl) {
+  const url =
+  metadataUrl ||
+  `${BT_BASE}/oauth/.well-known/oauth-authorization-server`;
+
+  const response = await requestBt({
+    method: "get",
+    url,
+    headers: {
+      Accept: "application/json",
+      "X-Request-ID": crypto.randomUUID()
+    }
+  });
+
+  return response.data || {};
+}
+
+async function registerOAuthClient(registrationEndpoint) {
+  let endpoint = registrationEndpoint;
+  if (!endpoint) {
+    const metadata = await getOAuthMetadata();
+    endpoint = metadata.registration_endpoint;
+  }
+
+  if (!endpoint) {
+    endpoint = `${BT_BASE}/oauth/register`;
+  }
+
   const response = await requestBt({
     method: "post",
-    url: `${BT_BASE}/oauth/register`,
+    url: endpoint,
     data: {
       redirect_uris: [BT_REDIRECT_URI],
       client_name: BT_CLIENT_NAME
@@ -419,6 +461,7 @@ async function getBalances(accessToken, consentId, accountId, psuIpAddress) {
 module.exports = {
   generateCodeVerifier,
   generateCodeChallenge,
+  getOAuthMetadata,
   registerOAuthClient,
   initConsent,
   buildAuthUrl,

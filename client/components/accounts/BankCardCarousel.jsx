@@ -27,6 +27,7 @@ export default function BankCardCarousel({
   pendingBank,
   startBTConnection,
   startBRDConnection,
+  startDemoBankConnection,
   activeCardIndex,
   setActiveCardIndex,
   setDisconnectConfirm,
@@ -74,13 +75,15 @@ export default function BankCardCarousel({
             (item) => item.healthState === "expired"
           ) ?
           "expired" :
+          bankTrust.some((item) => item.healthState === "sandbox_unavailable") ?
+          "sandbox_unavailable" :
           bankTrust.some((item) => item.healthState === "degraded") ?
           "degraded" :
           "connected";
 
           const statusBg = !isConnected ?
           "transparent" :
-          bankHealthState === "degraded" ?
+          bankHealthState === "sandbox_unavailable" || bankHealthState === "degraded" ?
           "rgba(245,158,11,0.20)" :
           bankHealthState === "expired" ?
           "rgba(244,63,94,0.20)" :
@@ -88,7 +91,7 @@ export default function BankCardCarousel({
 
           const statusColor = !isConnected ?
           "transparent" :
-          bankHealthState === "degraded" ?
+          bankHealthState === "sandbox_unavailable" || bankHealthState === "degraded" ?
           "#F59E0B" :
           bankHealthState === "expired" ?
           "#F43F5E" :
@@ -96,6 +99,8 @@ export default function BankCardCarousel({
 
           const statusLabel = !isConnected ?
           "" :
+          bankHealthState === "sandbox_unavailable" ?
+          t("accounts.sandboxUnavailable") :
           bankHealthState === "degraded" ?
           t("accounts.healthDegraded") :
           bankHealthState === "expired" ?
@@ -112,13 +117,17 @@ export default function BankCardCarousel({
           const isCardLoading = loading && pendingBank === bankKey;
 
           if (!isConnected) {
+            const startConnection =
+            bankKey === "BT" ?
+            startBTConnection :
+            bankKey === "BRD" ?
+            startBRDConnection :
+            startDemoBankConnection;
 
             return (
               <Pressable
                 key={bankKey}
-                onPress={isCardLoading ? undefined :
-                bankKey === "BT" ? startBTConnection : startBRDConnection
-                }
+                onPress={isCardLoading ? undefined : startConnection}
                 style={({ pressed }) => ({
                   width: CARD_WIDTH,
                   height: 220,
@@ -144,7 +153,24 @@ export default function BankCardCarousel({
                   }}>
                       <Ionicons name="add" size={28} color={c.primary} />
                     </View>
-                    <Image source={cfg.logo} style={{ width: 100, height: 30, opacity: 0.5, marginBottom: 12 }} resizeMode="contain" />
+                    {cfg.logo ?
+                    <Image source={cfg.logo} style={{ width: 100, height: 30, opacity: 0.5, marginBottom: 12 }} resizeMode="contain" /> :
+                    <View
+                      style={{
+                        width: 70,
+                        height: 42,
+                        borderRadius: 14,
+                        backgroundColor: cfg.bgColor,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 12
+                      }}>
+                      
+                      <Text style={{ color: cfg.color, fontSize: 18, fontWeight: "900" }}>
+                        {cfg.initials}
+                      </Text>
+                    </View>
+                    }
                     <Text style={{ color: c.textMuted, fontSize: 13, textAlign: "center", fontWeight: "600" }}>
                       {t("accounts.connectNow")} {cfg.label}
                     </Text>
@@ -171,6 +197,7 @@ export default function BankCardCarousel({
               }}>
               
               {}
+              {cfg.logo &&
               <Image
                 source={cfg.logo}
                 style={{
@@ -182,6 +209,7 @@ export default function BankCardCarousel({
                   opacity: 0.08
                 }}
                 resizeMode="contain" />
+              }
               
 
               {}
@@ -200,11 +228,36 @@ export default function BankCardCarousel({
                     paddingVertical: 8
                   }}>
                   
+                  {cfg.logo ?
                   <Image
                     source={cfg.logo}
                     style={{ width: 70, height: 22 }}
                     resizeMode="contain" />
-                  
+                   :
+                   <>
+                     <Text
+                       style={{
+                         color: cfg.color,
+                         fontSize: 15,
+                         fontWeight: "900"
+                       }}>
+                       
+                       {cfg.initials}
+                     </Text>
+                     <Text
+                       numberOfLines={1}
+                       style={{
+                         color: cfg.color,
+                         fontSize: 9,
+                         fontWeight: "700",
+                         marginTop: 1
+                       }}>
+                       
+                       {cfg.label}
+                     </Text>
+                   </>
+                   }
+                   
                 </View>
 
                 {}

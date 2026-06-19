@@ -9,7 +9,7 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -44,7 +44,7 @@ const EMPTY_FORM = {
 };
 
 export default function Transactions() {
-  const { isDark, theme } = useTheme();
+  const { theme } = useTheme();
   const c = theme.colors;
   const { t } = useTranslation();
   const router = useRouter();
@@ -163,39 +163,36 @@ export default function Transactions() {
     }
   }
 
-  const handleTxLongPress = useCallback(
-    (tx) => {
-      if (tx.isManual) {
+  const handleTxLongPress = (tx) => {
+    if (tx.isManual) {
 
-        Alert.alert(
-          tx.creditorName ||
-          tx.debtorName ||
-          tx.remittanceInformationUnstructured ||
-          t("transactions.manualTx"),
-          "",
-          [
-          {
-            text: t("transactions.editTx"),
-            onPress: () => openEditModal(tx)
-          },
-          {
-            text: t("transactions.editCategory"),
-            onPress: () => setCatModalTx(tx)
-          },
-          {
-            text: t("common.delete"),
-            style: "destructive",
-            onPress: () => handleDeleteManual(tx)
-          },
-          { text: t("common.cancel"), style: "cancel" }]
+      Alert.alert(
+        tx.creditorName ||
+        tx.debtorName ||
+        tx.remittanceInformationUnstructured ||
+        t("transactions.manualTx"),
+        "",
+        [
+        {
+          text: t("transactions.editTx"),
+          onPress: () => openEditModal(tx)
+        },
+        {
+          text: t("transactions.editCategory"),
+          onPress: () => setCatModalTx(tx)
+        },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: () => handleDeleteManual(tx)
+        },
+        { text: t("common.cancel"), style: "cancel" }]
 
-        );
-      } else {
-        setCatModalTx(tx);
-      }
-    },
-    [t]
-  );
+      );
+    } else {
+      setCatModalTx(tx);
+    }
+  };
 
   const base = useMemo(() => {
     if (!accountId) return transactions;
@@ -361,7 +358,6 @@ export default function Transactions() {
   const flatData = useMemo(() => {
     const items = [];
     let currentLabel = null;
-    let groupStart = -1;
     let prevItem = null;
 
 
@@ -387,7 +383,6 @@ export default function Transactions() {
         if (prevItem && prevItem.type === "tx") prevItem.isLast = true;
         items.push({ type: "header", date: label, id: `h-${label}-${idx}` });
         currentLabel = label;
-        groupStart = idx;
       }
 
       const item = {

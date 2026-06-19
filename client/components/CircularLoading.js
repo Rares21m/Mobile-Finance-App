@@ -32,7 +32,7 @@ export default function CircularLoading() {
         useNativeDriver: true
       })
     ).start();
-  }, []);
+  }, [rotateAnim]);
 
   const angleStep = 2 * Math.PI / ICONS.length;
   const radius = 60;

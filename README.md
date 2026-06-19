@@ -1,113 +1,207 @@
-# Novence – Aplicație de Management Financiar (Personal Finance)
+# Novence - Aplicatie de management financiar personal
 
-Novence este o aplicație web și de mobil completă, dezvoltată pentru a ajuta utilizatorii să își urmărească veniturile, să își gestioneze cheltuielile, să seteze bugete inteligente și să își atingă obiectivele financiare. Construită cu tehnologii moderne, Novence oferă interogarea securizată a datelor bancare prin Open Banking (Banca Transilvania și BRD), analize grafice și o experiență de utilizare simplă și curată.
+Novence este o aplicatie mobila de management financiar personal, dezvoltata pentru a ajuta utilizatorii sa isi urmareasca veniturile, cheltuielile, bugetele si sanatatea financiara intr-un singur loc. Aplicatia foloseste integrare Open Banking pentru providerii BT si BRD, include un provider demonstrativ stabil numit Demo Bank si ofera recomandari financiare printr-un modul AI separat.
 
-## Funcționalități Principale
+## Functionalitati principale
 
-- **Integrări Open Banking (PSD2):**
-  - Conectare securizată cu conturile Banca Transilvania (BT) și BRD.
-  - Sincronizare automată a soldurilor și tranzacțiilor.
-  - Curățarea și deduplicarea automată a tranzacțiilor.
-- **Analize și Statistici:**
-  - Grafice interactive pentru vizualizarea balanței de venituri vs. cheltuieli.
-  - Avertizări pentru cheltuieli neobișnuite (anomalii).
-  - Clasificarea automată a comercianților pentru o urmărire mai clară a banilor.
-- **Bugetare Dinamică:**
-  - Configurare ghidată bazată pe regula 50/30/20.
-  - Sugestii automate de bugetare și alerte dinamice privind sănătatea financiară.
-- **Tranzacții Manuale:**
-  - Posibilitatea de a adăuga manual tranzacții cash sau offline.
-- **Notificări și Gamificare:**
-  - Alerte în aplicație și insigne (badges) pentru atingerea anumitor obiective financiare.
+- **Open Banking PSD2**
+  - Conectare cu Banca Transilvania si BRD prin fluxuri de tip sandbox.
+  - Sincronizare conturi, solduri si tranzactii.
+  - Normalizare si deduplicare pentru tranzactii provenite din surse diferite.
 
----
+- **Demo Bank**
+  - Provider fictiv, stabil, folosit pentru prezentari si testare reproductibila.
+  - Foloseste un set real de tranzactii, adaptat automat astfel incat cele mai noi tranzactii sa ajunga pana ieri.
+  - Nu afecteaza conexiunile BT/BRD si poate fi conectat/deconectat separat.
 
-## Arhitectură și Tehnologii
+- **Dashboard financiar**
+  - Sold total calculat din conturile conectate.
+  - Flux lunar clar: venituri, cheltuieli si net luna curenta.
+  - Tranzactii recente si explicatii pe categorii.
 
-Aplicația este împărțită într-o componentă de server (Backend) și una de client (Aplicație Mobilă).
+- **Analytics**
+  - Vizualizare pe trecut, prezent si viitor.
+  - Detectare tranzactii recurente.
+  - Comparatie pe luni si categorii.
+  - Forecast robust pentru estimarea soldului la final de luna.
 
-### Frontend (Aplicație Mobilă)
-Construit cu **React Native** și **Expo** (pentru iOS și Android).
-- **Stilizare:** `NativeWind` (Tailwind CSS adaptat pentru React Native).
-- **Navigație:** `Expo Router` și React Navigation.
-- **Preluarea datelor:** Axios și React Context API.
-- **Grafice:** Biblioteca `react-native-gifted-charts`.
-- **Stocare locală:** `@react-native-async-storage` pentru date persistente și sesiuni.
+- **Bugetare**
+  - Bugete pe categorii.
+  - Monitorizare cheltuieli reale vs. limite.
+  - Alerte si recomandari pentru depasiri sau zone cu risc.
 
-### Backend (Server)
-Un API REST dezvoltat folosind **Node.js** și **Express**.
-- **Bază de Date:** Relatională (PostgreSQL/MySQL), interogată folosind ORM-ul `Prisma`.
-- **Securitate:** Autentificare pe bază de JWT (`jsonwebtoken`), hash-uri sigure pentru parole (`bcrypt`).
-- **Open Banking:** Fluxuri personalizate OAuth2, gestionarea consimțământului AIS și a token-urilor pentru API-urile BT Sandbox și BRD.
-- **Analiză AI:** Integrare cu `@google/generative-ai` pentru categorisirea avansată a cheltuielilor.
+- **AI financiar**
+  - Chat de consiliere financiara.
+  - Recomandari bazate pe tranzactii, solduri, profil si obiective.
+  - Generare de insight-uri, explicatii si actiuni recomandate.
 
----
+## Arhitectura
 
-## Rulare și Instalare
+Aplicatia este impartita in trei module principale:
 
-### Cerințe de sistem
-- [Node.js](https://nodejs.org/) (versiunea 18 sau mai nouă)
-- [Expo CLI](https://docs.expo.dev/)
-- O bază de date funcțională (configurabilă prin Prisma)
-
-### Structura Proiectului
 ```text
-/Mobile-Finance-App
-  ├── /client      # Aplicația mobilă (Frontend)
-  └── /server      # Serverul API (Backend)
+Mobile-Finance-App/
+  client/   # Aplicatia mobila Expo / React Native
+  server/   # API REST Node.js / Express / Prisma
+  ai/       # Modul AI: prompturi, provider Gemini, advisor logic
 ```
 
-### Pași pentru pornire
+### Client
 
-#### 1. Setup Server
+Modulul `client/` contine aplicatia mobila:
+
+- React Native si Expo
+- Expo Router pentru navigatie
+- React Context pentru autentificare, date bancare, bugete si notificari
+- ecrane principale: Acasa, Conturi, Statistici, Buget, Consilier, Profil
+
+### Server
+
+Modulul `server/` expune API-ul aplicatiei:
+
+- autentificare JWT
+- rute pentru BT, BRD si Demo Bank
+- persistenta prin Prisma
+- controllere API subtiri pentru functionalitatile mobile
+- integrare cu modulul AI prin import din `ai/src`
+
+### AI
+
+Modulul `ai/` contine logica inteligenta a aplicatiei:
+
+```text
+ai/
+  package.json
+  src/
+    index.js
+    providers/
+      geminiProvider.js
+    advisor/
+      advisorService.js
+      promptBuilder.js
+      responseParser.js
+    shared/
+      financeSummary.js
+```
+
+Rolul modulului AI:
+
+- construieste sumarul financiar trimis catre model;
+- construieste promptul pentru consilierul financiar;
+- apeleaza providerul Gemini;
+- parseaza raspunsul in forma folosita de UI;
+- separa logica AI de controllerul HTTP din server.
+
+Controllerul din server ramane un adapter API:
+
+```js
+const { generateAdvisorReply } = require("../../../ai/src");
+```
+
+Aceasta separare permite prezentarea aplicatiei ca o arhitectura modulara: client mobil, backend financiar si modul AI independent.
+
+## Demo Bank
+
+Demo Bank este un provider fictiv creat pentru testare controlata si prezentare. El foloseste tranzactii reale transformate intr-un format compatibil cu aplicatia.
+
+Caracteristici:
+
+- datele sunt shiftate automat pana ieri;
+- transferurile interne sunt excluse din import;
+- conexiunea este separata de BT si BRD;
+- poate fi folosita cand sandbox-urile bancare reale sunt indisponibile;
+- permite demo-uri reproductibile fara dependenta de starea API-urilor externe.
+
+## Limitari cunoscute
+
+Providerii sandbox BT si BRD pot deveni temporar indisponibili sau pot returna erori de tip `404` / `503`. Din acest motiv, aplicatia include Demo Bank pentru testare reproductibila si pentru prezentari stabile.
+
+Cand un sandbox bancar este indisponibil, aplicatia afiseaza o stare clara in ecranul Conturi si recomanda folosirea Demo Bank pentru demo, fara crash si fara pierderea conexiunilor existente.
+
+## Forecast financiar
+
+Forecast-ul din ecranul Statistici > Viitor nu mai foloseste regresie liniara OLS. Pentru date personale, regresia simpla poate produce valori instabile atunci cand exista putine luni de istoric, tranzactii rare sau outlieri mari.
+
+Modelul actual foloseste o abordare robusta:
+
+- grupeaza tranzactiile pe luni;
+- separa veniturile de cheltuieli;
+- exclude transferurile interne;
+- foloseste mediana istorica;
+- limiteaza outlierii;
+- limiteaza trendul lunar;
+- tine cont de tranzactii recurente;
+- afiseaza sold estimat la final de luna si net ramas luna curenta.
+
+
+## AI si recomandari
+
+Consilierul financiar foloseste modulul `ai/` pentru a genera raspunsuri personalizate. Serverul trimite catre AI un sumar financiar, nu expune direct logica de prompt in controller.
+
+Flux simplificat:
+
+```text
+client/advisor.jsx
+  -> server/src/controllers/advisor.controller.js
+    -> ai/src/advisor/advisorService.js
+      -> ai/src/providers/geminiProvider.js
+```
+
+Raspunsurile AI sunt orientate catre:
+
+- insight-uri financiare;
+- alerte;
+- recomandari concrete;
+- sanatate financiara;
+- actiuni de reducere a cheltuielilor sau imbunatatire a economisirii.
+
+## Rulare locala
+
+### Server
+
 ```bash
 cd server
 npm install
-# Configurează fișierul `.env` cu Datele Bazei de Date, Secretul JWT și credențialele pentru BT/BRD
-# Rulează migrațiile pentru baza de date
 npx prisma migrate dev
-# Pornește serverul
 npm run dev
 ```
 
-#### 2. Setup Aplicație (Client)
+### Client
+
 ```bash
 cd client
 npm install
-# Creează fișierul `.env` și setează URL-ul API-ului (ex: EXPO_PUBLIC_API_URL=http://<IP-UL-TAU>:3000/api)
-# Pornește mediul de dezvoltare Expo
 npx expo start --clear
 ```
 
----
+## Variabile de mediu
 
-## Variabile de Mediu (Environment Variables)
+### Server
 
-Este necesar să creezi fișiere `.env` atât în `/server` cât și în `/client`.
-
-**Backend (`server/.env`):**
 ```env
 DATABASE_URL="postgresql://user:parola@localhost:5432/novence"
 JWT_SECRET="secretul_tau_aici"
 PORT=3000
 
-# Open Banking
 BT_CLIENT_ID="..."
 BT_CLIENT_SECRET="..."
 BRD_CLIENT_ID="..."
+GEMINI_API_KEY="..."
 ```
 
-**Frontend (`client/.env`):**
+### Client
+
 ```env
 EXPO_PUBLIC_API_URL="http://<IP-UL-TAU>:3000/api"
 ```
 
----
+## Context academic
 
-## Context Academic (Proiect de Licență)
-Dezvoltarea aplicației Novence abordează mai multe provocări specifice ingineriei software moderne:
-1. **Securitate FinTech:** Gestionarea fluxurilor OAuth2 și a consimțămintelor API-urilor bancare conform normelor PSD2.
-2. **Normalizarea Datelor:** Procesarea informațiilor "murdare" venite de la bănci (nume de comercianți netratate, date de tranzacții fluctuante) pentru a obține statistici clare și unificate.
-3. **UI/UX Mobil:** Crearea unei interfețe fluide prin gestionarea eficientă a redării graficelor complexe și a fluxurilor financiare, direct pe dispozitiv.
+Novence demonstreaza:
 
-
+- integrare FinTech prin concepte Open Banking / PSD2;
+- normalizare si deduplicare a datelor financiare;
+- arhitectura modulara client / server / AI;
+- fallback reproductibil prin Demo Bank;
+- forecast financiar robust;
+- recomandari inteligente explicabile pentru utilizator.

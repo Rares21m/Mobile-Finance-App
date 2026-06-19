@@ -19,6 +19,17 @@ const prisma = new PrismaClient();
 const BRD_CLIENT_ID = process.env.BRD_CLIENT_ID || 'mock_brd_client_id_123';
 
 function handleBrdProviderError(res, error, fallbackCode) {
+  if (error.code === 'BRD_ENDPOINT_NOT_FOUND') {
+    return res.status(503).json({
+      error: 'BRD_SANDBOX_UNAVAILABLE',
+      code: 'BRD_SANDBOX_UNAVAILABLE',
+      details: {
+        provider: 'BRD',
+        status: error.status || error.details?.status || 404
+      }
+    });
+  }
+
   if (error.code === 'BRD_RATE_LIMITED') {
     if (error.details?.retryAfterSeconds) {
       res.setHeader('retry-after', String(error.details.retryAfterSeconds));
@@ -351,20 +362,12 @@ exports.getConnectionData = async (req, res) => {
       };
     });
 
-
-    const { applyPerfectDemoData } = require('../utils/demoDataGenerator');
-    const { accounts: finalAccounts, transactions: finalTransactions } = applyPerfectDemoData(
-      mappedTransactions,
-      enrichedAccounts,
-      "BRD"
-    );
-
     res.json({
-      accounts: finalAccounts,
-      transactions: finalTransactions,
+      accounts: enrichedAccounts,
+      transactions: mappedTransactions,
       trustStatus: {
-        dataMayBeOutdated: false,
-        healthState: "connected"
+        dataMayBeOutdated,
+        healthState
       }
     });
 

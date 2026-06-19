@@ -29,6 +29,17 @@ function isBtUnauthorized(err) {
 }
 
 function handleBtProviderError(res, err, fallbackCode) {
+  if (err.code === "BT_ENDPOINT_NOT_FOUND") {
+    return res.status(503).json({
+      error: "BT_SANDBOX_UNAVAILABLE",
+      code: "BT_SANDBOX_UNAVAILABLE",
+      details: {
+        provider: "BT",
+        status: err.status || err.details?.status || 404
+      }
+    });
+  }
+
   if (err.code === "BT_RATE_LIMITED") {
     if (err.details?.retryAfterSeconds) {
       res.setHeader("retry-after", String(err.details.retryAfterSeconds));
@@ -63,6 +74,22 @@ function handleBtProviderError(res, err, fallbackCode) {
   });
 }
 
+async function markBtConnectionExpired(connectionId, reason) {
+  if (!connectionId) return;
+  await prisma.bankConnection.
+  update({
+    where: { id: connectionId },
+    data: { status: "expired" }
+  }).
+  catch((err) => {
+    logger.warn("bt.mark_connection_expired_failed", {
+      connectionId,
+      reason,
+      message: err.message
+    });
+  });
+}
+
 
 
 
@@ -71,7 +98,17 @@ function handleBtProviderError(res, err, fallbackCode) {
 
 async function registerClient(req, res) {
   try {
-    const { clientId, clientSecret } = await btService.registerOAuthClient();
+    await prisma.bankConnection.updateMany({
+      where: {
+        userId: req.userId,
+        bankName: "BT",
+        status: { in: ["active", "pending"] }
+      },
+      data: { status: "replaced" }
+    });
+
+    const clientId = process.env.BT_CLIENT_ID || null;
+    const clientSecret = process.env.BT_CLIENT_SECRET || null;
 
 
     const connection = await prisma.bankConnection.create({
@@ -87,7 +124,9 @@ async function registerClient(req, res) {
     res.json({
       connectionId: connection.id,
       clientId,
-      message: "OAuth2 client registered successfully"
+      message: clientId ?
+      "Using preconfigured BT OAuth2 client" :
+      "BT connection created. OAuth2 client will be registered after consent metadata is loaded."
     });
   } catch (err) {
     logger.error(
@@ -97,11 +136,6 @@ async function registerClient(req, res) {
     return handleBtProviderError(res, err, "BT_REGISTER_CLIENT_FAILED");
   }
 }
-
-
-
-
-
 
 
 
@@ -126,14 +160,25 @@ async function initConsent(req, res) {
     }
 
 
-    const { consentId } = await btService.initConsent(psuIpAddress);
+    const { consentId, scaOAuthHref } = await btService.initConsent(psuIpAddress);
 
 
     const codeVerifier = btService.generateCodeVerifier();
+    let clientId = connection.clientId || process.env.BT_CLIENT_ID || null;
+    let clientSecret = connection.clientSecret || process.env.BT_CLIENT_SECRET || null;
+
+    if (!clientId || !clientSecret) {
+      const metadata = await btService.getOAuthMetadata(scaOAuthHref);
+      const registered = await btService.registerOAuthClient(
+        metadata.registration_endpoint
+      );
+      clientId = registered.clientId;
+      clientSecret = registered.clientSecret;
+    }
 
 
     const { authUrl, state } = btService.buildAuthUrl(
-      connection.clientId,
+      clientId,
       consentId,
       codeVerifier
     );
@@ -141,7 +186,7 @@ async function initConsent(req, res) {
 
     await prisma.bankConnection.update({
       where: { id: connectionId },
-      data: { consentId, codeVerifier }
+      data: { consentId, codeVerifier, clientId, clientSecret }
     });
 
     res.json({
@@ -589,23 +634,34 @@ async function getConnectionData(req, res) {
     });
 
 
-    const mappedDbTransactions = dbTransactions.map((tx) => ({
-      transactionId: tx.id,
-      transactionAmount: {
-        amount: tx.amount < 0 ? String(tx.amount) : String(tx.amount),
-        currency: tx.currency || "RON"
-      },
-      creditDebitIndicator: tx.amount >= 0 ? "CRDT" : "DBIT",
-      bookingDate: tx.bookingDate.toISOString().split('T')[0],
-      valueDate: tx.valueDate.toISOString().split('T')[0],
-      remittanceInformationUnstructured: tx.remittanceInfo,
-      creditorName: tx.creditorName,
-      debtorName: tx.debtorName,
-      category: tx.category,
-      merchantNormalized: tx.merchantNormalized || normalizeMerchantName(tx.creditorName || tx.debtorName || tx.remittanceInfo),
-      sourceLabel: "db",
-      canonicalId: tx.canonicalId
-    }));
+    const mappedDbTransactions = dbTransactions.
+    map((tx) => {
+      const bookingDate =
+      tx.normalizedBookingDate || tx.bookingDate || tx.normalizedValueDate || tx.valueDate;
+      const valueDate =
+      tx.normalizedValueDate || tx.valueDate || tx.normalizedBookingDate || tx.bookingDate;
+
+      if (!bookingDate && !valueDate) return null;
+
+      return {
+        transactionId: tx.id,
+        transactionAmount: {
+          amount: tx.amount < 0 ? String(tx.amount) : String(tx.amount),
+          currency: tx.currency || "RON"
+        },
+        creditDebitIndicator: tx.amount >= 0 ? "CRDT" : "DBIT",
+        bookingDate: (bookingDate || valueDate).toISOString().split('T')[0],
+        valueDate: (valueDate || bookingDate).toISOString().split('T')[0],
+        remittanceInformationUnstructured: tx.remittanceInfo,
+        creditorName: tx.creditorName,
+        debtorName: tx.debtorName,
+        category: tx.category,
+        merchantNormalized: tx.merchantNormalized || normalizeMerchantName(tx.creditorName || tx.debtorName || tx.remittanceInfo),
+        sourceLabel: "db",
+        canonicalId: tx.canonicalId
+      };
+    }).
+    filter(Boolean);
 
 
     const allTransactions = [...transactions, ...mappedDbTransactions];
@@ -616,17 +672,9 @@ async function getConnectionData(req, res) {
 
     const lastSyncAt = new Date().toISOString();
 
-
-    const { applyPerfectDemoData } = require('../utils/demoDataGenerator');
-    const { accounts: finalAccounts, transactions: finalTransactionsMerged } = applyPerfectDemoData(
-      finalTransactions,
-      accountsWithBalances,
-      "BT"
-    );
-
     res.json({
-      accounts: finalAccounts,
-      transactions: finalTransactionsMerged,
+      accounts: accountsWithBalances,
+      transactions: finalTransactions,
       metadata: {
         lastSyncAt,
         dataMayBeOutdated,
@@ -649,13 +697,22 @@ async function getConnectionData(req, res) {
       logger.warn(
         `BT consent expired for connection ${req.params.connectionId} during getConnectionData. Error detail: ${JSON.stringify(err.originalError?.response?.data || err.originalError?.message || err.message)}`
       );
-      await prisma.bankConnection.
-      update({
-        where: { id: req.params.connectionId },
-        data: { status: "expired" }
-      }).
-      catch(() => {});
+      await markBtConnectionExpired(req.params.connectionId, "unauthorized");
       return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
+    }
+    if (err.code === "BT_ENDPOINT_NOT_FOUND") {
+      return res.status(503).json({
+        error: "BT_SANDBOX_UNAVAILABLE",
+        code: "BT_SANDBOX_UNAVAILABLE",
+        details: {
+          provider: "BT",
+          reason: err.code,
+          status: err.status || err.details?.status || 404
+        }
+      });
+    }
+    if (err.code === "BT_PROVIDER_ERROR") {
+      return handleBtProviderError(res, err, "BT_GET_CONNECTION_DATA_FAILED");
     }
     logger.error(
       "BT Get Connection Data error:",

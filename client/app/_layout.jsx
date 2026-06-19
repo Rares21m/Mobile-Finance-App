@@ -77,7 +77,7 @@ function NavigationGuard() {
 
       router.replace("/(tabs)");
     }
-  }, [token, isLoading, isOnboardingDone, profileLoaded, segments]);
+  }, [token, isLoading, isOnboardingDone, profileLoaded, segments, router]);
 
   return null;
 }

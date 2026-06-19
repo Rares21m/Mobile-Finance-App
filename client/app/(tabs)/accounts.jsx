@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -15,7 +13,6 @@ import { useTranslation } from "react-i18next";
 
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import SectionHeader from "../../components/SectionHeader";
 import ConnectionStatusBanner from "../../components/accounts/ConnectionStatusBanner";
 import SessionExpiredBanner from "../../components/accounts/SessionExpiredBanner";
 import BankCardCarousel from "../../components/accounts/BankCardCarousel";
@@ -23,14 +20,11 @@ import PortfolioTotalCard from "../../components/accounts/PortfolioTotalCard";
 import ConnectedAccountsList from "../../components/accounts/ConnectedAccountsList";
 import BenefitSection from "../../components/accounts/BenefitSection";
 import DisconnectConfirmationModal from "../../components/accounts/DisconnectConfirmationModal";
+import { useAuth } from "../../context/AuthContext";
 import { useBankData } from "../../context/BankContext";
 import api from "../../services/api";
 import { getErrorKey } from "../../utils/errorCodes";
 import { WebView } from "react-native-webview";
-
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const CARD_WIDTH = SCREEN_WIDTH - 56;
-const CARD_GAP = 12;
 
 const BANK_CONFIG = {
   BT: {
@@ -48,18 +42,26 @@ const BANK_CONFIG = {
     cardGradient: ["#660007", "#A8000C"],
     logo: require("../../assets/images/BRDlogo.png"),
     initials: "BRD"
+  },
+  DEMO_BANK: {
+    label: "Demo Bank",
+    color: "#6366F1",
+    bgColor: "rgba(99,102,241,0.12)",
+    cardGradient: ["#312E81", "#4F46E5"],
+    logo: null,
+    initials: "DB"
   }
 };
-const BANKS = ["BT", "BRD"];
+const BANKS = ["BT", "BRD", "DEMO_BANK"];
 
 export default function Accounts() {
   const { isDark, theme } = useTheme();
   const c = theme.colors;
   const { t } = useTranslation();
+  const { token } = useAuth();
   const {
     connections,
     accounts,
-    transactions,
     addConnection,
     removeConnection,
     sessionExpired,
@@ -73,18 +75,6 @@ export default function Accounts() {
   const [disconnectConfirm, setDisconnectConfirm] = useState(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
-
-  useEffect(() => {
-    loadAccounts();
-  }, []);
-
-  async function loadAccounts() {
-    try {
-
-    } catch (err) {
-      console.error("Error loading accounts:", err);
-    }
-  }
 
   const codeProcessed = useRef(false);
 
@@ -104,7 +94,7 @@ export default function Accounts() {
       setPendingConnectionId(connectionId);
       setWebViewUrl(authUrl);
     } catch (err) {
-      console.error("BT Connection error:", err.response?.data || err.message);
+      console.warn("BT Connection error:", JSON.stringify(err.response?.data || err.message));
       showToast(
         err.response?.data?.error ?
         t(getErrorKey(err.response.data.error, "accounts.connectionError")) :
@@ -130,7 +120,33 @@ export default function Accounts() {
       codeProcessed.current = false;
       setWebViewUrl(authUrl);
     } catch (err) {
-      console.error("BRD Connection error:", err.response?.data || err.message);
+      console.warn("BRD Connection error:", JSON.stringify(err.response?.data || err.message));
+      showToast(
+        err.response?.data?.error ?
+        t(getErrorKey(err.response.data.error, "accounts.connectionError")) :
+        t("accounts.connectionError"),
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function startDemoBankConnection() {
+    if (!token) {
+      showToast("Trebuie sa fii autentificat ca sa conectezi Demo Bank.", "error");
+      return;
+    }
+
+    setLoading(true);
+    setPendingBank("DEMO_BANK");
+    try {
+      const res = await api.post("/demo-bank/connect");
+      const { connectionId } = res.data;
+      showToast("Demo Bank conectat cu tranzactii pana ieri.", "success");
+      await fetchAccounts(connectionId, "DEMO_BANK");
+    } catch (err) {
+      console.warn("Demo Bank connection error:", JSON.stringify(err.response?.data || err.message));
       showToast(
         err.response?.data?.error ?
         t(getErrorKey(err.response.data.error, "accounts.connectionError")) :
@@ -162,7 +178,7 @@ export default function Accounts() {
         }
       }
     } catch (e) {
-      console.error("URL parse error:", e);
+      console.warn("URL parse error:", e);
     }
   }
 
@@ -175,7 +191,7 @@ export default function Accounts() {
       showToast(t("accounts.connectionSuccess"), "success");
       await fetchAccounts(connectionId, bankName);
     } catch (err) {
-      console.error("Token exchange error:", err.response?.data || err.message);
+      console.warn("Token exchange error:", JSON.stringify(err.response?.data || err.message));
       showToast(t("accounts.authError"), "error");
     } finally {
       setLoading(false);
@@ -186,14 +202,16 @@ export default function Accounts() {
     try {
       await addConnection(connectionId, bankName);
     } catch (err) {
-      console.error("Fetch accounts error:", err);
+      console.warn("Fetch accounts error:", JSON.stringify(err?.response?.data || err?.message || err));
       const code = err?.response?.data?.error;
       if (code === "BT_SESSION_EXPIRED") {
-        showToast("Sesiunea a fost respinsă de BT Sandbox. Te rugăm să încerci din nou.", "error");
+        showToast(t("serverErrors.btSessionExpired"), "error");
+      } else if (code === "BT_SANDBOX_UNAVAILABLE" || code === "BRD_SANDBOX_UNAVAILABLE") {
+        showToast(t(getErrorKey(code, "accounts.connectionError")), "error");
       } else if (code === "TOKEN_EXPIRED_OR_INVALID") {
-        showToast("Sesiunea ta a expirat. Te rugăm să dai un refresh sau să te loghezi din nou.", "error");
+        showToast(t("serverErrors.tokenExpiredOrInvalid"), "error");
       } else {
-        showToast("Eroare la aducerea conturilor. Verifică logurile.", "error");
+        showToast(t("accounts.connectionError"), "error");
       }
     }
   }
@@ -205,7 +223,7 @@ export default function Accounts() {
       setDisconnectConfirm(null);
       showToast(t("accounts.disconnectSuccess", { bank: bankName }), "success");
     } catch (err) {
-      console.error("Disconnect error:", err.response?.data || err.message);
+      console.warn("Disconnect error:", JSON.stringify(err.response?.data || err.message));
       showToast(t("accounts.disconnectError"), "error");
     } finally {
       setDisconnecting(false);
@@ -228,34 +246,10 @@ export default function Accounts() {
     };
   }
 
-
-  function formatIban(iban) {
-    if (!iban) return "";
-    return iban.replace(/(.{4})/g, "$1 ").trim();
-  }
-
-
   const totalBalance = accounts.reduce((sum, acc) => {
     const bal = getAccountBalance(acc);
     return sum + (parseFloat(bal.amount) || 0);
   }, 0);
-
-
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthlyTx = transactions.filter((tx) => {
-    const d = new Date(tx.bookingDate || tx.valueDate);
-    return d >= monthStart && d <= now;
-  });
-  const monthlyIncome = monthlyTx.
-  filter((tx) => parseFloat(tx.transactionAmount?.amount || 0) > 0).
-  reduce((s, tx) => s + parseFloat(tx.transactionAmount?.amount || 0), 0);
-  const monthlyExpenses = monthlyTx.
-  filter((tx) => parseFloat(tx.transactionAmount?.amount || 0) < 0).
-  reduce(
-    (s, tx) => s + Math.abs(parseFloat(tx.transactionAmount?.amount || 0)),
-    0
-  );
 
   const activeTrustEntries = connections.
   filter((conn) => conn.status === "active").
@@ -264,6 +258,9 @@ export default function Accounts() {
 
   const hasOutdatedData = activeTrustEntries.some((item) => item.dataMayBeOutdated);
   const hasDegradedHealth = activeTrustEntries.some((item) => item.healthState === "degraded");
+  const hasSandboxUnavailable = activeTrustEntries.some(
+    (item) => item.healthState === "sandbox_unavailable"
+  );
   return (
     <View className="flex-1 bg-background pt-14">
       {}
@@ -271,6 +268,7 @@ export default function Accounts() {
       <ConnectionStatusBanner
         hasOutdatedData={hasOutdatedData}
         hasDegradedHealth={hasDegradedHealth}
+        hasSandboxUnavailable={hasSandboxUnavailable}
         c={c} />
       
 
@@ -293,6 +291,7 @@ export default function Accounts() {
           pendingBank={pendingBank}
           startBTConnection={startBTConnection}
           startBRDConnection={startBRDConnection}
+          startDemoBankConnection={startDemoBankConnection}
           activeCardIndex={activeCardIndex}
           setActiveCardIndex={setActiveCardIndex}
           setDisconnectConfirm={setDisconnectConfirm}

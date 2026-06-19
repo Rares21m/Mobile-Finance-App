@@ -75,7 +75,7 @@ Note:
 ### POST /api/manual
 - Headers: `idempotency-key` (required)
 - Request: `{ amount, currency?, description, category, date, isExpense }`
-- Success 201: `{ transaction, newBadges }`
+- Success 201: `{ transaction, insights }`
 - Errors: `IDEMPOTENCY_KEY_REQUIRED`, `INVALID_AMOUNT`, `INVALID_CATEGORY`, `INVALID_DATE`, `AMOUNT_DESCRIPTION_DATE_REQUIRED`
 
 ### PATCH /api/manual/:id
@@ -93,13 +93,13 @@ Note:
 ### PUT /api/budgets/limits
 - Headers: `idempotency-key` (required)
 - Request: `{ limits: { [category]: number } }`
-- Success 200: `{ limits, newBadges }`
+- Success 200: `{ limits, insights }`
 - Errors: `IDEMPOTENCY_KEY_REQUIRED`, `LIMITS_REQUIRED`, `INVALID_CATEGORIES`
 
 ### POST /api/budgets/events
 - Headers: `idempotency-key` (required)
 - Request: `{ name, totalLimit, startDate, endDate, categories? }`
-- Success 201: `{ event, newBadges }`
+- Success 201: `{ event, insights }`
 - Errors: `IDEMPOTENCY_KEY_REQUIRED`, `MISSING_FIELDS`
 
 ### PUT /api/budgets/events/:id

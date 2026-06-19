@@ -12,7 +12,7 @@ import {
   Text,
   View } from
 "react-native";
-import { BarChart, PieChart, LineChart } from "react-native-gifted-charts";
+import { BarChart, PieChart } from "react-native-gifted-charts";
 import ChartSkeleton from "../../components/analytics/ChartSkeleton";
 import CategoryBreakdownWithPie from "../../components/analytics/CategoryBreakdownWithPie";
 import BudgetVsActualCard from "../../components/analytics/BudgetVsActualCard";
@@ -55,7 +55,7 @@ export default function Analytics() {
   const { isDark, theme } = useTheme();
   const c = theme.colors;
   const { t, i18n } = useTranslation();
-  const [selectedPeriod, setSelectedPeriod] = useState(0);
+  const [selectedPeriod] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [activeView, setActiveView] = useState(null);
@@ -120,16 +120,6 @@ export default function Analytics() {
   const explainability = useMemo(() => explainTotals(filteredTx), [filteredTx]);
   const totalIncome = explainability.income;
   const totalExpenses = explainability.expenses;
-
-  const latestSourceUpdate = useMemo(() => {
-    if (filteredTx.length === 0) return null;
-    const latestMillis = filteredTx.
-    map((tx) => new Date(tx.lastUpdatedAt || tx.bookingDate || tx.valueDate).getTime()).
-    filter((value) => Number.isFinite(value)).
-    sort((a, b) => b - a)[0];
-
-    return latestMillis ? new Date(latestMillis) : null;
-  }, [filteredTx]);
 
   const categoryData = useMemo(
     () => getCategoryBreakdown(filteredTx),
@@ -247,7 +237,7 @@ export default function Analytics() {
           </Text>
 
     })),
-    [dailyData, isDark]
+    [dailyData, c.chartAxisTextColor]
   );
 
   const monthlyIncomeTrend = useMemo(
@@ -277,7 +267,7 @@ export default function Analytics() {
           </Text>
 
     })),
-    [monthlyIncomeTrend, isDark]
+    [monthlyIncomeTrend, c.chartAxisTextColor]
   );
 
   const budgetVsActualData = useMemo(() => {
@@ -960,29 +950,30 @@ export default function Analytics() {
                 </View>
 
                 {}
-                <View style={{ height: 140, overflow: "hidden", marginTop: 8 }}>
-                  <LineChart
-                  data={advancedForecast.dailyPoints || []}
-                  width={SCREEN_WIDTH - 96}
-                  height={110}
-                  thickness={2.5}
-                  color1={advancedForecast.netChange >= 0 ? "#10B981" : "#F43F5E"}
-                  startFillColor1={advancedForecast.netChange >= 0 ? "#10B981" : "#F43F5E"}
-                  endFillColor1="transparent"
-                  startOpacity={0.12}
-                  endOpacity={0}
-                  initialSpacing={8}
-                  spacing={(SCREEN_WIDTH - 120) / 30}
-                  noOfSections={3}
-                  yAxisColor="transparent"
-                  xAxisColor="transparent"
-                  yAxisTextStyle={{ color: c.textMuted, fontSize: 8 }}
-                  xAxisLabelTextStyle={{ color: c.textMuted, fontSize: 8 }}
-                  hideDataPoints
-                  curved
-                  hideRules
-                  hideYAxisText />
-                
+                <View style={{ marginTop: 8 }}>
+                  <View
+                  style={{
+                    height: 10,
+                    borderRadius: 999,
+                    backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)",
+                    overflow: "hidden"
+                  }}>
+                    <View
+                    style={{
+                      width: `${Math.min(Math.abs(advancedForecast.remainingNetThisMonth) / Math.max(Math.abs(advancedForecast.projectedEndBalance), 1) * 100, 100)}%`,
+                      height: "100%",
+                      borderRadius: 999,
+                      backgroundColor: advancedForecast.remainingNetThisMonth >= 0 ? "#10B981" : "#F43F5E"
+                    }} />
+                  </View>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
+                    <Text style={{ color: c.textMuted, fontSize: 10 }}>
+                      {t("common.today")}
+                    </Text>
+                    <Text style={{ color: c.textMuted, fontSize: 10 }}>
+                      {advancedForecast.daysLeft} {t("analytics.present.daysLeft").toLowerCase()}
+                    </Text>
+                  </View>
                 </View>
 
                 {}
@@ -1001,6 +992,53 @@ export default function Analytics() {
                   <Text style={{ color: c.textMuted, fontSize: 13, lineHeight: 18 }}>
                     {t(`analytics.future.insights.${advancedForecast.insightKey}`)}
                   </Text>
+                  <Text style={{ color: c.textMuted, fontSize: 12, lineHeight: 17, marginTop: 8 }}>
+                    {t("analytics.future.robustForecastDesc")}
+                  </Text>
+                  <View style={{
+                    alignSelf: "flex-start",
+                    marginTop: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 12,
+                    backgroundColor: advancedForecast.remainingNetThisMonth >= 0 ?
+                    "rgba(16,185,129,0.12)" :
+                    "rgba(239,68,68,0.12)"
+                  }}>
+                    <Text style={{
+                      color: advancedForecast.remainingNetThisMonth >= 0 ? "#10B981" : "#EF4444",
+                      fontSize: 11,
+                      fontWeight: "700"
+                    }}>
+                      {t("analytics.future.remainingNet")}:{" "}
+                      {advancedForecast.remainingNetThisMonth >= 0 ? "+" : ""}
+                      {advancedForecast.remainingNetThisMonth.toLocaleString("ro-RO", {
+                      maximumFractionDigits: 0
+                    })} RON
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", marginTop: 12, gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: c.textMuted, fontSize: 10 }}>
+                        {t("analytics.future.projectedIncome")}
+                      </Text>
+                      <Text style={{ color: "#10B981", fontWeight: "700", fontSize: 13 }}>
+                        +{advancedForecast.remainingIncome.toLocaleString("ro-RO", {
+                        maximumFractionDigits: 0
+                      })} RON
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: c.textMuted, fontSize: 10 }}>
+                        {t("analytics.future.projectedExpenses")}
+                      </Text>
+                      <Text style={{ color: "#EF4444", fontWeight: "700", fontSize: 13 }}>
+                        -{advancedForecast.remainingExpenses.toLocaleString("ro-RO", {
+                        maximumFractionDigits: 0
+                      })} RON
+                      </Text>
+                    </View>
+                  </View>
                   <View style={{ flexDirection: "row", marginTop: 12, gap: 16 }}>
                     <View>
                       <Text style={{ color: c.textMuted, fontSize: 10 }}>{t("analytics.future.trendSlope")}</Text>

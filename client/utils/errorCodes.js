@@ -31,6 +31,7 @@ const ERROR_CODE_MAP = {
   BT_GET_TRANSACTIONS_FAILED: "serverErrors.btGetTransactionsFailed",
   BT_GET_BALANCES_FAILED: "serverErrors.btGetBalancesFailed",
   BT_SESSION_EXPIRED: "serverErrors.btSessionExpired",
+  BT_SANDBOX_UNAVAILABLE: "serverErrors.btSandboxUnavailable",
   BT_RATE_LIMITED: "serverErrors.tooManyRequests",
   BT_TIMEOUT: "serverErrors.internalServerError",
   BANKING_PROVIDER_DEGRADED: "serverErrors.internalServerError",
@@ -39,6 +40,7 @@ const ERROR_CODE_MAP = {
   BRD_INIT_CONSENT_FAILED: "serverErrors.internalServerError",
   BRD_TOKEN_EXCHANGE_FAILED: "serverErrors.internalServerError",
   BRD_GET_CONNECTION_DATA_FAILED: "serverErrors.internalServerError",
+  BRD_SANDBOX_UNAVAILABLE: "serverErrors.brdSandboxUnavailable",
   BRD_RATE_LIMITED: "serverErrors.tooManyRequests",
   BRD_TIMEOUT: "serverErrors.internalServerError",
 

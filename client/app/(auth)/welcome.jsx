@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { TouchableOpacity, Text, View, Dimensions, StyleSheet } from "react-native";
+import { TouchableOpacity, Text, View, Dimensions } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");

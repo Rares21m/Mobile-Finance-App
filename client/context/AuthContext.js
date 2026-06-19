@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
         savedToken = await SecureStore.getItemAsync("jwt_token");
         savedUser = await SecureStore.getItemAsync("user_data");
       } catch (err) {
-        console.error("Error loading token:", err);
+        console.warn("Error loading token:", err);
       } finally {
         await SplashScreen.hideAsync();
         await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
         const flag = await AsyncStorage.getItem("biometric_enabled");
         setBiometricEnabled(flag === "true");
       } catch (err) {
-        console.error("Biometric check error:", err);
+        console.warn("Biometric check error:", err);
       }
     }
     checkBiometrics();

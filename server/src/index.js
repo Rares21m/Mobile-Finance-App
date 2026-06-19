@@ -12,6 +12,7 @@ const rateLimit = require("express-rate-limit");
 const authRoutes = require("./routes/auth.routes");
 const btRoutes = require("./routes/bt.routes");
 const brdRoutes = require("./routes/brd.routes");
+const demoBankRoutes = require("./routes/demoBank.routes");
 const advisorRoutes = require("./routes/advisor.routes");
 const budgetRoutes = require("./routes/budget.routes");
 const goalsRoutes = require("./routes/goals.routes");
@@ -56,6 +57,7 @@ const authLimiter = rateLimit({
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/bt", btRoutes);
 app.use("/api/brd", brdRoutes);
+app.use("/api/demo-bank", demoBankRoutes);
 app.use("/api/advisor", advisorRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/goals", goalsRoutes);

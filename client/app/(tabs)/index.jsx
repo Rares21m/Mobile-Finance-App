@@ -2,11 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal, Pressable, ScrollView, Text, View, TouchableOpacity, Image } from "react-native";
+import { ScrollView, Text, View, TouchableOpacity, Image } from "react-native";
 import InboxModal from "../../components/InboxModal";
-import SectionHeader from "../../components/SectionHeader";
 import TransactionItem from "../../components/TransactionItem";
 import { useAuth } from "../../context/AuthContext";
 import { useBankData } from "../../context/BankContext";
@@ -16,22 +15,65 @@ import { useInsights } from "../../context/InsightsContext";
 import { useNotifications } from "../../context/NotificationsContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import { useTheme } from "../../context/ThemeContext";
-import i18n from "../../i18n/i18n";
 import {
   checkAndNotifyBudgets,
   processAdvisorFollowUpReminders,
   saveToInbox } from
 "../../services/NotificationService";
 import {
-  CATEGORIES,
+  categorizeTransaction,
   explainTotals,
   filterByPeriod,
   getCategoryBreakdown } from
 "../../utils/categoryUtils";
 
 import MonthlyCheckIn from "../../components/home/MonthlyCheckIn";
-import NudgeCard from "../../components/home/NudgeCard";
 import GoalInsightCard from "../../components/home/GoalInsightCard";
+
+const AB_COPY_KEY = "novence.home.copyVariant";
+const REENTRY_STATE_KEY = "novence.home.reentryState";
+const RETENTION_PING_KEY = "novence.home.retentionPing";
+const WEEKLY_DIGEST_KEY = "novence.home.weeklyDigest";
+
+function getDigestVariant(seed = "") {
+  const text = String(seed || "default");
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash * 31 + text.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % 2 === 0 ? "A" : "B";
+}
+
+function getInactivityBucket(daysInactive) {
+  if (daysInactive >= 14) return 14;
+  if (daysInactive >= 7) return 7;
+  if (daysInactive >= 3) return 3;
+  return 0;
+}
+
+function getTransactionIdentity(tx) {
+  return (
+    tx?.canonicalId ||
+    `${tx?.connectionId || tx?.accountId || "local"}:${tx?.transactionId || tx?.manualId || tx?.bookingDate || ""}:${tx?.transactionAmount?.amount || tx?.amount || ""}`
+  );
+}
+
+function isInternalTransfer(tx) {
+  if (tx?.sourceLabel === "demo-transfer") return true;
+  if (tx?.category === "transfer" || tx?.inferredCategory === "transfer") return true;
+  return categorizeTransaction(tx).key === "transfer";
+}
+
+function getDashboardCashflowTransactions(transactions) {
+  const seen = new Set();
+  return (transactions || []).filter((tx) => {
+    if (!tx || tx.isDuplicate || isInternalTransfer(tx)) return false;
+    const identity = getTransactionIdentity(tx);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+}
 
 
 
@@ -113,9 +155,6 @@ export default function Dashboard() {
   const { profile } = useOnboarding();
   const { goals } = useGoals();
   const {
-    actionCenter,
-    bestNextAction: bestNextFromFeed,
-    convertInsightAction,
     refreshInsights,
     trackKpiEvent
   } = useInsights();
@@ -123,14 +162,12 @@ export default function Dashboard() {
     getBudgetSummary,
     totalBudgeted,
     limits,
-    currentMonthSpending,
     getSuggestedBudgets,
     applySuggestedBudgets
   } = useBudget();
   const {
     accounts,
     transactions,
-    loading,
     sessionExpired,
     connections,
     trustByConnection,
@@ -142,16 +179,12 @@ export default function Dashboard() {
   const recentTransactions = getRecentTransactions(5);
 
 
-  const now = new Date();
-  const monthlyTx = filterByPeriod(transactions, 0);
+  const cashflowTransactions = getDashboardCashflowTransactions(transactions);
+  const monthlyTx = filterByPeriod(cashflowTransactions, 0);
   const monthlyExplainability = explainTotals(monthlyTx);
   const totalIncome = monthlyExplainability.income;
   const totalExpenses = monthlyExplainability.expenses;
-  const budgetParityGap = Math.abs(
-    Number(totalExpenses || 0) - Number(currentMonthSpending ? Object.values(currentMonthSpending).reduce((sum, value) => sum + Number(value || 0), 0) : 0)
-  );
-
-  const currentLang = i18n.language?.startsWith("ro") ? "ro" : "en";
+  const monthlyNet = monthlyExplainability.net;
 
 
   const categoryBreakdown = getCategoryBreakdown(monthlyTx).slice(0, 3);
@@ -171,7 +204,7 @@ export default function Dashboard() {
     if (summary.length > 0) {
       checkAndNotifyBudgets(summary, t).catch(() => {});
     }
-  }, [transactions]);
+  }, [transactions, getBudgetSummary, t]);
 
   const hasData = accounts.length > 0 || transactions.length > 0;
   const activeTrustEntries = connections.
@@ -181,31 +214,6 @@ export default function Dashboard() {
 
   const hasOutdatedData = activeTrustEntries.some((entry) => entry.dataMayBeOutdated);
   const hasDegradedHealth = activeTrustEntries.some((entry) => entry.healthState === "degraded");
-  const latestSyncAt = activeTrustEntries.reduce((latest, entry) => {
-    if (!entry?.lastSyncAt) return latest;
-    if (!latest) return entry.lastSyncAt;
-    return new Date(entry.lastSyncAt) > new Date(latest) ? entry.lastSyncAt : latest;
-  }, null);
-
-  function formatLastSyncLabel(lastSync) {
-    if (!lastSync) return t("accounts.lastSyncUnknown");
-    const dt = new Date(lastSync);
-    if (Number.isNaN(dt.getTime())) return t("accounts.lastSyncUnknown");
-    return dt.toLocaleString(currentLang === "ro" ? "ro-RO" : "en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  }
-
-
-  const locale = currentLang === "ro" ? "ro-RO" : "en-US";
-  const dateStr = now.toLocaleDateString(locale, {
-    weekday: "long",
-    day: "numeric",
-    month: "long"
-  });
 
 
   const firstName = user?.name?.split(" ")[0] || t("profile.defaultUser");
@@ -245,7 +253,7 @@ export default function Dashboard() {
   const { unreadCount, reload: reloadInbox } = useNotifications();
   const [inboxVisible, setInboxVisible] = useState(false);
   const [copyVariant, setCopyVariant] = useState("A");
-  const [reentryState, setReentryState] = useState({ bucket: 0, daysInactive: 0 });
+  const [, setReentryState] = useState({ bucket: 0, daysInactive: 0 });
 
 
 
@@ -328,117 +336,7 @@ export default function Dashboard() {
     catch(() => {});
   }, [t, trackKpiEvent]);
 
-  const actionCenterTasks = (actionCenter || []).slice(0, 3);
-  const bestNextAction = useMemo(
-    () => bestNextFromFeed || actionCenterTasks[0] || null,
-    [actionCenterTasks, bestNextFromFeed]
-  );
   const weeklyDigest = buildWeeklyDigest(transactions);
-
-  const weeklyDigestSubtitle =
-  copyVariant === "A" ?
-  t("dashboard.weeklyDigest.subtitleA") :
-  t("dashboard.weeklyDigest.subtitleB");
-  const weeklyDigestDefaultAction =
-  copyVariant === "A" ?
-  t("dashboard.weeklyDigest.defaultActionA") :
-  t("dashboard.weeklyDigest.defaultActionB");
-
-  const onActionCenterPress = (task) => {
-    const actionType = task?.action?.type || "open";
-    trackKpiEvent("insight_action_click", {
-      insightId: task?.insightId,
-      actionType,
-      metadata: {
-        source: "home_action_center"
-      }
-    });
-
-    if (task?.insightId) {
-      convertInsightAction(task.insightId, actionType);
-      trackKpiEvent("insight_conversion", {
-        insightId: task.insightId,
-        actionType,
-        metadata: {
-          source: "home_action_center"
-        }
-      });
-    }
-
-    switch (actionType) {
-      case "set_budget":
-      case "reduce_spend_plan":
-        router.push("/(tabs)/budget");
-        break;
-      case "save_goal":
-        router.push("/(tabs)/budget");
-        break;
-      case "review_subscription":
-      case "inspect_transaction":
-        router.push("/transactions");
-        break;
-      default:
-        router.push("/(tabs)/advisor");
-        break;
-    }
-  };
-
-  const onWeeklyDigestPrimaryAction = () => {
-    const topTask = actionCenterTasks[0];
-    trackKpiEvent("weekly_digest_cta", {
-      actionType: topTask?.action?.type || "open_transactions",
-      insightId: topTask?.insightId || null,
-      metadata: {
-        weekKey: weeklyDigest?.weekKey,
-        copyVariant
-      }
-    });
-
-    trackKpiEvent("insight_copy_variant_click", {
-      metadata: {
-        zone: "weekly_digest",
-        copyVariant
-      }
-    });
-
-    if (topTask) {
-      onActionCenterPress(topTask);
-      return;
-    }
-    router.push("/transactions");
-  };
-
-  const onBestNextActionPress = () => {
-    if (!bestNextAction) {
-      router.push("/transactions");
-      return;
-    }
-
-    trackKpiEvent("best_next_action_click", {
-      insightId: bestNextAction.insightId || null,
-      actionType: bestNextAction.action?.type || "open",
-      metadata: {
-        copyVariant
-      }
-    });
-
-    onActionCenterPress(bestNextAction);
-  };
-
-  const onReentryCtaPress = () => {
-    trackKpiEvent("reentry_banner_cta", {
-      metadata: {
-        bucket: reentryState.bucket,
-        daysInactive: reentryState.daysInactive
-      }
-    });
-
-    if (bestNextAction) {
-      onBestNextActionPress();
-      return;
-    }
-    router.push("/(tabs)/advisor");
-  };
 
   useEffect(() => {
     (async () => {
@@ -689,15 +587,27 @@ export default function Dashboard() {
 
             {}
             <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
-              <View style={{ flexDirection: "row", backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderRadius: 20, padding: 16, justifyContent: "space-between" }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: c.textMuted, fontSize: 12, fontWeight: "600", marginBottom: 4 }}>{t("dashboard.income")}</Text>
-                  <Text style={{ color: c.success, fontSize: 16, fontWeight: "800" }}>+{totalIncome.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} lei</Text>
-                </View>
-                <View style={{ width: 1, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)", marginHorizontal: 16 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: c.textMuted, fontSize: 12, fontWeight: "600", marginBottom: 4 }}>{t("dashboard.expenses")}</Text>
-                  <Text style={{ color: c.foreground, fontSize: 16, fontWeight: "800" }}>-{totalExpenses.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} lei</Text>
+              <View style={{ backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderRadius: 20, padding: 16 }}>
+                <Text style={{ color: c.textMuted, fontSize: 12, fontWeight: "700", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.6 }}>
+                  {t("dashboard.monthlyCashflow")}
+                </Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: c.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 4 }}>{t("dashboard.income")}</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: c.success, fontSize: 14, fontWeight: "800" }}>+{totalIncome.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} lei</Text>
+                  </View>
+                  <View style={{ width: 1, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)", marginHorizontal: 10 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: c.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 4 }}>{t("dashboard.expenses")}</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: c.expense, fontSize: 14, fontWeight: "800" }}>-{totalExpenses.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} lei</Text>
+                  </View>
+                  <View style={{ width: 1, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)", marginHorizontal: 10 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: c.textMuted, fontSize: 11, fontWeight: "600", marginBottom: 4 }}>{t("dashboard.monthlyNet")}</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: monthlyNet >= 0 ? c.success : c.expense, fontSize: 14, fontWeight: "800" }}>
+                      {monthlyNet >= 0 ? "+" : "-"}{Math.abs(monthlyNet).toLocaleString("ro-RO", { minimumFractionDigits: 2 })} lei
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>

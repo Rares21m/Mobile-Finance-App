@@ -40,9 +40,6 @@ export default function Profile() {
   const { themeMode, setTheme, isDark, theme } = useTheme();
   const c = theme.colors;
   const { showToast } = useToast();
-  const lang = i18n.language?.startsWith("ro") ? "Ro" : "En";
-
-
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [securityModalVisible, setSecurityModalVisible] = useState(false);
   const [langModalVisible, setLangModalVisible] = useState(false);

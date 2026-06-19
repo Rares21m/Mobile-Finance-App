@@ -647,12 +647,13 @@ export function getCashFlowForecast(transactions, currentBalance = 0) {
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const totalDays = monthEnd.getDate();
   const daysElapsed = now.getDate();
-  const daysLeft = totalDays - daysElapsed;
+  const daysLeft = Math.max(1, totalDays - daysElapsed);
+  const robustForecast = buildRobustMonthlyForecast(transactions, now);
 
   const currentMonthTx = transactions.filter((tx) => {
     const d = getTxDate(tx);
     if (!d) return false;
-    return d >= monthStart && d <= now;
+    return d >= monthStart && d <= now && !isForecastTransfer(tx);
   });
 
   let incomeToDate = 0;
@@ -665,11 +666,12 @@ export function getCashFlowForecast(transactions, currentBalance = 0) {
   incomeToDate = Math.round(incomeToDate * 100) / 100;
   expensesToDate = Math.round(expensesToDate * 100) / 100;
 
-
-  const dailyIncome = daysElapsed > 0 ? incomeToDate / daysElapsed : 0;
-  const dailyExpenses = daysElapsed > 0 ? expensesToDate / daysElapsed : 0;
-  const extrapolatedIncome = Math.round(dailyIncome * daysLeft * 100) / 100;
-  const extrapolatedExpenses = Math.round(dailyExpenses * daysLeft * 100) / 100;
+  const extrapolatedIncome = roundMoney(
+    Math.max(0, robustForecast.projectedIncome - incomeToDate)
+  );
+  const extrapolatedExpenses = roundMoney(
+    Math.max(0, robustForecast.projectedExpenses - expensesToDate)
+  );
 
 
   const recurring = detectRecurringTransactions(transactions);
@@ -684,15 +686,7 @@ export function getCashFlowForecast(transactions, currentBalance = 0) {
   const remainingRecurring =
   Math.round(recurringItems.reduce((s, r) => s + r.amount, 0) * 100) / 100;
 
-  const projectedNet =
-  Math.round(
-    (incomeToDate +
-    extrapolatedIncome -
-    expensesToDate -
-    extrapolatedExpenses -
-    remainingRecurring) *
-    100
-  ) / 100;
+  const projectedNet = roundMoney(extrapolatedIncome - extrapolatedExpenses);
 
   const savingsRateToDate =
   incomeToDate > 0 ?
@@ -700,7 +694,8 @@ export function getCashFlowForecast(transactions, currentBalance = 0) {
   0;
 
   const dailyPoints = [];
-  let runningNet = incomeToDate - expensesToDate;
+  let runningNet = 0;
+  const dailyNet = projectedNet / daysLeft;
 
 
   dailyPoints.push({
@@ -717,26 +712,7 @@ export function getCashFlowForecast(transactions, currentBalance = 0) {
     );
 
 
-    runningNet += dailyIncome - dailyExpenses;
-
-
-
-
-    const variance = (dailyIncome + dailyExpenses) * 0.1 * Math.sin(i);
-    runningNet += variance;
-
-
-    const dueToday = recurringItems.filter((r) => {
-      const rd = new Date(r.nextDate);
-      return (
-        rd.getDate() === dayDate.getDate() &&
-        rd.getMonth() === dayDate.getMonth() &&
-        rd.getFullYear() === dayDate.getFullYear());
-
-    });
-
-    const recurringSum = dueToday.reduce((s, r) => s + r.amount, 0);
-    runningNet -= recurringSum;
+    runningNet += dailyNet;
 
     dailyPoints.push({
       value: Math.round(runningNet * 100) / 100,
@@ -777,98 +753,204 @@ export function getCashFlowForecast(transactions, currentBalance = 0) {
 
 
 
-export function getAdvancedRegressionForecast(transactions, currentBalance = 0) {
-  const now = new Date();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const historyDays = 60;
-  const projectDays = 30;
+function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
 
+function median(values) {
+  const sorted = values.
+  filter((v) => Number.isFinite(v)).
+  sort((a, b) => a - b);
+  if (sorted.length === 0) return 0;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ?
+  (sorted[mid - 1] + sorted[mid]) / 2 :
+  sorted[mid];
+}
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
 
-  const dailyNets = new Array(historyDays).fill(0);
+function monthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthRange(now, monthsBack) {
+  const months = [];
+  for (let i = monthsBack; i >= 1; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(monthKey(date));
+  }
+  return months;
+}
+
+function isForecastTransfer(tx) {
+  if (tx.isDuplicate) return true;
+  if (tx.sourceLabel === "demo-transfer") return true;
+  if (tx.category === "transfer" || tx.inferredCategory === "transfer") {
+    return true;
+  }
+  return categorizeTransaction(tx).key === "transfer";
+}
+
+function clampOutliers(values) {
+  const clean = values.filter((v) => Number.isFinite(v) && v >= 0);
+  if (clean.length < 3) return clean;
+  const base = median(clean);
+  if (base <= 0) return clean;
+  return clean.map((value) => clamp(value, base * 0.35, base * 1.85));
+}
+
+function limitedTrend(values) {
+  if (values.length < 3) return 0;
+  const previous = median(values.slice(0, -1));
+  const latest = values[values.length - 1];
+  if (previous <= 0) return 0;
+  return clamp((latest - previous) / previous, -0.12, 0.12);
+}
+
+function buildRobustMonthlyForecast(transactions, now = new Date()) {
+  const months = monthRange(now, 6);
+  const monthly = months.map((key) => ({
+    key,
+    income: 0,
+    expenses: 0
+  }));
+  const byKey = Object.fromEntries(monthly.map((item) => [item.key, item]));
 
   for (const tx of transactions) {
     const txDate = getTxDate(tx);
-    if (!txDate) continue;
-    const daysAgo = Math.floor((now - txDate) / dayMs);
-    if (daysAgo < 0 || daysAgo >= historyDays) continue;
-    const idx = historyDays - 1 - daysAgo;
-    dailyNets[idx] += parseFloat(tx.transactionAmount?.amount || tx.amount || 0);
+    if (!txDate || txDate > now || isForecastTransfer(tx)) continue;
+
+    const key = monthKey(txDate);
+    if (!byKey[key]) continue;
+
+    const amount = parseFloat(tx.transactionAmount?.amount || tx.amount || 0);
+    if (!Number.isFinite(amount) || amount === 0) continue;
+
+    if (amount > 0) {
+      byKey[key].income += amount;
+    } else {
+      byKey[key].expenses += Math.abs(amount);
+    }
   }
 
+  const incomes = monthly.map((item) => item.income);
+  const expenses = monthly.map((item) => item.expenses);
+  const incomeBase = median(clampOutliers(incomes));
+  const expenseBase = median(clampOutliers(expenses));
+  const incomeTrend = limitedTrend(incomes);
+  const expenseTrend = limitedTrend(expenses);
 
-  const n = dailyNets.length;
-  let sumX = 0,sumY = 0,sumXX = 0,sumXY = 0;
-  for (let i = 0; i < n; i++) {
-    sumX += i;
-    sumY += dailyNets[i];
-    sumXX += i * i;
-    sumXY += i * dailyNets[i];
-  }
-  const denom = n * sumXX - sumX * sumX;
-  const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
-  const intercept = denom !== 0 ? (sumY - slope * sumX) / n : 0;
+  const recurringExpenses = detectRecurringTransactions(transactions).
+  filter((item) => item.amount > 0 && item.category?.key !== "salary").
+  reduce((sum, item) => sum + item.monthlyEstimate, 0);
 
-
-  const avgDailyNet = sumY / n;
-
-
-
-
-
-  const BILL_CATEGORY_KEYS = new Set([
-  "utilities", "housing", "entertainment"]
+  const projectedIncome = Math.max(
+    0,
+    incomeBase * (1 + incomeTrend)
   );
-  const allRecurring = detectRecurringTransactions(transactions);
-  const trueBills = allRecurring.filter((r) => {
-    if (BILL_CATEGORY_KEYS.has(r.category?.key)) return true;
-    const nameLower = r.name.toLowerCase();
-    return SUBSCRIPTION_KEYWORDS.some((kw) => nameLower.includes(kw));
-  });
+  const projectedExpenses = Math.max(
+    0,
+    Math.max(expenseBase * (1 + expenseTrend), recurringExpenses)
+  );
+
+  const confidence = monthly.filter(
+    (item) => item.income > 0 || item.expenses > 0
+  ).length;
+
+  return {
+    monthly,
+    projectedIncome: roundMoney(projectedIncome),
+    projectedExpenses: roundMoney(projectedExpenses),
+    projectedNet: roundMoney(projectedIncome - projectedExpenses),
+    dailyNet: roundMoney((projectedIncome - projectedExpenses) / 30),
+    confidence: confidence >= 5 ? "high" : confidence >= 3 ? "medium" : "low",
+    method: "median_clamped_trend",
+    explanation:
+    "Estimare bazata pe mediana ultimelor luni, cu outlieri limitati si ajustare pentru tranzactii recurente."
+  };
+}
+
+function getCurrentMonthTotals(transactions, now = new Date()) {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  let incomeToDate = 0;
+  let expensesToDate = 0;
+
+  for (const tx of transactions) {
+    const txDate = getTxDate(tx);
+    if (!txDate || txDate < monthStart || txDate > now || isForecastTransfer(tx)) {
+      continue;
+    }
+
+    const amount = parseFloat(tx.transactionAmount?.amount || tx.amount || 0);
+    if (!Number.isFinite(amount) || amount === 0) continue;
+
+    if (amount > 0) {
+      incomeToDate += amount;
+    } else {
+      expensesToDate += Math.abs(amount);
+    }
+  }
+
+  return {
+    incomeToDate: roundMoney(incomeToDate),
+    expensesToDate: roundMoney(expensesToDate)
+  };
+}
+
+export function getAdvancedRegressionForecast(transactions, currentBalance = 0) {
+  const now = new Date();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const projectDays = Math.max(1, monthEnd.getDate() - now.getDate());
+  const robustForecast = buildRobustMonthlyForecast(transactions, now);
+  const { incomeToDate, expensesToDate } = getCurrentMonthTotals(
+    transactions,
+    now
+  );
+  const remainingIncome = Math.max(
+    0,
+    robustForecast.projectedIncome - incomeToDate
+  );
+  const remainingExpenses = Math.max(
+    0,
+    robustForecast.projectedExpenses - expensesToDate
+  );
+  const remainingNet = roundMoney(remainingIncome - remainingExpenses);
 
 
   const dailyPoints = [];
-  let projBal = currentBalance;
+  let projectedRemainingNet = 0;
+  const dailyNet = roundMoney(remainingNet / projectDays);
 
 
   dailyPoints.push({
-    value: Math.round(projBal),
+    value: 0,
     label: now.getDate().toString()
   });
 
   for (let i = 1; i <= projectDays; i++) {
     const projDate = new Date(now.getTime() + i * dayMs);
-    const projDateStr = projDate.toISOString().split("T")[0];
 
 
 
-    projBal += avgDailyNet;
-
-
-    for (const bill of trueBills) {
-      if (bill.nextDate === projDateStr) {
-        projBal -= bill.amount;
-      }
-    }
+    projectedRemainingNet += dailyNet;
 
 
     const showLabel = i % 5 === 0 || i === projectDays;
     dailyPoints.push({
-      value: Math.round(projBal),
+      value: Math.round(projectedRemainingNet),
       label: showLabel ? projDate.getDate().toString() : ""
     });
   }
 
 
-  const endBalance = dailyPoints[dailyPoints.length - 1].value;
+  const endBalance = roundMoney(currentBalance + remainingNet);
   const netChange = endBalance - currentBalance;
   const lowestPoint = Math.min(...dailyPoints.map((p) => p.value));
-
-
-  const mean = avgDailyNet;
-  const variance = dailyNets.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
-  const stdDev = Math.sqrt(variance);
-  const volatility = stdDev > Math.abs(avgDailyNet) * 1.5 ? "high" : "stable";
+  const volatility = robustForecast.confidence === "low" ? "high" : "stable";
 
   let insightKey = "stable";
   if (netChange < -Math.abs(currentBalance) * 0.15) insightKey = "warning";else
@@ -876,13 +958,25 @@ export function getAdvancedRegressionForecast(transactions, currentBalance = 0) 
 
   return {
     dailyPoints,
-    slope: Math.round(avgDailyNet * 100) / 100,
-    intercept,
+    slope: dailyNet,
+    intercept: currentBalance,
     projectedEndBalance: endBalance,
     netChange,
     volatility,
     insightKey,
-    lowestPoint
+    lowestPoint,
+    projectedIncome: robustForecast.projectedIncome,
+    projectedExpenses: robustForecast.projectedExpenses,
+    projectedNet: robustForecast.projectedNet,
+    remainingIncome: roundMoney(remainingIncome),
+    remainingExpenses: roundMoney(remainingExpenses),
+    remainingNetThisMonth: remainingNet,
+    incomeToDate,
+    expensesToDate,
+    daysLeft: projectDays,
+    confidence: robustForecast.confidence,
+    method: robustForecast.method,
+    explanation: robustForecast.explanation
   };
 }
 

@@ -15,8 +15,7 @@ import {
   Text,
   TouchableOpacity,
   View,
-  StatusBar,
-  Platform } from
+  StatusBar } from
 "react-native";
 import { useNotifications } from "../context/NotificationsContext";
 import { useTheme } from "../context/ThemeContext";
@@ -24,7 +23,7 @@ import { useTheme } from "../context/ThemeContext";
 const TYPE_META = {
   budget_warning: { icon: "warning", color: "#F59E0B", gradient: ["#F59E0B", "#D97706"] },
   budget_over: { icon: "alert-circle", color: "#F43F5E", gradient: ["#F43F5E", "#E11D48"] },
-  badge_earned: { icon: "trophy", color: "#10B981", gradient: ["#10B981", "#059669"] },
+  financial_insight: { icon: "bulb", color: "#10B981", gradient: ["#10B981", "#059669"] },
   monthly_checkin: { icon: "calendar", color: "#6366F1", gradient: ["#6366F1", "#4F46E5"] },
   weekly_digest: { icon: "trending-up", color: "#3B82F6", gradient: ["#3B82F6", "#2563EB"] }
 };
@@ -225,7 +224,7 @@ export default function InboxModal({ visible, onClose }) {
 
 
     },
-    [handleRowPress, c, t, isDark]
+    [handleRowPress, onClose, c, t, isDark]
   );
 
   return (

@@ -52,6 +52,15 @@ function toBrdProviderError(error) {
     });
   }
 
+  if (status === 404) {
+    return Object.assign(new Error('BRD_ENDPOINT_NOT_FOUND'), {
+      status: 404,
+      code: 'BRD_ENDPOINT_NOT_FOUND',
+      details: { provider: 'BRD', status },
+      originalError: error
+    });
+  }
+
   if (['ECONNABORTED', 'ETIMEDOUT'].includes(error.code)) {
     return Object.assign(new Error('BRD_TIMEOUT'), {
       status: 504,

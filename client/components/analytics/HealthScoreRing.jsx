@@ -45,7 +45,7 @@ export default function HealthScoreRing({ healthScore, onDrillDown, c, isDark, t
       duration: 1200,
       useNativeDriver: true
     }).start();
-  }, [score]);
+  }, [animValue, score]);
 
   const strokeDashoffset = animValue.interpolate({
     inputRange: [0, 1],
@@ -146,6 +146,9 @@ export default function HealthScoreRing({ healthScore, onDrillDown, c, isDark, t
         <View style={{ alignItems: "center" }}>
           <Text style={{ fontSize: 56, fontWeight: "800", color: color1 }}>
             {score}
+          </Text>
+          <Text style={{ fontSize: 18, color: c.textMuted, marginTop: -4 }}>
+            {gradeEmoji(grade)}
           </Text>
         </View>
       </View>

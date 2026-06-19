@@ -5,22 +5,37 @@ import { Text, View } from "react-native";
 export default function ConnectionStatusBanner({
   hasOutdatedData,
   hasDegradedHealth,
+  hasSandboxUnavailable,
   c
 }) {
   const { t } = useTranslation();
 
-  if (!hasOutdatedData && !hasDegradedHealth) return null;
+  if (!hasOutdatedData && !hasDegradedHealth && !hasSandboxUnavailable) {
+    return null;
+  }
+
+  const title = hasSandboxUnavailable ?
+  t("accounts.sandboxUnavailableTitle") :
+  t("accounts.dataMayBeOutdated");
+  const description = hasSandboxUnavailable ?
+  t("accounts.sandboxUnavailableDesc") :
+  hasDegradedHealth ?
+  t("accounts.healthDegraded") :
+  t("accounts.connectionWarning");
+  const accentColor = hasSandboxUnavailable || hasOutdatedData ?
+  "#F59E0B" :
+  "#3B82F6";
 
   return (
     <View
       style={{
         marginHorizontal: 24,
         marginTop: 8,
-        backgroundColor: hasOutdatedData ?
+        backgroundColor: hasSandboxUnavailable || hasOutdatedData ?
         "rgba(245,158,11,0.12)" :
         "rgba(59,130,246,0.10)",
         borderWidth: 1,
-        borderColor: hasOutdatedData ?
+        borderColor: hasSandboxUnavailable || hasOutdatedData ?
         "rgba(245,158,11,0.35)" :
         "rgba(59,130,246,0.30)",
         borderRadius: 12,
@@ -31,32 +46,28 @@ export default function ConnectionStatusBanner({
       }}>
       
       <Ionicons
-        name={hasOutdatedData ? "time-outline" : "sync-outline"}
+        name={hasSandboxUnavailable ? "cloud-offline-outline" : hasOutdatedData ? "time-outline" : "sync-outline"}
         size={18}
-        color={hasOutdatedData ? "#F59E0B" : "#3B82F6"} />
+        color={accentColor} />
       
       <View style={{ flex: 1 }}>
-        {hasOutdatedData ?
         <Text
           style={{
-            color: hasOutdatedData ? "#F59E0B" : "#3B82F6",
+            color: accentColor,
             fontSize: 12,
             fontWeight: "600"
           }}>
           
-            {t("accounts.dataMayBeOutdated")}
-          </Text> :
-        null}
+          {title}
+        </Text>
         <Text
           style={{
             color: c.textMuted,
             fontSize: 12,
-            marginTop: hasOutdatedData ? 2 : 0
+            marginTop: 2
           }}>
           
-          {hasDegradedHealth ?
-          t("accounts.healthDegraded") :
-          t("accounts.connectionWarning")}
+          {description}
         </Text>
       </View>
     </View>);

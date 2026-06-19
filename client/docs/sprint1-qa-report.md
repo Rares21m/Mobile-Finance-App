@@ -11,7 +11,7 @@ Scope: Foundation + Primitives
   - GlassInput
   - GlassCard
   - SectionHeader
-  - StatusBadge (nou)
+  - Status indicator (nou)
 - PageShell reutilizabil adaugat (nou).
 - Interaction foundations actualizate pentru Toast si BottomSheet.
 - Inventory hardcoded styles documentat pentru Home/Budget/Transactions.
@@ -31,7 +31,7 @@ Scope: Foundation + Primitives
 ## Status Sprint 1 (scope board)
 - Inventory hardcoded styles in Home/Budget/Transactions: DONE
 - Token map v1 in ThemeContext/theme constants: DONE
-- Normalize components + StatusBadge: DONE
+- Normalize components + status indicator: DONE
 - Add page shell reusable: DONE
 - Add interaction spec for toasts/modals/bottom sheets: DONE
 - QA: visual parity + no logic changes: DONE

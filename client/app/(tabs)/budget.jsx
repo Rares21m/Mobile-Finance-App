@@ -17,7 +17,6 @@ import { useGoals } from "../../context/GoalsContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import { useTheme } from "../../context/ThemeContext";
 import { CATEGORIES } from "../../utils/categoryUtils";
-import ProgressBar from "../../components/budget/ProgressBar";
 import BudgetItem from "../../components/budget/BudgetItem";
 import EventBudgetItem from "../../components/budget/EventBudgetItem";
 import GoalCard from "../../components/budget/GoalCard";
@@ -58,13 +57,11 @@ export default function Budget() {
   const { profile } = useOnboarding();
   const {
     limits,
-    loaded,
     setBudgetLimit,
     currentMonthSpending,
     totalBudgeted,
     totalSpentOnBudgeted,
     getBudgetStatus,
-    getBudgetExplainability,
     getSuggestedBudgets,
     applySuggestedBudgets,
     getSmartWeightSuggestions,
@@ -121,30 +118,6 @@ export default function Budget() {
       (cat) => !limits[cat.key] && (currentMonthSpending[cat.key] ?? 0) > 0
     ),
     [limits, currentMonthSpending]
-  );
-
-
-  const categoriesOnBudget = useMemo(
-    () =>
-    activeBudgetKeys.filter((k) => getBudgetStatus(k).status !== "over").
-    length,
-    [activeBudgetKeys, getBudgetStatus]
-  );
-
-  const summaryPct = useMemo(
-    () =>
-    totalBudgeted > 0 ?
-    Math.min(
-      Math.round(totalSpentOnBudgeted / totalBudgeted * 100),
-      100
-    ) :
-    0,
-    [totalBudgeted, totalSpentOnBudgeted]
-  );
-
-  const budgetExplainability = useMemo(
-    () => getBudgetExplainability(),
-    [getBudgetExplainability]
   );
 
 
@@ -221,7 +194,7 @@ export default function Budget() {
         await createGoal(data);
       }
 
-    } catch (e) {
+    } catch (_e) {
 
     }
     setSheetMode(null);
@@ -232,7 +205,7 @@ export default function Budget() {
     if (!pendingGoal) return;
     try {
       await deleteGoal(pendingGoal.id);
-    } catch (e) {}
+    } catch (_e) {}
     setSheetMode(null);
     setPendingGoal(null);
   };
@@ -1439,7 +1412,6 @@ export default function Budget() {
                 endDate: eventEndDate,
                 categories: []
               });
-              triggerEvaluate();
               closeSheet();
             }}
             className="active:opacity-80"

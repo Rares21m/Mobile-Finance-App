@@ -726,7 +726,7 @@ export default function Onboarding() {
             <Ionicons name="sparkles" size={28} color="#fff" />
           </LinearGradient>
           <Text style={{ color: c.textMuted, fontSize: 13, marginTop: 10 }}>
-            {t("onboarding.badge", { step: step + 1, total: TOTAL_STEPS })}
+            {t("onboarding.stepLabel", { step: step + 1, total: TOTAL_STEPS })}
           </Text>
         </View>
 
