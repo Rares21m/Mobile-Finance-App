@@ -1,0 +1,7 @@
+{
+  "name": "novence-ai",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "description": "AI advisory, insight and forecast module for Novence."
+}
