@@ -1,8 +1,11 @@
 /**
- * @fileoverview BT Open Banking (PSD2) controller for the Novence API.
- * Manages the full BT integration lifecycle: OAuth2 client registration,
- * AIS consent initiation, authorization code exchange, and data retrieval
- * (accounts, transactions, balances).
+ * BT sandbox controller.
+ *
+ * Public mobile contract kept stable:
+ * POST /bt/register-client -> { connectionId, clientId }
+ * POST /bt/init-consent    -> { authUrl, consentId, state }
+ * POST /bt/exchange-token  -> activates connection
+ * GET  /bt/connection-data/:connectionId -> accounts + transactions
  */
 
 const prisma = require("../config/db");
@@ -16,27 +19,26 @@ const {
   dedupeByCanonicalId
 } = require("../utils/transactionNormalization");
 
-
-
-
-
-
 function isBtUnauthorized(err) {
   if (err.code === "BT_UNAUTHORIZED") return true;
   if (err.response?.status === 401) return true;
-  const body = JSON.stringify(err.response?.data || "");
+  const body = JSON.stringify(err.providerBody || err.response?.data || "");
   return body.includes("UNAUTHORIZED");
 }
 
 function handleBtProviderError(res, err, fallbackCode) {
+  logger.error(fallbackCode, {
+    message: err.message,
+    code: err.code,
+    details: err.details,
+    providerBody: err.providerBody
+  });
+
   if (err.code === "BT_ENDPOINT_NOT_FOUND") {
     return res.status(503).json({
       error: "BT_SANDBOX_UNAVAILABLE",
       code: "BT_SANDBOX_UNAVAILABLE",
-      details: {
-        provider: "BT",
-        status: err.status || err.details?.status || 404
-      }
+      details: err.details
     });
   }
 
@@ -67,14 +69,14 @@ function handleBtProviderError(res, err, fallbackCode) {
     });
   }
 
-  return res.status(500).json({
+  return res.status(err.status || 500).json({
     error: fallbackCode,
     code: fallbackCode,
     details: err.details
   });
 }
 
-async function markBtConnectionExpired(connectionId, reason) {
+async function markConnectionExpired(connectionId) {
   if (!connectionId) return;
   await prisma.bankConnection.
   update({
@@ -82,22 +84,19 @@ async function markBtConnectionExpired(connectionId, reason) {
     data: { status: "expired" }
   }).
   catch((err) => {
-    logger.warn("bt.mark_connection_expired_failed", {
+    logger.warn("bt.mark_expired_failed", {
       connectionId,
-      reason,
       message: err.message
     });
   });
 }
 
-
-
-
-
-
-
 async function registerClient(req, res) {
   try {
+    const configuredClientId = process.env.BT_CLIENT_ID || "";
+    const configuredClientSecret = process.env.BT_CLIENT_SECRET || "";
+    const hasConfiguredClient = configuredClientId && configuredClientSecret;
+
     await prisma.bankConnection.updateMany({
       where: {
         userId: req.userId,
@@ -107,626 +106,402 @@ async function registerClient(req, res) {
       data: { status: "replaced" }
     });
 
-    const clientId = process.env.BT_CLIENT_ID || null;
-    const clientSecret = process.env.BT_CLIENT_SECRET || null;
-
-
     const connection = await prisma.bankConnection.create({
       data: {
         userId: req.userId,
         bankName: "BT",
-        clientId,
-        clientSecret,
+        clientId: hasConfiguredClient ? configuredClientId : null,
+        clientSecret: hasConfiguredClient ? configuredClientSecret : null,
         status: "pending"
       }
     });
 
-    res.json({
+    logger.info("bt.sandbox_client_ready", {
       connectionId: connection.id,
-      clientId,
-      message: clientId ?
-      "Using preconfigured BT OAuth2 client" :
-      "BT connection created. OAuth2 client will be registered after consent metadata is loaded."
+      clientId: hasConfiguredClient ? configuredClientId : null,
+      source: hasConfiguredClient ? "env" : "deferred_dynamic"
+    });
+
+    return res.json({
+      connectionId: connection.id,
+      clientId: hasConfiguredClient ? configuredClientId : null,
+      message:
+      hasConfiguredClient ?
+      "Using configured BT sandbox OAuth client" :
+      "BT sandbox connection created; OAuth client will be registered after consent"
     });
   } catch (err) {
-    logger.error(
-      "BT Register Client error:",
-      err.response?.data || err.message
-    );
     return handleBtProviderError(res, err, "BT_REGISTER_CLIENT_FAILED");
   }
 }
-
-
 
 async function initConsent(req, res) {
   try {
     const { connectionId } = req.body;
 
-
-    const rawIp = req.headers["x-forwarded-for"] || req.ip || "10.0.0.1";
-    const psuIpAddress =
-    rawIp.replace(/^::ffff:/, "") === "::1" ?
-    "10.0.0.1" :
-    rawIp.replace(/^::ffff:/, "");
-
-
     const connection = await prisma.bankConnection.findFirst({
-      where: { id: connectionId, userId: req.userId }
+      where: { id: connectionId, userId: req.userId, bankName: "BT" }
     });
 
     if (!connection) {
       return res.status(404).json({ error: "BANK_CONNECTION_NOT_FOUND" });
     }
 
-
-    const { consentId, scaOAuthHref } = await btService.initConsent(psuIpAddress);
-
-
+    const consent = await btService.initAisConsent();
+    const credentials =
+    connection.clientId && connection.clientSecret ?
+    {
+      clientId: connection.clientId,
+      clientSecret: connection.clientSecret,
+      source: "existing"
+    } :
+    {
+      ...(await btService.registerOAuthClient()),
+      source: "dynamic_after_consent"
+    };
     const codeVerifier = btService.generateCodeVerifier();
-    let clientId = connection.clientId || process.env.BT_CLIENT_ID || null;
-    let clientSecret = connection.clientSecret || process.env.BT_CLIENT_SECRET || null;
-
-    if (!clientId || !clientSecret) {
-      const metadata = await btService.getOAuthMetadata(scaOAuthHref);
-      const registered = await btService.registerOAuthClient(
-        metadata.registration_endpoint
-      );
-      clientId = registered.clientId;
-      clientSecret = registered.clientSecret;
-    }
-
-
     const { authUrl, state } = btService.buildAuthUrl(
-      clientId,
-      consentId,
+      credentials.clientId,
+      consent.consentId,
       codeVerifier
     );
 
-
     await prisma.bankConnection.update({
       where: { id: connectionId },
-      data: { consentId, codeVerifier, clientId, clientSecret }
+      data: {
+        consentId: consent.consentId,
+        clientId: credentials.clientId,
+        clientSecret: credentials.clientSecret,
+        codeVerifier,
+        status: "pending"
+      }
     });
 
-    res.json({
+    logger.info("bt.sandbox_consent_ready", {
+      connectionId,
+      consentId: consent.consentId,
+      consentStatus: consent.consentStatus,
+      psuIpAddress: btService.getPsuIpAddress(),
+      aspspScaApproach: consent.aspspScaApproach,
+      clientSource: credentials.source,
+      authUrl
+    });
+
+    return res.json({
       authUrl,
-      consentId,
+      consentId: consent.consentId,
       state,
-      message: "Redirect the user to authUrl for authorization"
+      message: "Redirect the user to authUrl for BT sandbox authorization"
     });
   } catch (err) {
-    logger.error("BT Init Consent error:", err.response?.data || err.message);
     return handleBtProviderError(res, err, "BT_INIT_CONSENT_FAILED");
   }
 }
-
-
-
-
-
-
-
 
 async function exchangeToken(req, res) {
   try {
     const { connectionId, code } = req.body;
 
+    if (!code) {
+      return res.status(400).json({ error: "BT_AUTH_CODE_MISSING" });
+    }
+
     const connection = await prisma.bankConnection.findFirst({
-      where: { id: connectionId, userId: req.userId }
+      where: { id: connectionId, userId: req.userId, bankName: "BT" }
     });
 
     if (!connection) {
       return res.status(404).json({ error: "BANK_CONNECTION_NOT_FOUND" });
     }
 
+    if (!connection.clientId || !connection.clientSecret || !connection.codeVerifier) {
+      return res.status(400).json({ error: "BT_CONNECTION_NOT_READY" });
+    }
 
-    const { accessToken, refreshToken, expiresIn } =
-    await btService.exchangeCodeForToken(
+    const token = await btService.exchangeCodeForToken(
       code,
       connection.clientId,
       connection.clientSecret,
       connection.codeVerifier
     );
 
-
-    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
-
+    const tokenExpiresAt = new Date(Date.now() + Number(token.expiresIn || 3600) * 1000);
 
     await prisma.bankConnection.update({
       where: { id: connectionId },
       data: {
-        accessToken,
-        refreshToken,
+        accessToken: token.accessToken,
+        refreshToken: token.refreshToken,
         tokenExpiresAt,
         status: "active"
       }
     });
 
+    logger.info("bt.sandbox_token_exchanged", {
+      connectionId,
+      expiresIn: token.expiresIn
+    });
 
-    res.json({
-      message: "Token obtained successfully. Connection is now active.",
-      expiresIn
+    return res.json({
+      message: "BT sandbox token obtained successfully",
+      expiresIn: token.expiresIn
     });
   } catch (err) {
-    logger.error("BT Exchange Token error:", err.response?.data || err.message);
     return handleBtProviderError(res, err, "BT_TOKEN_EXCHANGE_FAILED");
   }
 }
 
-
-
-
-
-
-
-
 async function ensureValidToken(connection) {
-  if (!connection.tokenExpiresAt || new Date() >= connection.tokenExpiresAt) {
-    logger.debug("Token expired, refreshing…");
+  if (!connection.accessToken) {
+    throw Object.assign(new Error("BT_SESSION_EXPIRED"), {
+      code: "BT_UNAUTHORIZED"
+    });
+  }
 
-    try {
-      const { accessToken, refreshToken, expiresIn } =
-      await btService.refreshAccessToken(
-        connection.refreshToken,
-        connection.clientId,
-        connection.clientSecret,
-        connection.codeVerifier
-      );
+  if (!connection.tokenExpiresAt || new Date() < connection.tokenExpiresAt) {
+    return connection.accessToken;
+  }
 
-      const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+  if (!connection.refreshToken) {
+    throw Object.assign(new Error("BT_SESSION_EXPIRED"), {
+      code: "BT_UNAUTHORIZED"
+    });
+  }
 
-      await prisma.bankConnection.update({
-        where: { id: connection.id },
-        data: { accessToken, refreshToken, tokenExpiresAt }
-      });
+  const refreshed = await btService.refreshAccessToken(
+    connection.refreshToken,
+    connection.clientId,
+    connection.clientSecret,
+    connection.codeVerifier
+  );
 
-      return accessToken;
-    } catch (refreshErr) {
-      const isUnauthorized =
-      refreshErr.response?.status === 401 ||
-      JSON.stringify(refreshErr.response?.data).includes("UNAUTHORIZED");
+  const tokenExpiresAt = new Date(
+    Date.now() + Number(refreshed.expiresIn || 3600) * 1000
+  );
 
-      if (isUnauthorized) {
+  await prisma.bankConnection.update({
+    where: { id: connection.id },
+    data: {
+      accessToken: refreshed.accessToken,
+      refreshToken: refreshed.refreshToken,
+      tokenExpiresAt
+    }
+  });
 
-        logger.warn(
-          `Connection ${connection.id} refresh token expired. Marking as expired.`
+  return refreshed.accessToken;
+}
+
+function mapBtTransaction(tx, account, connectionId) {
+  const bookingDate = normalizeDateOnly(tx.bookingDate);
+  const valueDate = normalizeDateOnly(tx.valueDate);
+  const amountValue = Number(tx.transactionAmount?.amount || tx.amount || 0);
+  const isDebit =
+  tx.creditDebitIndicator === "DBIT" ||
+  tx.creditDebitIndicator === "Debit" ||
+  amountValue < 0 ||
+  tx.debtorAccount?.iban === account?.iban;
+  const finalAmount = isDebit ? -Math.abs(amountValue) : Math.abs(amountValue);
+  const canonicalId = buildCanonicalTransactionId({
+    bankName: "BT",
+    accountId: account?.resourceId || account?.iban,
+    amount: finalAmount,
+    currency: tx.transactionAmount?.currency || tx.currency || "RON",
+    bookingDate,
+    valueDate,
+    creditorName: tx.creditorName,
+    debtorName: tx.debtorName,
+    remittanceInfo: tx.remittanceInformationUnstructured,
+    transactionId: tx.transactionId
+  });
+
+  return {
+    ...tx,
+    transactionId: tx.transactionId || canonicalId,
+    transactionAmount: {
+      amount: String(finalAmount),
+      currency: tx.transactionAmount?.currency || tx.currency || "RON"
+    },
+    creditDebitIndicator: isDebit ? "DBIT" : "CRDT",
+    bookingDate: bookingDate || tx.bookingDate,
+    valueDate: valueDate || tx.valueDate,
+    canonicalId,
+    merchantNormalized: normalizeMerchantName(
+      tx.creditorName ||
+      tx.debtorName ||
+      tx.remittanceInformationUnstructured ||
+      ""
+    ),
+    sourceLabel: "synced",
+    payloadHash: buildPayloadHash(tx),
+    syncBatchId: `bt_${connectionId}_${Date.now()}`,
+    lastUpdatedAt: new Date().toISOString()
+  };
+}
+
+async function loadBtConnectionData(connection, query = {}) {
+  const accessToken = await ensureValidToken(connection);
+  const accountsData = await btService.getAccounts(
+    accessToken,
+    connection.consentId
+  );
+
+  const accounts = accountsData.accounts || [];
+  const accountsWithBalances = await Promise.all(
+    accounts.map(async (account) => {
+      try {
+        const balancesData = await btService.getBalances(
+          accessToken,
+          connection.consentId,
+          account.resourceId
         );
-        await prisma.bankConnection.
-        update({
-          where: { id: connection.id },
-          data: { status: "expired" }
-        }).
-        catch(() => {});
-        throw Object.assign(new Error("BT_SESSION_EXPIRED"), {
-          btExpired: true
+        return {
+          ...account,
+          balances: balancesData.balances || [],
+          connectionId: connection.id
+        };
+      } catch (err) {
+        logger.warn("bt.balance_load_failed", {
+          connectionId: connection.id,
+          accountId: account.resourceId,
+          message: err.message
         });
+        return { ...account, connectionId: connection.id };
       }
-      throw refreshErr;
-    }
-  }
+    })
+  );
 
-  return connection.accessToken;
-}
-
-
-
-
-
-
-async function getAccounts(req, res) {
-  try {
-    const { connectionId } = req.params;
-
-    const connection = await prisma.bankConnection.findFirst({
-      where: { id: connectionId, userId: req.userId, status: "active" }
-    });
-
-    if (!connection) {
-      return res.status(404).json({ error: "ACTIVE_CONNECTION_NOT_FOUND" });
-    }
-
-
-    let accessToken;
-    try {
-      accessToken = await ensureValidToken(connection);
-    } catch (tokenErr) {
-      if (tokenErr.btExpired) {
-        return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
-      }
-      throw tokenErr;
-    }
-
-    const rawIp = req.headers["x-forwarded-for"] || req.ip || "10.0.0.1";
-    const psuIpAddress = rawIp.replace(/^::ffff:/, "") === "::1" ? "10.0.0.1" : rawIp.replace(/^::ffff:/, "");
-
-    const accounts = await btService.getAccounts(
+  const firstAccount = accountsWithBalances[0];
+  let transactions = [];
+  if (firstAccount?.resourceId) {
+    const txData = await btService.getTransactions(
       accessToken,
       connection.consentId,
-      psuIpAddress
-    );
-
-    logger.debug("BT Accounts response:", JSON.stringify(accounts, null, 2));
-
-    res.json(accounts);
-  } catch (err) {
-    if (isBtUnauthorized(err)) {
-      logger.warn(
-        `BT consent expired for connection ${req.params.connectionId}. Marking as expired. Error detail: ${JSON.stringify(err.response?.data || err.message)}`
-      );
-      await prisma.bankConnection.
-      update({
-        where: { id: req.params.connectionId },
-        data: { status: "expired" }
-      }).
-      catch(() => {});
-      return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
-    }
-    logger.error("BT Get Accounts error:", err.response?.data || err.message);
-    return handleBtProviderError(res, err, "BT_GET_ACCOUNTS_FAILED");
-  }
-}
-
-
-
-
-
-
-
-async function getTransactions(req, res) {
-  try {
-    const { connectionId, accountId } = req.params;
-    const { dateFrom, dateTo, bookingStatus, limit, page } = req.query;
-
-    const connection = await prisma.bankConnection.findFirst({
-      where: { id: connectionId, userId: req.userId, status: "active" }
-    });
-
-    if (!connection) {
-      return res.status(404).json({ error: "ACTIVE_CONNECTION_NOT_FOUND" });
-    }
-
-    const accessToken = await ensureValidToken(connection);
-
-    const rawIp = req.headers["x-forwarded-for"] || req.ip || "10.0.0.1";
-    const psuIpAddress = rawIp.replace(/^::ffff:/, "") === "::1" ? "10.0.0.1" : rawIp.replace(/^::ffff:/, "");
-
-    const transactions = await btService.getTransactions(
-      accessToken,
-      connection.consentId,
-      accountId,
-      psuIpAddress,
+      firstAccount.resourceId,
       {
-        dateFrom,
-        dateTo,
-        bookingStatus,
-        limit: limit ? parseInt(limit) : undefined,
-        page: page ? parseInt(page) : undefined
+        dateFrom: query.dateFrom,
+        dateTo: query.dateTo,
+        bookingStatus: query.bookingStatus || "booked"
       }
     );
 
-    logger.debug(
-      "BT Transactions response:",
-      JSON.stringify(transactions, null, 2)
-    );
-
-    res.json(transactions);
-  } catch (err) {
-    if (isBtUnauthorized(err)) {
-      logger.warn(
-        `BT consent expired for connection ${req.params.connectionId}. Error detail: ${JSON.stringify(err.response?.data || err.message)}`
-      );
-      await prisma.bankConnection.
-      update({
-        where: { id: req.params.connectionId },
-        data: { status: "expired" }
-      }).
-      catch(() => {});
-      return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
-    }
-    logger.error(
-      "BT Get Transactions error:",
-      err.response?.data || err.message
-    );
-    return handleBtProviderError(res, err, "BT_GET_TRANSACTIONS_FAILED");
+    transactions = (txData.transactions?.booked || []).
+    map((tx) => mapBtTransaction(tx, firstAccount, connection.id));
+    transactions = dedupeByCanonicalId(transactions).unique;
   }
+
+  return {
+    accounts: accountsWithBalances,
+    transactions,
+    metadata: {
+      lastSyncAt: new Date().toISOString(),
+      healthState: "connected",
+      dataMayBeOutdated: false,
+      sourceHints: {
+        labels: ["synced"],
+        lastUpdatedAt: new Date().toISOString(),
+        duplicatesDropped: 0
+      }
+    },
+    connection: {
+      id: connection.id,
+      bankName: connection.bankName,
+      status: connection.status,
+      updatedAt: connection.updatedAt
+    }
+  };
 }
 
-
-
-
-
-
-async function getBalances(req, res) {
-  try {
-    const { connectionId, accountId } = req.params;
-
-    const connection = await prisma.bankConnection.findFirst({
-      where: { id: connectionId, userId: req.userId, status: "active" }
-    });
-
-    if (!connection) {
-      return res.status(404).json({ error: "ACTIVE_CONNECTION_NOT_FOUND" });
+async function findActiveConnection(req, connectionId) {
+  return prisma.bankConnection.findFirst({
+    where: {
+      id: connectionId,
+      userId: req.userId,
+      bankName: "BT",
+      status: "active"
     }
-
-    const accessToken = await ensureValidToken(connection);
-
-    const rawIp = req.headers["x-forwarded-for"] || req.ip || "10.0.0.1";
-    const psuIpAddress = rawIp.replace(/^::ffff:/, "") === "::1" ? "10.0.0.1" : rawIp.replace(/^::ffff:/, "");
-
-    const balances = await btService.getBalances(
-      accessToken,
-      connection.consentId,
-      accountId,
-      psuIpAddress
-    );
-
-    logger.debug("BT Balances response:", JSON.stringify(balances, null, 2));
-
-    res.json(balances);
-  } catch (err) {
-    if (isBtUnauthorized(err)) {
-      logger.warn(
-        `BT consent expired for connection ${req.params.connectionId}.`
-      );
-      await prisma.bankConnection.
-      update({
-        where: { id: req.params.connectionId },
-        data: { status: "expired" }
-      }).
-      catch(() => {});
-      return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
-    }
-    logger.error("BT Get Balances error:", err.response?.data || err.message);
-    return handleBtProviderError(res, err, "BT_GET_BALANCES_FAILED");
-  }
+  });
 }
-
-
-
-
-
-
 
 async function getConnectionData(req, res) {
   try {
-    const { connectionId } = req.params;
-    const { dateFrom, bookingStatus } = req.query;
-
-    const connection = await prisma.bankConnection.findFirst({
-      where: { id: connectionId, userId: req.userId, status: "active" }
-    });
-
+    const connection = await findActiveConnection(req, req.params.connectionId);
     if (!connection) {
       return res.status(404).json({ error: "ACTIVE_CONNECTION_NOT_FOUND" });
     }
 
-
-    let accessToken;
-    try {
-      accessToken = await ensureValidToken(connection);
-    } catch (tokenErr) {
-      if (tokenErr.btExpired) {
-        return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
-      }
-      throw tokenErr;
-    }
-
-    const consentId = connection.consentId;
-    const rawIp = req.headers["x-forwarded-for"] || req.ip || "10.0.0.1";
-    const psuIpAddress = rawIp.replace(/^::ffff:/, "") === "::1" ? "10.0.0.1" : rawIp.replace(/^::ffff:/, "");
-
-    let healthState = "connected";
-    let dataMayBeOutdated = false;
-
-
-    const accountsData = await btService.getAccounts(accessToken, consentId, psuIpAddress);
-    const accountsList = accountsData.accounts || [];
-
-
-    const accountsWithBalances = await Promise.all(
-      accountsList.map(async (account) => {
-        try {
-          const balData = await btService.getBalances(
-            accessToken,
-            consentId,
-            account.resourceId,
-            psuIpAddress
-          );
-          return { ...account, balances: balData.balances || [], connectionId };
-        } catch {
-          healthState = "degraded";
-          dataMayBeOutdated = true;
-          return { ...account, connectionId };
-        }
-      })
-    );
-
-
-    let transactions = [];
-    let duplicatesDropped = 0;
-    if (accountsWithBalances.length > 0) {
-      const firstAccount = accountsWithBalances[0];
-      try {
-        const txData = await btService.getTransactions(
-          accessToken,
-          consentId,
-          firstAccount.resourceId,
-          psuIpAddress,
-          { dateFrom, bookingStatus: bookingStatus || "booked" }
-        );
-        const rawBooked = txData.transactions?.booked || [];
-        const syncBatchId = `bt_${connectionId}_${Date.now()}`;
-
-        const normalized = rawBooked.map((tx) => {
-          const normalizedBooking = normalizeDateOnly(tx.bookingDate);
-          const normalizedValue = normalizeDateOnly(tx.valueDate);
-          const canonicalId = buildCanonicalTransactionId({
-            bankName: connection.bankName,
-            accountId: firstAccount.resourceId,
-            amount: tx.transactionAmount?.amount,
-            currency: tx.transactionAmount?.currency,
-            bookingDate: normalizedBooking,
-            valueDate: normalizedValue,
-            creditorName: tx.creditorName,
-            debtorName: tx.debtorName,
-            remittanceInfo: tx.remittanceInformationUnstructured,
-            transactionId: tx.transactionId
-          });
-
-          let isDebit = false;
-          const amt = parseFloat(tx.transactionAmount?.amount || tx.amount || 0);
-          if (tx.creditDebitIndicator === "DBIT" || tx.creditDebitIndicator === "Debit") {
-            isDebit = true;
-          } else if (tx.type === "debit") {
-            isDebit = true;
-          } else if (amt < 0) {
-            isDebit = true;
-          } else if (tx.debtorAccount?.iban === firstAccount.iban || tx.debtorAccount?.iban) {
-
-            isDebit = true;
-          } else if (tx.proprietaryBankTransactionCode === "DEBIT") {
-            isDebit = true;
-          }
-
-          const finalIndicator = isDebit ? "DBIT" : "CRDT";
-          const finalAmount = isDebit ? -Math.abs(amt) : Math.abs(amt);
-
-          return {
-            ...tx,
-            bookingDate: normalizedBooking || tx.bookingDate,
-            valueDate: normalizedValue || tx.valueDate,
-            canonicalId,
-            transactionAmount: {
-              amount: finalAmount.toString(),
-              currency: tx.transactionAmount?.currency || tx.currency || "RON"
-            },
-            creditDebitIndicator: finalIndicator,
-            merchantNormalized: normalizeMerchantName(
-              tx.creditorName ||
-              tx.debtorName ||
-              tx.remittanceInformationUnstructured
-            ),
-            sourceLabel: "synced",
-            payloadHash: buildPayloadHash(tx),
-            syncBatchId,
-            lastUpdatedAt: new Date().toISOString()
-          };
-        });
-
-        const deduped = dedupeByCanonicalId(normalized);
-        transactions = deduped.unique;
-        duplicatesDropped = deduped.duplicates;
-      } catch (txErr) {
-        if (isBtUnauthorized(txErr)) {
-          return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
-        }
-        healthState = "degraded";
-        dataMayBeOutdated = true;
-        logger.error("BT Get Transactions (combined) error:", txErr.message);
-      }
-    }
-
-
-    let dbTransactions = await prisma.transaction.findMany({
-      where: { bankConnectionId: connectionId },
-      orderBy: { bookingDate: "desc" }
-    });
-
-
-    const mappedDbTransactions = dbTransactions.
-    map((tx) => {
-      const bookingDate =
-      tx.normalizedBookingDate || tx.bookingDate || tx.normalizedValueDate || tx.valueDate;
-      const valueDate =
-      tx.normalizedValueDate || tx.valueDate || tx.normalizedBookingDate || tx.bookingDate;
-
-      if (!bookingDate && !valueDate) return null;
-
-      return {
-        transactionId: tx.id,
-        transactionAmount: {
-          amount: tx.amount < 0 ? String(tx.amount) : String(tx.amount),
-          currency: tx.currency || "RON"
-        },
-        creditDebitIndicator: tx.amount >= 0 ? "CRDT" : "DBIT",
-        bookingDate: (bookingDate || valueDate).toISOString().split('T')[0],
-        valueDate: (valueDate || bookingDate).toISOString().split('T')[0],
-        remittanceInformationUnstructured: tx.remittanceInfo,
-        creditorName: tx.creditorName,
-        debtorName: tx.debtorName,
-        category: tx.category,
-        merchantNormalized: tx.merchantNormalized || normalizeMerchantName(tx.creditorName || tx.debtorName || tx.remittanceInfo),
-        sourceLabel: "db",
-        canonicalId: tx.canonicalId
-      };
-    }).
-    filter(Boolean);
-
-
-    const allTransactions = [...transactions, ...mappedDbTransactions];
-
-
-    const { unique } = dedupeByCanonicalId(allTransactions);
-    const finalTransactions = unique.sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
-
-    const lastSyncAt = new Date().toISOString();
-
-    res.json({
-      accounts: accountsWithBalances,
-      transactions: finalTransactions,
-      metadata: {
-        lastSyncAt,
-        dataMayBeOutdated,
-        healthState,
-        sourceHints: {
-          labels: ["synced", "db"],
-          lastUpdatedAt: lastSyncAt,
-          duplicatesDropped
-        }
-      },
-      connection: {
-        id: connection.id,
-        bankName: connection.bankName,
-        status: connection.status,
-        updatedAt: connection.updatedAt
-      }
-    });
+    const data = await loadBtConnectionData(connection, req.query);
+    return res.json(data);
   } catch (err) {
     if (isBtUnauthorized(err)) {
-      logger.warn(
-        `BT consent expired for connection ${req.params.connectionId} during getConnectionData. Error detail: ${JSON.stringify(err.originalError?.response?.data || err.originalError?.message || err.message)}`
-      );
-      await markBtConnectionExpired(req.params.connectionId, "unauthorized");
+      await markConnectionExpired(req.params.connectionId);
       return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
     }
-    if (err.code === "BT_ENDPOINT_NOT_FOUND") {
-      return res.status(503).json({
-        error: "BT_SANDBOX_UNAVAILABLE",
-        code: "BT_SANDBOX_UNAVAILABLE",
-        details: {
-          provider: "BT",
-          reason: err.code,
-          status: err.status || err.details?.status || 404
-        }
-      });
-    }
-    if (err.code === "BT_PROVIDER_ERROR") {
-      return handleBtProviderError(res, err, "BT_GET_CONNECTION_DATA_FAILED");
-    }
-    logger.error(
-      "BT Get Connection Data error:",
-      err.response?.data || err.stack || err.message
-    );
     return handleBtProviderError(res, err, "BT_GET_CONNECTION_DATA_FAILED");
   }
 }
 
+async function getAccounts(req, res) {
+  try {
+    const connection = await findActiveConnection(req, req.params.connectionId);
+    if (!connection) {
+      return res.status(404).json({ error: "ACTIVE_CONNECTION_NOT_FOUND" });
+    }
+    const accessToken = await ensureValidToken(connection);
+    const accounts = await btService.getAccounts(accessToken, connection.consentId);
+    return res.json(accounts);
+  } catch (err) {
+    if (isBtUnauthorized(err)) {
+      await markConnectionExpired(req.params.connectionId);
+      return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
+    }
+    return handleBtProviderError(res, err, "BT_GET_ACCOUNTS_FAILED");
+  }
+}
 
+async function getBalances(req, res) {
+  try {
+    const connection = await findActiveConnection(req, req.params.connectionId);
+    if (!connection) {
+      return res.status(404).json({ error: "ACTIVE_CONNECTION_NOT_FOUND" });
+    }
+    const accessToken = await ensureValidToken(connection);
+    const balances = await btService.getBalances(
+      accessToken,
+      connection.consentId,
+      req.params.accountId
+    );
+    return res.json(balances);
+  } catch (err) {
+    if (isBtUnauthorized(err)) {
+      await markConnectionExpired(req.params.connectionId);
+      return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
+    }
+    return handleBtProviderError(res, err, "BT_GET_BALANCES_FAILED");
+  }
+}
 
-
-
-
+async function getTransactions(req, res) {
+  try {
+    const connection = await findActiveConnection(req, req.params.connectionId);
+    if (!connection) {
+      return res.status(404).json({ error: "ACTIVE_CONNECTION_NOT_FOUND" });
+    }
+    const accessToken = await ensureValidToken(connection);
+    const transactions = await btService.getTransactions(
+      accessToken,
+      connection.consentId,
+      req.params.accountId,
+      req.query
+    );
+    return res.json(transactions);
+  } catch (err) {
+    if (isBtUnauthorized(err)) {
+      await markConnectionExpired(req.params.connectionId);
+      return res.status(401).json({ error: "BT_SESSION_EXPIRED" });
+    }
+    return handleBtProviderError(res, err, "BT_GET_TRANSACTIONS_FAILED");
+  }
+}
 
 async function getUserConnections(req, res) {
   try {
@@ -741,19 +516,18 @@ async function getUserConnections(req, res) {
       orderBy: { createdAt: "desc" }
     });
 
-
     const seen = new Set();
     const connections = [];
     const duplicateIds = [];
-    for (const conn of allActive) {
-      if (seen.has(conn.bankName)) {
-        duplicateIds.push(conn.id);
+
+    for (const connection of allActive) {
+      if (seen.has(connection.bankName)) {
+        duplicateIds.push(connection.id);
       } else {
-        seen.add(conn.bankName);
-        connections.push(conn);
+        seen.add(connection.bankName);
+        connections.push(connection);
       }
     }
-
 
     if (duplicateIds.length > 0) {
       prisma.bankConnection.
@@ -761,23 +535,15 @@ async function getUserConnections(req, res) {
         where: { id: { in: duplicateIds } },
         data: { status: "replaced" }
       }).
-      catch((e) =>
-      logger.warn("Failed to clean duplicate connections:", e.message)
-      );
+      catch((err) => logger.warn("bt.cleanup_duplicates_failed", err.message));
     }
 
-    res.json({ connections });
+    return res.json({ connections });
   } catch (err) {
-    logger.error("Get User Connections error:", err.message);
-    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+    logger.error("bt.get_connections_failed", err);
+    return res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
   }
 }
-
-
-
-
-
-
 
 async function disconnectBank(req, res) {
   try {
@@ -799,16 +565,13 @@ async function disconnectBank(req, res) {
       return res.status(404).json({ error: "CONNECTION_NOT_FOUND" });
     }
 
-    logger.info(
-      `User ${req.userId} disconnected ${bankName} (${updated.count} connection(s) marked)`
-    );
-    res.json({
+    return res.json({
       message: "Bank disconnected successfully",
       count: updated.count
     });
   } catch (err) {
-    logger.error("Disconnect Bank error:", err.message);
-    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+    logger.error("bt.disconnect_failed", err);
+    return res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
   }
 }
 
@@ -817,8 +580,8 @@ module.exports = {
   initConsent,
   exchangeToken,
   getAccounts,
-  getTransactions,
   getBalances,
+  getTransactions,
   getUserConnections,
   getConnectionData,
   disconnectBank

@@ -164,8 +164,28 @@ export default function Accounts() {
     const { url } = navState;
     if (!url || codeProcessed.current) return;
 
+    if (__DEV__) {
+      console.log("BT/BRD WebView navigation:", {
+        bank: pendingBank,
+        url,
+        title: navState.title,
+        loading: navState.loading
+      });
+    }
+
     try {
       const urlObj = new URL(url);
+      if (
+      urlObj.hostname.endsWith("google.com") &&
+      urlObj.searchParams.has("error"))
+      {
+        codeProcessed.current = true;
+        setWebViewUrl(null);
+        console.warn("BT authorization returned error:", urlObj.searchParams.get("error"));
+        showToast(t("accounts.authError"), "error");
+        return;
+      }
+
       if (
       urlObj.hostname.endsWith("google.com") &&
       urlObj.searchParams.has("code"))

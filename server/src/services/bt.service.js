@@ -1,32 +1,63 @@
 /**
- * @fileoverview BT Open Banking (PSD2 / Berlin Group) service layer.
- * Encapsulates all HTTP calls to the BT Sandbox API, including
- * OAuth2 client registration, AIS consent, PKCE helpers, token
- * management, and account data retrieval.
+ * BT Open Banking sandbox integration.
+ *
+ * This file intentionally follows the BT sandbox document only:
+ * - dynamic OAuth2 client registration
+ * - AIS consent creation
+ * - OAuth authorization code flow with PKCE
+ * - token exchange and AIS data calls
  */
 
 const crypto = require("crypto");
 const axios = require("axios");
 const CircuitBreaker = require("./circuitBreaker");
 
-const BT_BASE = process.env.BT_BASE_URL || "https://api.apistorebt.ro/bt/sb";
+const BT_BASE_URL = process.env.BT_BASE_URL || "https://api.apistorebt.ro/bt/sb";
 const BT_AUTH_URL =
 process.env.BT_AUTH_URL ||
 "https://apistorebt.ro/auth/realms/psd2-sb/protocol/openid-connect/auth";
 const BT_REDIRECT_URI = process.env.BT_REDIRECT_URI || "https://google.com";
-const BT_CLIENT_NAME = process.env.BT_CLIENT_NAME || "Novence Finance App";
+const BT_CLIENT_NAME =
+process.env.BT_CLIENT_NAME || "Third Party Provider Application DEMO 1";
+const BT_PSU_IP_ADDRESS = process.env.BT_PSU_IP_ADDRESS || "10.0.0.1";
+const BT_TIMEOUT_MS = Number(process.env.BT_TIMEOUT_MS || 12000);
+const BT_MAX_RETRIES = Number(process.env.BT_MAX_RETRIES || 1);
+
+const ENDPOINTS = {
+  registration: `${BT_BASE_URL}/oauth/register`,
+  token: `${BT_BASE_URL}/oauth/token`,
+  consents: `${BT_BASE_URL}/bt-psd2-aisp/v2/consents`,
+  accounts: `${BT_BASE_URL}/bt-psd2-aisp/v2/accounts`
+};
+
 const btBreaker = new CircuitBreaker({
   failureThreshold: 5,
   resetTimeoutMs: 30000
 });
 
-const BT_TIMEOUT_MS = Number(process.env.BT_TIMEOUT_MS || 12000);
-const BT_MAX_RETRIES = Number(process.env.BT_MAX_RETRIES || 2);
+function requestId() {
+  return crypto.randomUUID();
+}
+
+function getPsuIpAddress() {
+  return BT_PSU_IP_ADDRESS;
+}
+
+function generateCodeVerifier() {
+  return crypto.randomBytes(64).toString("base64url").slice(0, 128);
+}
+
+function generateCodeChallenge(codeVerifier) {
+  return crypto.
+  createHash("sha256").
+  update(codeVerifier).
+  digest("base64url");
+}
 
 function parseRetryAfterSeconds(value) {
   if (!value) return null;
-  const num = Number(value);
-  if (Number.isFinite(num)) return Math.max(0, Math.floor(num));
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return Math.max(0, Math.floor(numeric));
   const date = new Date(value);
   if (!Number.isNaN(date.getTime())) {
     return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 1000));
@@ -34,40 +65,20 @@ function parseRetryAfterSeconds(value) {
   return null;
 }
 
-function isRetryableError(error) {
+function mapProviderError(error) {
   const status = error.response?.status;
-  if ([429, 502, 503, 504].includes(status)) return true;
-  return ["ECONNABORTED", "ETIMEDOUT", "ECONNRESET"].includes(error.code);
-}
-
-async function wait(ms) {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function buildProviderError(error) {
-  const status = error.response?.status;
-  const retryAfterSeconds = parseRetryAfterSeconds(error.response?.headers?.["retry-after"]);
+  const providerBody = error.response?.data || null;
   const url = error.config?.url || null;
+  const retryAfterSeconds = parseRetryAfterSeconds(
+    error.response?.headers?.["retry-after"]
+  );
 
   if (status === 401) {
     return Object.assign(new Error("BT_UNAUTHORIZED"), {
       status: 401,
       code: "BT_UNAUTHORIZED",
-      details: {
-        provider: "BT"
-      },
-      originalError: error
-    });
-  }
-
-  if (status === 429) {
-    return Object.assign(new Error("BT_RATE_LIMITED"), {
-      status: 429,
-      code: "BT_RATE_LIMITED",
-      details: {
-        provider: "BT",
-        retryAfterSeconds
-      },
+      details: { provider: "BT", status, url, providerBody },
+      providerBody,
       originalError: error
     });
   }
@@ -76,11 +87,18 @@ function buildProviderError(error) {
     return Object.assign(new Error("BT_ENDPOINT_NOT_FOUND"), {
       status: 404,
       code: "BT_ENDPOINT_NOT_FOUND",
-      details: {
-        provider: "BT",
-        status,
-        url
-      },
+      details: { provider: "BT", status, url, providerBody },
+      providerBody,
+      originalError: error
+    });
+  }
+
+  if (status === 429) {
+    return Object.assign(new Error("BT_RATE_LIMITED"), {
+      status: 429,
+      code: "BT_RATE_LIMITED",
+      details: { provider: "BT", status, retryAfterSeconds, providerBody },
+      providerBody,
       originalError: error
     });
   }
@@ -89,10 +107,7 @@ function buildProviderError(error) {
     return Object.assign(new Error("BT_TIMEOUT"), {
       status: 504,
       code: "BT_TIMEOUT",
-      details: {
-        provider: "BT",
-        timeoutMs: BT_TIMEOUT_MS
-      },
+      details: { provider: "BT", timeoutMs: BT_TIMEOUT_MS },
       originalError: error
     });
   }
@@ -100,13 +115,20 @@ function buildProviderError(error) {
   return Object.assign(new Error("BT_PROVIDER_ERROR"), {
     status: 502,
     code: "BT_PROVIDER_ERROR",
-    details: {
-      provider: "BT",
-      status: status || null,
-      url
-    },
+    details: { provider: "BT", status: status || null, url, providerBody },
+    providerBody,
     originalError: error
   });
+}
+
+function isRetryableError(error) {
+  const status = error.response?.status;
+  return [429, 502, 503, 504].includes(status) ||
+  ["ECONNABORTED", "ETIMEDOUT", "ECONNRESET"].includes(error.code);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function requestBt(config) {
@@ -114,7 +136,10 @@ async function requestBt(config) {
     throw Object.assign(new Error("BANKING_PROVIDER_DEGRADED"), {
       status: 503,
       code: "BANKING_PROVIDER_DEGRADED",
-      details: { provider: "BT", breakerState: btBreaker.getStatus().state }
+      details: {
+        provider: "BT",
+        breakerState: btBreaker.getStatus().state
+      }
     });
   }
 
@@ -123,190 +148,118 @@ async function requestBt(config) {
     try {
       const response = await axios({
         timeout: BT_TIMEOUT_MS,
+        validateStatus: (status) => status >= 200 && status < 300,
         ...config
       });
       btBreaker.markSuccess();
       return response;
     } catch (error) {
-      const mappedError = buildProviderError(error);
-      const retryable = isRetryableError(error) && attempt < BT_MAX_RETRIES;
+      const mapped = mapProviderError(error);
+      const shouldRetry = isRetryableError(error) && attempt < BT_MAX_RETRIES;
 
-      if (!retryable) {
+      if (!shouldRetry) {
         btBreaker.markFailure();
-        throw mappedError;
+        throw mapped;
       }
 
-      const retryAfterSeconds = parseRetryAfterSeconds(error.response?.headers?.["retry-after"]);
-      const backoffMs = retryAfterSeconds ?
-      retryAfterSeconds * 1000 :
-      300 * Math.pow(2, attempt);
       attempt += 1;
-      await wait(backoffMs);
+      await wait(300 * Math.pow(2, attempt - 1));
     }
   }
 }
 
-
-
-
-
-
-
-function generateCodeVerifier() {
-  return crypto.randomBytes(64).toString("base64url").slice(0, 128);
-}
-
-
-
-
-
-
-function generateCodeChallenge(verifier) {
-  return crypto.createHash("sha256").update(verifier).digest("base64url");
-}
-
-
-
-
-
-
-
-
-
-async function getOAuthMetadata(metadataUrl) {
-  const url =
-  metadataUrl ||
-  `${BT_BASE}/oauth/.well-known/oauth-authorization-server`;
-
-  const response = await requestBt({
-    method: "get",
-    url,
-    headers: {
-      Accept: "application/json",
-      "X-Request-ID": crypto.randomUUID()
-    }
-  });
-
-  return response.data || {};
-}
-
-async function registerOAuthClient(registrationEndpoint) {
-  let endpoint = registrationEndpoint;
-  if (!endpoint) {
-    const metadata = await getOAuthMetadata();
-    endpoint = metadata.registration_endpoint;
-  }
-
-  if (!endpoint) {
-    endpoint = `${BT_BASE}/oauth/register`;
-  }
-
+async function registerOAuthClient() {
   const response = await requestBt({
     method: "post",
-    url: endpoint,
-    data: {
-      redirect_uris: [BT_REDIRECT_URI],
-      client_name: BT_CLIENT_NAME
-    },
+    url: ENDPOINTS.registration,
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "X-Request-ID": crypto.randomUUID()
+      "X-Request-ID": requestId()
+    },
+    data: {
+      redirect_uris: [BT_REDIRECT_URI],
+      client_name: BT_CLIENT_NAME
     }
   });
 
   return {
     clientId: response.data.client_id,
-    clientSecret: response.data.client_secret
+    clientSecret: response.data.client_secret,
+    raw: response.data
   };
 }
 
-
-
-
-
-
-
-
-
-
-async function initConsent(psuIpAddress) {
-
+async function initAisConsent() {
   const validUntil = new Date(Date.now() + 179 * 24 * 60 * 60 * 1000).
   toISOString().
-  split("T")[0];
+  slice(0, 10);
 
   const response = await requestBt({
     method: "post",
-    url: `${BT_BASE}/bt-psd2-aisp/v2/consents`,
+    url: ENDPOINTS.consents,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "PSU-IP-Address": getPsuIpAddress(),
+      "X-Request-ID": requestId()
+    },
     data: {
-      access: { availableAccounts: "allAccounts" },
+      access: {
+        allPsd2: "allAccounts"
+      },
       recurringIndicator: true,
       validUntil,
       combinedServiceIndicator: false,
       frequencyPerDay: 4
-    },
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "PSU-IP-Address": psuIpAddress,
-      "X-Request-ID": crypto.randomUUID()
     }
   });
 
   return {
     consentId: response.data.consentId,
-    scaOAuthHref: response.data._links?.scaOAuth?.href
+    consentStatus: response.data.consentStatus,
+    scaOAuthHref: response.data._links?.scaOAuth?.href,
+    aspspScaApproach: response.headers?.["aspsp-sca-approach"],
+    raw: response.data
   };
 }
 
-
-
-
-
-
-
-
-
-
-
-
 function buildAuthUrl(clientId, consentId, codeVerifier) {
-  const codeChallenge = generateCodeChallenge(codeVerifier);
   const state = crypto.randomBytes(16).toString("hex");
+  const nonce = crypto.randomBytes(16).toString("hex");
+  const codeChallenge = generateCodeChallenge(codeVerifier);
 
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: BT_REDIRECT_URI,
-    response_type: "code",
-    scope: `AIS:${consentId}`,
-    state,
-    nonce: crypto.randomBytes(16).toString("hex"),
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256"
-  });
+  const params = [
+    ["client_id", clientId],
+    ["redirect_uri", BT_REDIRECT_URI],
+    ["response_type", "code"],
+    ["scope", `AIS:${consentId}`],
+    ["state", state],
+    ["nonce", nonce],
+    ["code_challenge", codeChallenge],
+    ["code_challenge_method", "S256"]
+  ].
+  map(([key, value]) => {
+    if (key === "redirect_uri") return `${key}=${value}`;
+    return `${key}=${encodeURIComponent(value)}`;
+  }).
+  join("&");
 
   return {
-    authUrl: `${BT_AUTH_URL}?${params.toString()}`,
+    authUrl: `${BT_AUTH_URL}?${params}`,
     state
   };
 }
 
-
-
-
-
-
-
-
-
-
-
-
 async function exchangeCodeForToken(code, clientId, clientSecret, codeVerifier) {
   const response = await requestBt({
     method: "post",
-    url: `${BT_BASE}/oauth/token`,
+    url: ENDPOINTS.token,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Request-ID": requestId()
+    },
     data: new URLSearchParams({
       code,
       grant_type: "authorization_code",
@@ -314,168 +267,107 @@ async function exchangeCodeForToken(code, clientId, clientSecret, codeVerifier) 
       client_id: clientId,
       client_secret: clientSecret,
       code_verifier: codeVerifier
-    }).toString(),
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    }
+    }).toString()
   });
 
   return {
     accessToken: response.data.access_token,
     refreshToken: response.data.refresh_token,
-    expiresIn: response.data.expires_in
+    expiresIn: response.data.expires_in,
+    raw: response.data
   };
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-async function refreshAccessToken(refreshTokenValue, clientId, clientSecret, codeVerifier) {
+async function refreshAccessToken(refreshToken, clientId, clientSecret, codeVerifier) {
   const response = await requestBt({
     method: "post",
-    url: `${BT_BASE}/oauth/token`,
+    url: ENDPOINTS.token,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Request-ID": requestId()
+    },
     data: new URLSearchParams({
-      refresh_token: refreshTokenValue,
+      refresh_token: refreshToken,
       grant_type: "refresh_token",
       redirect_uri: BT_REDIRECT_URI,
       client_id: clientId,
       client_secret: clientSecret,
       code_verifier: codeVerifier
-    }).toString(),
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    }
+    }).toString()
   });
 
   return {
     accessToken: response.data.access_token,
     refreshToken: response.data.refresh_token,
-    expiresIn: response.data.expires_in
+    expiresIn: response.data.expires_in,
+    raw: response.data
   };
 }
 
-
-
-
-
-
-
-
-
-
-async function getAccounts(accessToken, consentId, psuIpAddress) {
-  const headers = {
+function authHeaders(accessToken, consentId) {
+  return {
     Authorization: `Bearer ${accessToken}`,
     "Consent-ID": consentId,
     Accept: "application/json",
-    "X-Request-ID": crypto.randomUUID()
+    "PSU-IP-Address": getPsuIpAddress(),
+    "X-Request-ID": requestId()
   };
-  if (psuIpAddress) headers["PSU-IP-Address"] = psuIpAddress;
+}
 
+async function getAccounts(accessToken, consentId) {
   const response = await requestBt({
     method: "get",
-    url: `${BT_BASE}/bt-psd2-aisp/v2/accounts`,
-    headers
+    url: ENDPOINTS.accounts,
+    headers: authHeaders(accessToken, consentId)
   });
 
   return response.data;
 }
 
+async function getBalances(accessToken, consentId, accountId) {
+  const response = await requestBt({
+    method: "get",
+    url: `${ENDPOINTS.accounts}/${encodeURIComponent(accountId)}/balances`,
+    headers: authHeaders(accessToken, consentId)
+  });
 
+  return response.data;
+}
 
-
-
-
-
-
-
-
-
-
-async function getTransactions(accessToken, consentId, accountId, psuIpAddress, options = {}) {
+async function getTransactions(accessToken, consentId, accountId, options = {}) {
   const params = new URLSearchParams();
+  if (options.dateFrom) params.set("dateFrom", options.dateFrom);
+  if (options.dateTo) params.set("dateTo", options.dateTo);
+  if (options.bookingStatus) params.set("bookingStatus", options.bookingStatus);
+  if (options.limit) params.set("limit", String(options.limit));
+  if (options.page) params.set("page", String(options.page));
 
-
-  if (options.dateFrom) params.append("dateFrom", options.dateFrom);
-  if (options.dateTo) params.append("dateTo", options.dateTo);
-  if (options.bookingStatus) params.append("bookingStatus", options.bookingStatus);
-  if (options.limit) params.append("limit", options.limit.toString());
-  if (options.page) params.append("page", options.page.toString());
-
-  const url = `${BT_BASE}/bt-psd2-aisp/v2/accounts/${accountId}/transactions?${params.toString()}`;
-
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-    "Consent-ID": consentId,
-    Accept: "application/json",
-    "X-Request-ID": crypto.randomUUID()
-  };
-  if (psuIpAddress) headers["PSU-IP-Address"] = psuIpAddress;
-
+  const query = params.toString() ? `?${params.toString()}` : "";
   const response = await requestBt({
     method: "get",
-    url,
-    headers
-  });
-
-  return response.data;
-}
-
-
-
-
-
-
-
-
-
-
-
-async function getBalances(accessToken, consentId, accountId, psuIpAddress) {
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-    "Consent-ID": consentId,
-    Accept: "application/json",
-    "X-Request-ID": crypto.randomUUID()
-  };
-  if (psuIpAddress) headers["PSU-IP-Address"] = psuIpAddress;
-
-  const response = await requestBt({
-    method: "get",
-    url: `${BT_BASE}/bt-psd2-aisp/v2/accounts/${accountId}/balances`,
-    headers
+    url: `${ENDPOINTS.accounts}/${encodeURIComponent(accountId)}/transactions${query}`,
+    headers: authHeaders(accessToken, consentId)
   });
 
   return response.data;
 }
 
 module.exports = {
-  generateCodeVerifier,
-  generateCodeChallenge,
-  getOAuthMetadata,
   registerOAuthClient,
-  initConsent,
+  initAisConsent,
   buildAuthUrl,
   exchangeCodeForToken,
   refreshAccessToken,
   getAccounts,
-  getTransactions,
   getBalances,
-  getHealthStatus: () => {
-    const status = btBreaker.getStatus();
-    return {
-      ok: status.state !== "OPEN",
-      provider: "BT",
-      breaker: status
-    };
-  }
+  getTransactions,
+  generateCodeVerifier,
+  generateCodeChallenge,
+  getPsuIpAddress,
+  getHealthStatus: () => ({
+    ok: btBreaker.getStatus().state !== "OPEN",
+    provider: "BT",
+    breaker: btBreaker.getStatus()
+  })
 };
