@@ -1,35 +1,20 @@
-
-
-const os = require("os");
-
-
-
-
-
-
-function getLocalIP() {
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-
-      if (iface.family === "IPv4" && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return "localhost";
-}
-
 module.exports = ({ config }) => {
-  const localIP = getLocalIP();
   const apiUrl =
-  process.env.EXPO_PUBLIC_API_URL || `http://${localIP}:3000/api`;
+  process.env.EXPO_PUBLIC_API_URL || "https://novence-api.onrender.com/api";
 
   return {
     ...config,
+    owner: "raresselea",
+    android: {
+      ...config.android,
+      package: "com.raresselea.novence"
+    },
     extra: {
-
-      apiUrl
+      ...config.extra,
+      apiUrl,
+      eas: {
+        projectId: "87e9f99f-df97-492b-b9f7-c1dfb1a9e35b"
+      }
     }
   };
 };

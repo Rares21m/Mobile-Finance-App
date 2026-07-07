@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "MobileFinanceApp",
+    "name": "Novence",
     "slug": "MobileFinanceApp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -53,6 +53,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "apiUrl": "https://novence-api.onrender.com/api",
+      "router": {},
+      "eas": {
+        "projectId": "87e9f99f-df97-492b-b9f7-c1dfb1a9e35b"
+      }
     }
   }
 }

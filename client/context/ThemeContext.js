@@ -15,19 +15,19 @@ export function useTheme() {
 }
 
 export function ThemeProvider({ children }) {
-  const [themeMode, setThemeModeState] = useState("dark");
+  const [themeMode, setThemeModeState] = useState("light");
   const { setColorScheme } = useColorScheme();
 
   useEffect(() => {
     (async () => {
       try {
         const saved = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-        const mode = saved === "light" || saved === "dark" ? saved : "dark";
+        const mode = saved === "light" || saved === "dark" ? saved : "light";
         setThemeModeState(mode);
         setColorScheme(mode);
       } catch {
-        setThemeModeState("dark");
-        setColorScheme("dark");
+        setThemeModeState("light");
+        setColorScheme("light");
       }
     })();
   }, []);
