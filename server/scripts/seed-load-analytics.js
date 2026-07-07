@@ -2,6 +2,11 @@
 require("dotenv").config();
 
 const prisma = require("../src/config/db");
+
+function writeInfo(message) {
+  process.stdout.write(`${message}\n`);
+}
+
 const {
   normalizeMerchantName,
   buildCanonicalTransactionId,
@@ -228,8 +233,8 @@ async function seedOverrides(userId, connectionId) {
 async function main() {
   const syncBatchId = `analytics_load_${Date.now()}`;
 
-  console.log("[DataAccuracy] Load seed started...");
-  console.log(
+  writeInfo("[DataAccuracy] Load seed started...");
+  writeInfo(
     `[DataAccuracy] Target volume: tx=${TX_COUNT}, manual=${MANUAL_COUNT}, overrides<=${OVERRIDE_COUNT}`
   );
 
@@ -239,8 +244,8 @@ async function main() {
   const manualInserted = await seedManualTransactions(connection.userId);
   const overridesInserted = await seedOverrides(connection.userId, connection.id);
 
-  console.log("[DataAccuracy] Load seed completed.");
-  console.log(
+  writeInfo("[DataAccuracy] Load seed completed.");
+  writeInfo(
     JSON.stringify(
       {
         connectionId: connection.id,

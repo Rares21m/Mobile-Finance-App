@@ -72,7 +72,6 @@ exports.renderAuthorizePage = (req, res) => {
 
 
 exports.handleAuthorizeSubmit = (req, res) => {
-  console.log('WebView POST /authorize body:', req.body);
   const { redirect_uri, state, code_challenge, code_challenge_method, action } = req.body;
 
   if (action === 'deny') {

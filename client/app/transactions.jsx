@@ -1,11 +1,3 @@
-/**
- * @fileoverview Full-screen transaction list with search, type filter and
- * category chips. Can be opened from the dashboard "See all" button or from
- * Accounts (pass accountId param to pre-filter by account).
- *
- * Route: /transactions
- * Params: accountId? (optional, pre-filters to one account)
- */
 
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";

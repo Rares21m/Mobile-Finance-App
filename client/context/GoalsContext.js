@@ -1,7 +1,3 @@
-/**
- * @fileoverview Savings Goals context for the Novence app.
- * Syncs with the server via /api/goals (CRUD).
- */
 
 import {
   createContext,

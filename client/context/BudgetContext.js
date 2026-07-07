@@ -1,12 +1,3 @@
-/**
- * @fileoverview Budget context for the Novence app.
- * Manages:
- *  1. Monthly budget limits per spending category (persisted in AsyncStorage)
- *  2. AI-suggested budgets based on onboarding profile (50/30/20 rule)
- *  3. Event budgets with custom date ranges (e.g. vacations, weekends)
- *
- * Spending is computed in real-time from the current month's transactions.
- */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {

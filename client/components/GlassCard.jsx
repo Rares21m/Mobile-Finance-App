@@ -1,7 +1,3 @@
-/**
- * @fileoverview Frosted-glass card container using BlurView,
- * used as a wrapper in authentication screens.
- */
 
 import { View } from "react-native";
 

@@ -3,6 +3,11 @@ require("dotenv").config();
 
 const prisma = require("../src/config/db");
 
+function writeInfo(message) {
+  process.stdout.write(`${message}\n`);
+}
+
+
 async function timed(label, fn) {
   const started = Date.now();
   const result = await fn();
@@ -37,7 +42,7 @@ async function main() {
   });
 
   if (!firstConnection) {
-    console.log("[DataAccuracy] Profiling skipped: no active bank connection found.");
+    writeInfo("[DataAccuracy] Profiling skipped: no active bank connection found.");
     return;
   }
 
@@ -140,10 +145,10 @@ async function main() {
     monthlyPoints: Object.keys(categoryTotals).length
   };
 
-  console.log("[DataAccuracy] Query profiling results:");
-  console.table(profiles);
-  console.log("[DataAccuracy] Chart payload profiling:");
-  console.log(JSON.stringify(payloadMetrics, null, 2));
+  writeInfo("[DataAccuracy] Query profiling results:");
+  writeInfo(JSON.stringify(profiles, null, 2));
+  writeInfo("[DataAccuracy] Chart payload profiling:");
+  writeInfo(JSON.stringify(payloadMetrics, null, 2));
 }
 
 main().

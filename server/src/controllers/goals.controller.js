@@ -1,12 +1,3 @@
-/**
- * @fileoverview Savings Goals controller for the Novence API.
- *
- * Routes:
- *   GET    /api/goals        — list all goals
- *   POST   /api/goals        — create a goal
- *   PUT    /api/goals/:id    — update a goal (including savedAmount)
- *   DELETE /api/goals/:id    — delete a goal
- */
 
 const prisma = require("../config/db");
 const logger = require("../config/logger");

@@ -134,7 +134,7 @@ export default function Accounts() {
 
   async function startDemoBankConnection() {
     if (!token) {
-      showToast("Trebuie sa fii autentificat ca sa conectezi Demo Bank.", "error");
+      showToast(t("accounts.demoAuthRequired"), "error");
       return;
     }
 
@@ -143,7 +143,7 @@ export default function Accounts() {
     try {
       const res = await api.post("/demo-bank/connect");
       const { connectionId } = res.data;
-      showToast("Demo Bank conectat cu tranzactii pana ieri.", "success");
+      showToast(t("accounts.demoConnectionSuccess"), "success");
       await fetchAccounts(connectionId, "DEMO_BANK");
     } catch (err) {
       console.warn("Demo Bank connection error:", JSON.stringify(err.response?.data || err.message));
@@ -163,15 +163,6 @@ export default function Accounts() {
   function handleWebViewNavigation(navState) {
     const { url } = navState;
     if (!url || codeProcessed.current) return;
-
-    if (__DEV__) {
-      console.log("BT/BRD WebView navigation:", {
-        bank: pendingBank,
-        url,
-        title: navState.title,
-        loading: navState.loading
-      });
-    }
 
     try {
       const urlObj = new URL(url);
@@ -258,7 +249,7 @@ export default function Accounts() {
     );
     const balance = availableBalance || account.balances?.[0];
     return {
-      amount: balance?.balanceAmount?.amount || "â€”",
+      amount: balance?.balanceAmount?.amount || "-",
       currency:
       balance?.balanceAmount?.currency ||
       account.currency ||

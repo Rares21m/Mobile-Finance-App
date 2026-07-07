@@ -46,14 +46,7 @@
       "nameRequired": "Name is required",
       "loginError": "Login failed. Check your connection.",
       "registerError": "Registration failed. Check your connection."
-    },
-    "biometricLogin": "Login with biometrics",
-    "biometricEnable": "Enable biometric login?",
-    "biometricEnableDesc": "Use Face ID or fingerprint to log in faster next time.",
-    "biometricEnableYes": "Enable",
-    "biometricEnableLater": "Not now",
-    "biometricError": "Biometric authentication failed. Please try again.",
-    "biometricCancelled": "Biometric login cancelled."
+    }
   },
   "dashboard": {
     "greeting": "Hey,",
@@ -199,6 +192,8 @@
     "transaction": "Transaction",
     "connectionError": "Could not initiate BT connection",
     "connectionSuccess": "BT account connected successfully!",
+    "demoAuthRequired": "You need to be signed in to connect Demo Bank.",
+    "demoConnectionSuccess": "Demo Bank connected with transactions up to yesterday.",
     "authError": "Could not complete authorization",
     "sessionExpired": "BT bank session expired. Please reconnect your account using the button below.",
     "disconnectTitle": "Disconnect {{bank}}?",
@@ -247,7 +242,7 @@
       "future": "Future"
     },
     "past": {
-      "exportReport": "Download PDF Report"
+      "exportReport": "PDF Report"
     },
     "present": {
       "safeToSpendTitle": "Safe to Spend",
@@ -290,7 +285,6 @@
     "vsLastMonth": "vs. last month",
     "spendingInsights": "Spending insights",
     "noTransactionsInCategory": "No transactions in this category",
-
     "fab": {
       "categorii": "Categories",
       "recurente": "Recurring",
@@ -335,6 +329,13 @@
         "weekly": "Weekly",
         "biweekly": "Bi-weekly",
         "monthly": "Monthly"
+      },
+      "names": {
+        "Mortgage Payment": "Mortgage Payment",
+        "Power Company": "Power Company",
+        "Internet Service Provider": "Internet Service Provider",
+        "State Farm": "State Farm",
+        "City Water Charges": "City Water Charges"
       }
     },
     "incomeDetails": {
@@ -399,9 +400,7 @@
   },
   "advisor": {
     "title": "Novence AI",
-    "online": "● Online",
     "initialMessage": "Hi! 👋 I'm Novence AI, your personal financial advisor. I can analyze your spending and offer optimization tips. What would you like to know?",
-    "demoReply": "Analyzing your financial data... This is a demo version. AI functionality will be integrated with an LLM model that will analyze your real transactions.",
     "inputPlaceholder": "Ask me anything about your money...",
     "suggestions": "Suggestions:",
     "suggestion1": "How can I save more?",
@@ -455,8 +454,6 @@
     "a11yAvatar": "Edit profile photo",
     "a11yEditProfile": "Edit profile information",
     "a11ySecurity": "Open security settings",
-    "a11yBiometricSwitch": "Toggle biometric login",
-    "a11yNotificationsSwitch": "Toggle notifications",
     "a11yLanguage": "Change language",
     "a11yTheme": "Change theme",
     "a11yHelp": "Open help and support",
@@ -472,8 +469,6 @@
     "selectLanguage": "Select language",
     "romanian": "Română",
     "english": "English",
-    "notificationsEnabled": "Enabled",
-    "notificationsDisabled": "Disabled",
     "securityTitle": "Security",
     "currentPassword": "Current password",
     "newPassword": "New password",
@@ -500,12 +495,6 @@
     "termsContent": "By using Novence, you agree to our terms and conditions. The app uses the BT Open Banking API to access financial data. Data is processed in compliance with GDPR. We do not take responsibility for financial decisions made based on the information provided.",
     "currencyTitle": "Select currency",
     "selectTheme": "Select theme",
-    "biometric": "Biometric Login",
-    "biometricEnabled": "Enabled",
-    "biometricDisabled": "Disabled",
-    "biometricDisableConfirm": "Disable biometric login?",
-    "biometricDisableMsg": "You will need to use your password to log in.",
-    "biometricDisableYes": "Disable",
     "avatarUpdated": "Profile photo updated!",
     "avatarError": "Error updating profile photo",
     "avatarPermissionDenied": "Photo library access denied"

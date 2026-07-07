@@ -1,8 +1,3 @@
-/**
- * @fileoverview Authentication controller for the Novence API.
- * Handles user registration, login, profile updates, and password changes.
- * All passwords are hashed with bcrypt; sessions use stateless JWTs.
- */
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");

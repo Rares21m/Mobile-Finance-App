@@ -1,8 +1,3 @@
-/**
- * @fileoverview JWT authentication middleware for the Novence API.
- * Validates the Bearer token from the Authorization header and attaches
- * `req.userId` for downstream handlers.
- */
 
 const jwt = require("jsonwebtoken");
 

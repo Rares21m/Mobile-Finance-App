@@ -1,7 +1,3 @@
-/**
- * @fileoverview Uppercase section title with optional right-side action,
- * used across dashboard, accounts, analytics, and profile screens.
- */
 
 import { Pressable, Text, View } from "react-native";
 import { useTheme } from "../context/ThemeContext";

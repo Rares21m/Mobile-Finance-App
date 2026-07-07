@@ -1,11 +1,3 @@
-/**
- * @fileoverview Notifications Inbox context for Novence.
- * Persists a history of in-app alerts, financial insights, and monthly
- * check-ins in AsyncStorage so the user can review them later.
- *
- * The INBOX_KEY is also used directly by NotificationService and
- * analytics flows to append entries without needing React context.
- */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {

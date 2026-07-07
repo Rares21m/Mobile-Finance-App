@@ -1,7 +1,3 @@
-/**
- * @fileoverview Glass-styled text input with icon, label, and error
- * message support. Used in the sign-in and sign-up forms.
- */
 
 import { Text, TextInput, View } from "react-native";
 

@@ -1,8 +1,3 @@
-/**
- * @fileoverview Global toast notification context.
- * Provides a lightweight, non-intrusive alternative to Alert.alert.
- * Toasts appear at the top of the screen and auto-dismiss after 3 seconds.
- */
 
 import {
   createContext,

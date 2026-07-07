@@ -25,8 +25,6 @@ module.exports = ({ config }) => {
   const apiUrl =
   process.env.EXPO_PUBLIC_API_URL || `http://${localIP}:3000/api`;
 
-  console.log(`[app.config] API URL: ${apiUrl}`);
-
   return {
     ...config,
     extra: {

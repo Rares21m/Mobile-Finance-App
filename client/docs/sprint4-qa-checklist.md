@@ -18,7 +18,6 @@ Scope: Advisor + Profile + Onboarding polish + final hardening.
 - [x] Sections are grouped as Account / Security / Preferences / Support.
 - [x] Quick settings row opens Security, Language, Theme flows.
 - [x] Edit profile modal saves name/email and shows success/error toast.
-- [x] Biometric toggle confirm flow still works and persists.
 - [x] Language and theme changes remain persistent after app restart.
 
 ## 3) Onboarding copy clarity + strict payload compatibility

@@ -1,9 +1,3 @@
-/**
- * @fileoverview Bank data context and provider for the Novence app.
- * Manages BT Open Banking connections, accounts, transaction data,
- * and provides helper functions (total balance, recent transactions).
- * In __DEV__ mode, mock expense transactions are injected for demo purposes.
- */
 
 import {
   createContext,
@@ -91,13 +85,6 @@ export function BankProvider({ children }) {
       catch(() => ({ data: { connections: [] } }));
 
       const savedConnections = btRes.data.connections || [];
-
-      if (__DEV__)
-      console.log(
-        `Refreshing bank data for ${savedConnections.length} connection(s)…`
-      );
-
-
       for (const conn of savedConnections) {
         try {
           await addConnection(conn.id, conn.bankName);
@@ -184,19 +171,6 @@ export function BankProvider({ children }) {
         dataMayBeOutdated: Boolean(res.data?.metadata?.dataMayBeOutdated),
         bankName
       };
-
-
-      if (__DEV__ && rawTransactions.length > 0) {
-        const allKeys = new Set();
-        rawTransactions.forEach((tx) =>
-        Object.keys(tx).forEach((k) => allKeys.add(k))
-        );
-        console.log(`${bankName}: ${rawTransactions.length} transactions, keys:`, [
-        ...allKeys]
-        );
-      }
-
-
       const userIban = accountsWithBalances[0]?.iban;
 
       const realTransactions = rawTransactions.map((tx) => {
@@ -242,22 +216,6 @@ export function BankProvider({ children }) {
 
 
       const allTransactions = realTransactions;
-
-      if (__DEV__) {
-        const totalExpenses = allTransactions.
-        filter((tx) => parseFloat(tx.transactionAmount?.amount) < 0).
-        reduce(
-          (s, tx) => s + Math.abs(parseFloat(tx.transactionAmount.amount)),
-          0
-        );
-        const totalIncome = allTransactions.
-        filter((tx) => parseFloat(tx.transactionAmount?.amount) > 0).
-        reduce((s, tx) => s + parseFloat(tx.transactionAmount.amount), 0);
-        console.log(
-          `[${bankName}] Transactions: ${allTransactions.length} total | Income: ${totalIncome.toFixed(2)} | Expenses: ${totalExpenses.toFixed(2)} | Net: ${(totalIncome - totalExpenses).toFixed(2)} RON`
-        );
-      }
-
       setConnections((prev) => {
 
 

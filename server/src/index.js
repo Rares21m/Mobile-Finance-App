@@ -1,7 +1,3 @@
-/**
- * @fileoverview Entry point for the Novence API server.
- * Sets up Express middleware, mounts route modules, and starts listening.
- */
 
 require("dotenv").config();
 

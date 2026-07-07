@@ -3,6 +3,11 @@ require("dotenv").config();
 
 const prisma = require("../src/config/db");
 
+function writeInfo(message) {
+  process.stdout.write(`${message}\n`);
+}
+
+
 function round2(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
@@ -27,7 +32,7 @@ async function main() {
   });
 
   if (!connection) {
-    console.log("[DataAccuracy] Parity integration skipped: no active connection found.");
+    writeInfo("[DataAccuracy] Parity integration skipped: no active connection found.");
     return;
   }
 
@@ -153,8 +158,8 @@ async function main() {
     return;
   }
 
-  console.log("[DataAccuracy] Integration parity check passed.");
-  console.log(JSON.stringify(result, null, 2));
+  writeInfo("[DataAccuracy] Integration parity check passed.");
+  writeInfo(JSON.stringify(result, null, 2));
 }
 
 main().

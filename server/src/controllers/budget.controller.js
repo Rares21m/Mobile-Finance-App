@@ -1,15 +1,3 @@
-/**
- * @fileoverview Budget controller for the Novence API.
- * Handles monthly budget limits and event budgets, synced per-user to PostgreSQL.
- *
- * Routes:
- *   GET    /api/budgets/limits          — get all category limits
- *   PUT    /api/budgets/limits          — bulk upsert limits  { limits: { food: 500 } }
- *   GET    /api/budgets/events          — get all event budgets
- *   POST   /api/budgets/events          — create event budget
- *   PUT    /api/budgets/events/:id      — update event budget
- *   DELETE /api/budgets/events/:id      — delete event budget
- */
 
 const prisma = require("../config/db");
 const logger = require("../config/logger");

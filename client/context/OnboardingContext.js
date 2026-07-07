@@ -1,17 +1,3 @@
-/**
- * @fileoverview Onboarding context for the Novence app.
- * Stores the user's financial profile collected during the onboarding wizard.
- * Profile is persisted in AsyncStorage AND synced to the server (PostgreSQL).
- * On mount the context tries to hydrate from the server first (via the user
- * object stored in AuthContext), then falls back to AsyncStorage.
- *
- * Profile shape:
- * {
- *   goal: "savings" | "expense_control" | "investment" | "debt_freedom",
- *   incomeRange: "under_1500" | "1500_3000" | "3000_6000" | "over_6000",
- *   priorityCategories: string[]   // e.g. ["food","transport","shopping"]
- * }
- */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {

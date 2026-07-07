@@ -1,7 +1,3 @@
-/**
- * @fileoverview Transaction row component displaying category icon,
- * description, date, and amount in a modern Neon Fintech style.
- */
 
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";

@@ -1,7 +1,3 @@
-/**
- * @fileoverview Animated circular loading spinner displayed during
- * splash/startup while SecureStore is being checked for a saved JWT.
- */
 
 import React, { useEffect, useRef } from "react";
 import { View, Animated, StyleSheet, Text } from "react-native";

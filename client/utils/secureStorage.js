@@ -1,8 +1,3 @@
-/**
- * @fileoverview Cross-platform secure storage wrapper.
- * Uses expo-secure-store on native (iOS/Android) and localStorage on web.
- * The API mirrors expo-secure-store so it can be used as a drop-in replacement.
- */
 
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";

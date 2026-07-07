@@ -1,8 +1,3 @@
-/**
- * @fileoverview Animated toast notification component.
- * Renders at the top of the screen, slides in/out automatically.
- * Consumed via ToastContext — no user interaction required.
- */
 
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";

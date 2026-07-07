@@ -1,7 +1,3 @@
-/**
- * @fileoverview Settings row component with icon, label, optional value,
- * chevron, and custom right component. Used in the profile screen.
- */
 
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";

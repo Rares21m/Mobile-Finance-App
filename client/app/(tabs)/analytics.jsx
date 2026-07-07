@@ -15,7 +15,6 @@ import {
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import ChartSkeleton from "../../components/analytics/ChartSkeleton";
 import CategoryBreakdownWithPie from "../../components/analytics/CategoryBreakdownWithPie";
-import BudgetVsActualCard from "../../components/analytics/BudgetVsActualCard";
 import HealthScoreRing from "../../components/analytics/HealthScoreRing";
 import SmartSummary from "../../components/analytics/SmartSummary";
 import AnomalyPills from "../../components/analytics/AnomalyPills";
@@ -29,7 +28,6 @@ import { useBankData } from "../../context/BankContext";
 import { useBudget } from "../../context/BudgetContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
-  CATEGORIES,
   categorizeTransaction,
   detectAnomalies,
   detectRecurringTransactions,
@@ -48,6 +46,10 @@ import { exportFinancialReport } from "../../utils/exportPdf";
 import api from "../../services/api";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+
+function localizedRecurringName(name, t) {
+  return t(`analytics.recurring.names.${name}`, { defaultValue: name });
+}
 
 
 
@@ -270,17 +272,6 @@ export default function Analytics() {
     [monthlyIncomeTrend, c.chartAxisTextColor]
   );
 
-  const budgetVsActualData = useMemo(() => {
-    return getBudgetSummary().map((b) => {
-      const cat = CATEGORIES.find((c) => c.key === b.key);
-      return {
-        ...b,
-        color: cat?.color ?? "#6B7280",
-        icon: cat?.icon ?? "ellipsis-horizontal"
-      };
-    });
-  }, [getBudgetSummary]);
-
   const healthScore = useMemo(
     () =>
     getFinancialHealthScore(
@@ -372,7 +363,6 @@ export default function Analytics() {
     cashflow: t("analytics.fab.cashflow"),
     venituri: t("analytics.fab.venituri"),
     cheltuieli: t("analytics.fab.cheltuieli"),
-    buget: t("analytics.fab.buget"),
     trend: t("analytics.trend.title")
   };
 
@@ -647,6 +637,7 @@ export default function Analytics() {
                   style={{
                     borderRadius: 20,
                     padding: 16,
+                    height: 122,
                     borderWidth: 1,
                     borderColor: isDark ?
                     "rgba(139,92,246,0.20)" :
@@ -694,6 +685,7 @@ export default function Analytics() {
                   style={{
                     borderRadius: 20,
                     padding: 16,
+                    height: 122,
                     borderWidth: 1,
                     borderColor: isDark ?
                     "rgba(245,158,11,0.20)" :
@@ -745,6 +737,7 @@ export default function Analytics() {
                   style={{
                     borderRadius: 20,
                     padding: 16,
+                    height: 122,
                     borderWidth: 1,
                     borderColor: isDark ?
                     "rgba(6,182,212,0.20)" :
@@ -784,22 +777,24 @@ export default function Analytics() {
                 </Pressable>
 
                 {}
-                {budgetVsActualData.length > 0 &&
-              <Pressable
+                <Pressable
                 style={{ width: (SCREEN_WIDTH - 60) / 2 }}
-                onPress={() => openSubView("buget")}>
+                onPress={handleExport}
+                disabled={exporting || !hasData}>
                 
                     <View
                   style={{
                     borderRadius: 20,
                     padding: 16,
+                    height: 122,
                     borderWidth: 1,
                     borderColor: isDark ?
-                    "rgba(99,102,241,0.20)" :
-                    "rgba(99,102,241,0.15)",
+                    "rgba(59,130,246,0.20)" :
+                    "rgba(59,130,246,0.15)",
                     backgroundColor: isDark ?
-                    "rgba(99,102,241,0.08)" :
-                    "rgba(99,102,241,0.05)"
+                    "rgba(59,130,246,0.08)" :
+                    "rgba(59,130,246,0.05)",
+                    opacity: exporting || !hasData ? 0.6 : 1
                   }}>
                   
                       <View
@@ -807,16 +802,20 @@ export default function Analytics() {
                       width: 36,
                       height: 36,
                       borderRadius: 10,
-                      backgroundColor: "rgba(99,102,241,0.15)",
+                      backgroundColor: "rgba(59,130,246,0.15)",
                       alignItems: "center",
                       justifyContent: "center",
                       marginBottom: 12
                     }}>
                     
-                        <Ionicons
-                      name="git-compare-outline"
-                      size={18}
-                      color="#6366F1" />
+                        {exporting ?
+                      <ActivityIndicator size="small" color="#3B82F6" /> :
+
+                      <Ionicons
+                        name="document-text"
+                        size={18}
+                        color="#3B82F6" />
+                      }
                     
                       </View>
                       <Text
@@ -827,64 +826,17 @@ export default function Analytics() {
                       marginBottom: 2
                     }}>
                     
-                        {t("analytics.fab.buget")}
+                        {t("analytics.past.exportReport")}
                       </Text>
-                      <Text style={{ color: c.textMuted, fontSize: 11 }}>
-                        {budgetVsActualData.length}{" "}
-                        {t("analytics.categories.count")}
+                      <Text
+                    style={{ color: c.textMuted, fontSize: 11 }}
+                    numberOfLines={1}>
+                        PDF - {PERIODS[selectedPeriod]}
                       </Text>
                     </View>
                   </Pressable>
-              }
               </View>
 
-              {}
-              <Pressable
-              onPress={handleExport}
-              disabled={exporting || !hasData}
-              style={{ marginTop: 16, opacity: exporting || !hasData ? 0.6 : 1 }}>
-              
-                <LinearGradient
-                colors={isDark ? ["rgba(59,130,246,0.15)", "rgba(59,130,246,0.05)"] : ["#EFF6FF", "#DBEAFE"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  borderRadius: 20,
-                  padding: 16,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: isDark ? "rgba(59,130,246,0.2)" : "rgba(59,130,246,0.1)"
-                }}>
-                
-                  <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 12,
-                    backgroundColor: "#3B82F6",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: 16
-                  }}>
-                  
-                    {exporting ?
-                  <ActivityIndicator size="small" color="#fff" /> :
-
-                  <Ionicons name="document-text" size={20} color="#fff" />
-                  }
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: c.foreground, fontWeight: "700", fontSize: 14 }}>
-                      {t("analytics.past.exportReport")}
-                    </Text>
-                    <Text style={{ color: c.textMuted, fontSize: 11 }}>
-                      PDF • {PERIODS[selectedPeriod]}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
-                </LinearGradient>
-              </Pressable>
             </View>
           </>
         }
@@ -995,28 +947,6 @@ export default function Analytics() {
                   <Text style={{ color: c.textMuted, fontSize: 12, lineHeight: 17, marginTop: 8 }}>
                     {t("analytics.future.robustForecastDesc")}
                   </Text>
-                  <View style={{
-                    alignSelf: "flex-start",
-                    marginTop: 10,
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 12,
-                    backgroundColor: advancedForecast.remainingNetThisMonth >= 0 ?
-                    "rgba(16,185,129,0.12)" :
-                    "rgba(239,68,68,0.12)"
-                  }}>
-                    <Text style={{
-                      color: advancedForecast.remainingNetThisMonth >= 0 ? "#10B981" : "#EF4444",
-                      fontSize: 11,
-                      fontWeight: "700"
-                    }}>
-                      {t("analytics.future.remainingNet")}:{" "}
-                      {advancedForecast.remainingNetThisMonth >= 0 ? "+" : ""}
-                      {advancedForecast.remainingNetThisMonth.toLocaleString("ro-RO", {
-                      maximumFractionDigits: 0
-                    })} RON
-                    </Text>
-                  </View>
                   <View style={{ flexDirection: "row", marginTop: 12, gap: 10 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: c.textMuted, fontSize: 10 }}>
@@ -1106,7 +1036,7 @@ export default function Analytics() {
                     fontWeight: "600"
                   }}>
                   
-                        {bill.name}
+                        {localizedRecurringName(bill.name, t)}
                       </Text>
                       <Text style={{ color: c.textMuted, fontSize: 11 }}>
                         {new Date(bill.nextDate).toLocaleDateString(
@@ -1285,7 +1215,7 @@ export default function Analytics() {
                     className="text-foreground font-semibold text-sm"
                     numberOfLines={1}>
                     
-                          {item.name}
+                          {localizedRecurringName(item.name, t)}
                         </Text>
                         <View className="flex-row items-center mt-0.5 gap-2">
                           <View className="bg-border px-2 py-0.5 rounded-full">
@@ -2003,17 +1933,6 @@ export default function Analytics() {
           </View>
         }
 
-        {}
-        {activeView === "buget" &&
-        <View className="mx-6 mt-5">
-            <BudgetVsActualCard
-            budgetVsActualData={budgetVsActualData}
-            c={c}
-            isDark={isDark}
-            t={t} />
-          
-          </View>
-        }
       </ScrollView>
 
       {}

@@ -1,7 +1,3 @@
-/**
- * @fileoverview Primary gradient action button used for Login, Register,
- * and Save actions across auth and profile screens.
- */
 
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, Text } from "react-native";

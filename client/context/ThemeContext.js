@@ -1,8 +1,3 @@
-/**
- * @fileoverview Theme context for the Novence app.
- * Provides dark/light theme switching with persistence via AsyncStorage.
- * Exposes `theme` (color palette), `isDark`, `themeMode`, and `setTheme`.
- */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColorScheme } from "nativewind";

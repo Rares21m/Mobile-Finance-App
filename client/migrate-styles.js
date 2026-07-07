@@ -46,7 +46,6 @@ function processDirectory(dir) {
 
       if (changed) {
         fs.writeFileSync(fullPath, content, 'utf8');
-        console.log(`Updated: ${fullPath}`);
       }
     }
   }
@@ -62,5 +61,3 @@ for (const dir of targetDirs) {
     processDirectory(dir);
   }
 }
-
-console.log('Migration complete.');

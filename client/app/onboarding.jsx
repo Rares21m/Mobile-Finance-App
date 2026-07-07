@@ -1,11 +1,3 @@
-/**
- * @fileoverview Onboarding wizard — shown once after registration.
- * Collects 4 pieces of financial profile data:
- *   1. Primary financial goal
- *   2. Approximate monthly income range  (+ live 50/30/20 preview)
- *   3. Spending categories to prioritise
- *   4. Budget plan summary — shows computed budgets; user can accept or skip
- */
 
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";

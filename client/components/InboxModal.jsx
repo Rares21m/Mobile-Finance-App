@@ -1,7 +1,3 @@
-/**
- * @fileoverview Redesigned Inbox modal — premium notification center
- * with date grouping, card-based layout, and interactive actions.
- */
 
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";

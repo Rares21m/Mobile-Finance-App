@@ -2,10 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  const users = await prisma.user.findMany({
-    select: { id: true, email: true, name: true, bankConnections: { select: { id: true, bankName: true, status: true } } }
-  });
-  console.log(JSON.stringify(users, null, 2));
+  await prisma.$connect();
 }
 
 main().

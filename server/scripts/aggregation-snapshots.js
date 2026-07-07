@@ -1,6 +1,11 @@
 
 const assert = require("assert");
 
+function writeInfo(message) {
+  process.stdout.write(`${message}\n`);
+}
+
+
 function parseDate(value) {
   if (!value) return null;
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -105,8 +110,8 @@ const expected = {
 
 try {
   assert.deepStrictEqual(snapshot, expected);
-  console.log("[DataAccuracy] Aggregation snapshot tests passed.");
-  console.log(JSON.stringify(snapshot, null, 2));
+  writeInfo("[DataAccuracy] Aggregation snapshot tests passed.");
+  writeInfo(JSON.stringify(snapshot, null, 2));
 } catch (err) {
   console.error("[DataAccuracy] Aggregation snapshot tests failed.");
   console.error("Computed:", JSON.stringify(snapshot, null, 2));

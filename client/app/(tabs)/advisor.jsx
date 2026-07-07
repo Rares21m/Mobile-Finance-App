@@ -320,12 +320,6 @@ export default function Advisor() {
               <Text style={{ color: c.foreground, fontSize: 17, fontWeight: "700" }}>
                 {t("advisor.title")}
               </Text>
-              <View className="flex-row items-center">
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#10B981", marginRight: 6 }} />
-                <Text style={{ color: "#10B981", fontSize: 11, fontWeight: "600" }}>
-                  {t("advisor.online")}
-                </Text>
-              </View>
             </View>
           </View>
           

@@ -1,8 +1,7 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import AuthBackground from "../../components/AuthBackground";
 import CircularLoading from "../../components/CircularLoading";
@@ -10,20 +9,12 @@ import GlassCard from "../../components/GlassCard";
 import GlassInput from "../../components/GlassInput";
 import GradientButton from "../../components/GradientButton";
 import { useAuth } from "../../context/AuthContext";
-import { useTheme } from "../../context/ThemeContext";
 import { useToast } from "../../context/ToastContext";
 import { getErrorKey } from "../../utils/errorCodes";
 
 export default function SignIn() {
   const { t } = useTranslation();
-  const { theme } = useTheme();
-  const {
-    login,
-    biometricEnabled,
-    biometricAvailable,
-    enableBiometric,
-    loginWithBiometric
-  } = useAuth();
+  const { login } = useAuth();
   const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,17 +42,6 @@ export default function SignIn() {
       login(email.trim().toLowerCase(), password),
       minDelay]
       );
-
-      if (biometricAvailable && !biometricEnabled) {
-        Alert.alert(t("auth.biometricEnable"), t("auth.biometricEnableDesc"), [
-        { text: t("auth.biometricEnableLater"), style: "cancel" },
-        {
-          text: t("auth.biometricEnableYes"),
-          onPress: () =>
-          enableBiometric(email.trim().toLowerCase(), password)
-        }]
-        );
-      }
     } catch (err) {
       const errorCode = err.response?.data?.error;
       const message = errorCode ?
@@ -69,17 +49,6 @@ export default function SignIn() {
       t("auth.errors.loginError");
       showToast(message, "error");
       setLoading(false);
-    }
-  }
-
-  async function onBiometricLogin() {
-    setLoading(true);
-    try {
-      await loginWithBiometric();
-    } catch (err) {
-      setLoading(false);
-      if (err.message === "BIOMETRIC_CANCELLED") return;
-      showToast(t("auth.biometricError"), "error");
     }
   }
 
@@ -124,19 +93,6 @@ export default function SignIn() {
             disabled={loading} />
           
         </GlassCard>
-
-        {}
-        {biometricAvailable && biometricEnabled &&
-        <Pressable
-          onPress={onBiometricLogin}
-          className="mt-5 flex-row items-center justify-center gap-2 active:opacity-70">
-          
-            <Ionicons name="finger-print-outline" size={22} color={theme.colors.primary} />
-            <Text className="text-primary font-semibold text-base">
-              {t("auth.biometricLogin")}
-            </Text>
-          </Pressable>
-        }
 
         {}
         <View className="flex-row justify-center mt-8">

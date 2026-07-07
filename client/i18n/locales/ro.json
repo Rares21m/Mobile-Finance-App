@@ -46,14 +46,7 @@
       "nameRequired": "Numele este obligatoriu",
       "loginError": "Eroare la conectare. Verifică conexiunea.",
       "registerError": "Eroare la înregistrare. Verifică conexiunea."
-    },
-    "biometricLogin": "Autentificare biometrică",
-    "biometricEnable": "Activezi autentificarea biometrică?",
-    "biometricEnableDesc": "Folosește Face ID sau amprenta pentru a te autentifica mai rapid data viitoare.",
-    "biometricEnableYes": "Activează",
-    "biometricEnableLater": "Nu acum",
-    "biometricError": "Autentificarea biometrică a eșuat. Încearcă din nou.",
-    "biometricCancelled": "Autentificare biometrică anulată."
+    }
   },
   "dashboard": {
     "greeting": "Salut,",
@@ -199,6 +192,8 @@
     "transaction": "Tranzacție",
     "connectionError": "Nu s-a putut iniția conexiunea cu BT",
     "connectionSuccess": "Contul BT a fost conectat cu succes!",
+    "demoAuthRequired": "Trebuie să fii autentificat ca să conectezi Demo Bank.",
+    "demoConnectionSuccess": "Demo Bank conectat cu tranzacții până ieri.",
     "authError": "Nu s-a putut finaliza autorizarea",
     "sessionExpired": "Sesiunea bancară BT a expirat. Reconectează-ți contul folosind butonul de mai jos.",
     "disconnectTitle": "Deconectezi {{bank}}?",
@@ -211,7 +206,7 @@
     "healthExpired": "Sesiune expirată",
     "sandboxUnavailable": "Sandbox indisponibil",
     "sandboxUnavailableTitle": "Sandbox bancar indisponibil",
-    "sandboxUnavailableDesc": "BT Sandbox este indisponibil temporar. Poti folosi Demo Bank pentru demo.",
+    "sandboxUnavailableDesc": "BT Sandbox este indisponibil temporar. Poți folosi Demo Bank pentru demo.",
     "connectionWarning": "Starea conexiunii necesită atenție",
     "lastSync": "Ultima sincronizare: {{time}}",
     "lastSyncUnknown": "indisponibilă",
@@ -247,7 +242,7 @@
       "future": "Viitor"
     },
     "past": {
-      "exportReport": "Descarcă Raport PDF"
+      "exportReport": "Raport PDF"
     },
     "present": {
       "safeToSpendTitle": "Disponibil imediat",
@@ -262,7 +257,7 @@
       "endOfMonth": "Sold estimat la final de lună",
       "estimatedBalance": "Sold estimat",
       "aiInsightTitle": "Analiză predictivă",
-      "robustForecastDesc": "Estimare bazata pe istoricul ultimelor luni si ajustata pentru tranzactii recurente.",
+      "robustForecastDesc": "Estimare bazată pe istoricul ultimelor luni și ajustată pentru tranzacții recurente.",
       "remainingNet": "Net rămas",
       "projectedIncome": "Venituri rămase estimate",
       "projectedExpenses": "Cheltuieli rămase estimate",
@@ -290,13 +285,12 @@
     "vsLastMonth": "vs. luna trecută",
     "spendingInsights": "Analiza cheltuielilor",
     "noTransactionsInCategory": "Nu sunt tranzacții în această categorie",
-
     "fab": {
       "categorii": "Categorii",
       "recurente": "Recurente",
       "tranzactii": "Tranzacții",
       "comparatie": "Comparație lunară",
-      "cashflow": "Cash Flow Forecast",
+      "cashflow": "Prognoză cash flow",
       "venituri": "Detalii Venituri",
       "cheltuieli": "Detalii Cheltuieli",
       "buget": "Buget vs. Real"
@@ -335,6 +329,13 @@
         "weekly": "Săptămânal",
         "biweekly": "Bisăptămânal",
         "monthly": "Lunar"
+      },
+      "names": {
+        "Mortgage Payment": "Rată locuință",
+        "Power Company": "Furnizor energie electrică",
+        "Internet Service Provider": "Furnizor internet",
+        "State Farm": "Asigurare auto",
+        "City Water Charges": "Factură apă"
       }
     },
     "incomeDetails": {
@@ -399,9 +400,7 @@
   },
   "advisor": {
     "title": "Novence AI",
-    "online": "● Online",
     "initialMessage": "Salut! 👋 Sunt Novence AI, consilierul tău financiar personal. Pot analiza cheltuielile tale și îți pot oferi sfaturi de optimizare. Ce te interesează?",
-    "demoReply": "Analizez datele tale financiare... Aceasta este o versiune demo. Funcționalitatea AI va fi integrată cu un model LLM care va analiza tranzacțiile tale reale.",
     "inputPlaceholder": "Întreabă-mă orice despre banii tăi...",
     "suggestions": "Sugestii:",
     "suggestion1": "Cum pot economisi mai mult?",
@@ -455,8 +454,6 @@
     "a11yAvatar": "Editează fotografia de profil",
     "a11yEditProfile": "Editează informațiile de profil",
     "a11ySecurity": "Deschide setările de securitate",
-    "a11yBiometricSwitch": "Activează sau dezactivează autentificarea biometrică",
-    "a11yNotificationsSwitch": "Activează sau dezactivează notificările",
     "a11yLanguage": "Schimbă limba aplicației",
     "a11yTheme": "Schimbă tema aplicației",
     "a11yHelp": "Deschide ajutor și suport",
@@ -472,8 +469,6 @@
     "selectLanguage": "Selectează limba",
     "romanian": "Română",
     "english": "English",
-    "notificationsEnabled": "Activate",
-    "notificationsDisabled": "Dezactivate",
     "securityTitle": "Securitate",
     "currentPassword": "Parola curentă",
     "newPassword": "Parola nouă",
@@ -500,12 +495,6 @@
     "termsContent": "Prin utilizarea Novence, acceptați termenii și condițiile noastre. Aplicația folosește API-ul BT Open Banking pentru a accesa datele financiare. Datele sunt procesate în conformitate cu GDPR. Nu ne asumăm responsabilitatea pentru deciziile financiare luate pe baza informațiilor oferite.",
     "currencyTitle": "Selectează moneda",
     "selectTheme": "Selectează tema",
-    "biometric": "Autentificare biometrică",
-    "biometricEnabled": "Activată",
-    "biometricDisabled": "Dezactivată",
-    "biometricDisableConfirm": "Dezactivezi autentificarea biometrică?",
-    "biometricDisableMsg": "Va trebui să folosești parola pentru a te autentifica.",
-    "biometricDisableYes": "Dezactivează",
     "avatarUpdated": "Fotografia de profil a fost actualizată!",
     "avatarError": "Eroare la actualizarea fotografiei",
     "avatarPermissionDenied": "Accesul la bibliotecă foto a fost refuzat"
@@ -669,10 +658,10 @@
     "btTokenExchangeFailed": "Autorizarea a eșuat",
     "btGetAccountsFailed": "Nu s-au putut prelua conturile",
     "btGetTransactionsFailed": "Nu s-au putut prelua tranzacțiile",
-    "btGetBalancesFailed": "Nu s-au putut prelua balan\u021bele",
-    "btSessionExpired": "Sesiunea bancara a expirat. Te rugam sa reconectezi contul.",
-    "btSandboxUnavailable": "Sandbox-ul BT nu este disponibil momentan. Foloseste Demo Bank pentru prezentare si incearca BT mai tarziu.",
-    "brdSandboxUnavailable": "Sandbox-ul BRD nu este disponibil momentan. Poti folosi Demo Bank pentru prezentare si incerca BRD mai tarziu.",
+    "btGetBalancesFailed": "Nu s-au putut prelua balanțele",
+    "btSessionExpired": "Sesiunea bancară a expirat. Te rugăm să reconectezi contul.",
+    "btSandboxUnavailable": "Sandbox-ul BT nu este disponibil momentan. Folosește Demo Bank pentru prezentare și încearcă BT mai târziu.",
+    "brdSandboxUnavailable": "Sandbox-ul BRD nu este disponibil momentan. Poți folosi Demo Bank pentru prezentare și poți încerca BRD mai târziu.",
     "internalServerError": "Eroare internă de server",
     "tooManyRequests": "Prea multe încercări. Te rugăm să aștepți câteva minute înainte să reîncerci."
   },

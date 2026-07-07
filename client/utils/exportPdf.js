@@ -1,9 +1,3 @@
-/**
- * @fileoverview PDF report generation for Novence.
- * Builds an HTML financial report and converts it to a shareable PDF
- * using expo-print and expo-sharing.
- */
-
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { categorizeTransaction } from "./categoryUtils";
@@ -28,17 +22,6 @@ Number(n).toLocaleString("ro-RO", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2
 });
-
-
-
-
-
-
-
-
-
-
-
 
 
 

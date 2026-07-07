@@ -2,6 +2,11 @@
 require("dotenv").config();
 
 const prisma = require("../src/config/db");
+
+function writeInfo(message) {
+  process.stdout.write(`${message}\n`);
+}
+
 const {
   normalizeMerchantName,
   normalizeDateOnly,
@@ -101,20 +106,20 @@ async function backfillMonthlySummaries() {
 
 (async () => {
   try {
-    console.log("[DataAccuracy] Backfill started...");
+    writeInfo("[DataAccuracy] Backfill started...");
 
     const txResult = await backfillTransactions();
-    console.log(
+    writeInfo(
       `[DataAccuracy] Transactions updated: ${txResult.updatedRows}, duplicates marked: ${txResult.duplicateRows}`
     );
 
     const summaries = await backfillMonthlySummaries();
     const totalMonths = summaries.reduce((sum, row) => sum + row.months, 0);
-    console.log(
+    writeInfo(
       `[DataAccuracy] Monthly summaries rebuilt for ${summaries.length} users (${totalMonths} month rows).`
     );
 
-    console.log("[DataAccuracy] Backfill completed.");
+    writeInfo("[DataAccuracy] Backfill completed.");
   } catch (err) {
     console.error("[DataAccuracy] Backfill failed:", err);
     process.exitCode = 1;

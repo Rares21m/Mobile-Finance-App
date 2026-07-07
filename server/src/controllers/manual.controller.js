@@ -1,14 +1,3 @@
-/**
- * @fileoverview Manual Transactions & Category Overrides controller.
- *
- * Routes:
- *   GET    /api/manual                        — list manual transactions + category overrides
- *   POST   /api/manual                        — create manual transaction
- *   PATCH  /api/manual/:id                    — update manual transaction (incl. category)
- *   DELETE /api/manual/:id                    — delete manual transaction
- *   PUT    /api/manual/category-override      — upsert category override on any transaction
- *   DELETE /api/manual/category-override/:transactionId — remove override
- */
 
 const prisma = require("../config/db");
 const logger = require("../config/logger");

@@ -5,14 +5,12 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, Text, View, TouchableOpacity, Image } from "react-native";
-import InboxModal from "../../components/InboxModal";
 import TransactionItem from "../../components/TransactionItem";
 import { useAuth } from "../../context/AuthContext";
 import { useBankData } from "../../context/BankContext";
 import { useBudget } from "../../context/BudgetContext";
 import { useGoals } from "../../context/GoalsContext";
 import { useInsights } from "../../context/InsightsContext";
-import { useNotifications } from "../../context/NotificationsContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
@@ -250,17 +248,14 @@ export default function Dashboard() {
 
 
 
-  const { unreadCount, reload: reloadInbox } = useNotifications();
-  const [inboxVisible, setInboxVisible] = useState(false);
   const [copyVariant, setCopyVariant] = useState("A");
   const [, setReentryState] = useState({ bucket: 0, daysInactive: 0 });
 
 
 
   useEffect(() => {
-    reloadInbox();
     refreshInsights();
-  }, [transactions, reloadInbox, refreshInsights]);
+  }, [transactions, refreshInsights]);
 
   useEffect(() => {
     (async () => {
@@ -451,11 +446,6 @@ export default function Dashboard() {
           });
         }} />
       
-      {}
-      <InboxModal
-        visible={inboxVisible}
-        onClose={() => setInboxVisible(false)} />
-      
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -464,47 +454,30 @@ export default function Dashboard() {
         {}
         <View style={{ paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           {}
+          <Text style={{ color: c.foreground, fontWeight: "800", fontSize: 20 }}>
+            {firstName}
+          </Text>
+
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.push("/(tabs)/profile")}
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
+              width: 40,
+              height: 40,
               borderRadius: 20,
-              padding: 4,
-              paddingRight: 12
+              overflow: "hidden",
+              backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)"
             }}>
-            
-            <View style={{ width: 32, height: 32, borderRadius: 16, overflow: "hidden", marginRight: 8, backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }}>
+
+            <View style={{ flex: 1, backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }}>
               {user?.avatar ?
               <Image source={{ uri: user.avatar }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> :
 
               <LinearGradient colors={[c.primary, c.accent]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "800" }}>{initials}</Text>
+                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>{initials}</Text>
                 </LinearGradient>
               }
             </View>
-            <Text style={{ color: c.foreground, fontWeight: "700", fontSize: 13 }}>{firstName}</Text>
-          </TouchableOpacity>
-
-          {}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setInboxVisible(true)}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
-              alignItems: "center",
-              justifyContent: "center"
-            }}>
-            
-            <Ionicons name={unreadCount > 0 ? "notifications" : "notifications-outline"} size={20} color={c.foreground} />
-            {unreadCount > 0 &&
-            <View style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: c.expense, borderWidth: 1.5, borderColor: c.background }} />
-            }
           </TouchableOpacity>
         </View>
 

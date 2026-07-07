@@ -1,8 +1,3 @@
-/**
- * @fileoverview Axios-based HTTP client for the Novence API.
- * Automatically attaches the JWT token from SecureStore to every request.
- * Base URL is configurable via app.config.js (EXPO_PUBLIC_API_URL).
- */
 
 import axios from "axios";
 import Constants from "expo-constants";

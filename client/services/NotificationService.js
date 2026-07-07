@@ -1,11 +1,3 @@
-/**
- * @fileoverview Local notification service for Novence.
- * Uses expo-notifications to schedule budget-alert notifications.
- * No APNs/FCM server needed — notifications are fired locally on-device.
- *
- * Cooldown: a notification for a given budget category is not re-sent
- * within 12 hours, to avoid spamming the user.
- */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
@@ -233,10 +225,6 @@ export async function checkAndNotifyBudgets(budgetSummary, t) {
   if (IS_EXPO_GO) {
 
     if (alerts.length > 0) {
-      console.log(
-        "[NotificationService] Expo Go – saving inbox entries for:",
-        alerts.map((b) => `${b.key} (${b.percentage}% – ${b.status})`)
-      );
       for (const budget of alerts) {
         const categoryName = t(`analytics.categories.${budget.key}`);
         const body =

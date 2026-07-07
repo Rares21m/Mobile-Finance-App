@@ -1,12 +1,10 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Linking,
   Pressable,
   ScrollView,
-  Switch,
   Text,
   TextInput,
   View } from
@@ -32,10 +30,7 @@ export default function Profile() {
   const {
     user,
     logout,
-    updateUser,
-    biometricEnabled,
-    biometricAvailable,
-    disableBiometric
+    updateUser
   } = useAuth();
   const { themeMode, setTheme, isDark, theme } = useTheme();
   const c = theme.colors;
@@ -60,7 +55,6 @@ export default function Profile() {
   const [changingPassword, setChangingPassword] = useState(false);
 
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [pickingAvatar, setPickingAvatar] = useState(false);
 
   const currentLang = i18n.language?.startsWith("ro") ? "ro" : "en";
@@ -200,73 +194,12 @@ export default function Profile() {
       iconBg: "rgba(99,102,241,0.12)",
       onPress: openSecurityModal,
       a11yLabel: t("profile.a11ySecurity")
-    },
-    ...(biometricAvailable ?
-    [
-    {
-      key: "biometric",
-      icon: "finger-print-outline",
-      label: t("profile.biometric"),
-      iconColor: "#EC4899",
-      iconBg: "rgba(236,72,153,0.12)",
-      value: biometricEnabled ?
-      t("profile.biometricEnabled") :
-      t("profile.biometricDisabled"),
-      rightComponent:
-      <Switch
-        value={biometricEnabled}
-        onValueChange={(val) => {
-          if (!val) {
-            Alert.alert(
-              t("profile.biometricDisableConfirm"),
-              t("profile.biometricDisableMsg"),
-              [
-              { text: t("common.cancel"), style: "cancel" },
-              {
-                text: t("profile.biometricDisableYes"),
-                style: "destructive",
-                onPress: disableBiometric
-              }]
-
-            );
-          }
-        }}
-        accessibilityLabel={t("profile.a11yBiometricSwitch")}
-        trackColor={{
-          false: c.border,
-          true: "rgba(236,72,153,0.35)"
-        }}
-        thumbColor={biometricEnabled ? "#EC4899" : c.textMuted} />
-
-
-    }] :
-
-    [])]
+    }]
 
   },
   {
     title: t("profile.sectionPreferences"),
     items: [
-    {
-      key: "notifications",
-      icon: "notifications-outline",
-      label: t("profile.notifications"),
-      iconColor: "#F59E0B",
-      iconBg: "rgba(245,158,11,0.12)",
-      rightComponent:
-      <Switch
-        value={notificationsEnabled}
-        onValueChange={setNotificationsEnabled}
-        accessibilityLabel={t("profile.a11yNotificationsSwitch")}
-        trackColor={{
-          false: c.border,
-          true: "rgba(16,185,129,0.35)"
-        }}
-        thumbColor={notificationsEnabled ? "#10B981" : c.textMuted} />,
-
-
-      a11yLabel: t("profile.a11yNotificationsSwitch")
-    },
     {
       key: "language",
       icon: "language-outline",

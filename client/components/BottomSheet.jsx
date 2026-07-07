@@ -1,7 +1,3 @@
-/**
- * @fileoverview Reusable bottom sheet modal with backdrop dismiss
- * and built-in cancel button. Used in the profile screen.
- */
 
 import { Modal, Pressable, Text, View } from "react-native";
 

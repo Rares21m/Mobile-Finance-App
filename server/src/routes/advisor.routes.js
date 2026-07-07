@@ -1,7 +1,3 @@
-/**
- * @fileoverview Routes for the AI Financial Advisor.
- * All routes require a valid JWT (authMiddleware).
- */
 
 const express = require("express");
 const router = express.Router();

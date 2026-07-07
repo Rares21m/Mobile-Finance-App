@@ -1,7 +1,3 @@
-/**
- * @fileoverview Thin API controller for the Novence AI advisor.
- * The advisory logic lives in the top-level ai/ module.
- */
 
 const logger = require("../config/logger");
 const { generateAdvisorReply } = require("../../../ai/src");

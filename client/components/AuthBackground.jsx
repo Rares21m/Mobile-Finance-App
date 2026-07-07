@@ -1,7 +1,3 @@
-/**
- * @fileoverview Shared gradient background with decorative circles and
- * optional back button, used by the sign-in and sign-up screens.
- */
 
 import { Pressable, View } from "react-native";
 

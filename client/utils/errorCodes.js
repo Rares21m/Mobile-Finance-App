@@ -1,8 +1,3 @@
-/**
- * @fileoverview Maps server-side error codes to i18n translation keys.
- * Used by the client to display localized, user-friendly error messages
- * instead of raw error codes returned by the API.
- */
 
 
 const ERROR_CODE_MAP = {
